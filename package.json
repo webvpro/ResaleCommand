@@ -24,10 +24,12 @@
     "astro-icon": "^1.1.5",
     "astro-seo": "^0.8.4",
     "dotenv": "^17.2.3",
+    "marked": "^17.0.1",
     "node-appwrite": "^21.1.0",
     "tailwindcss": "^4.1.13"
   },
   "devDependencies": {
+    "@tailwindcss/typography": "^0.5.19",
     "daisyui": "^5.1.24"
   }
 }

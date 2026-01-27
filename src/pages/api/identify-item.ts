@@ -38,6 +38,8 @@ export const ALL: APIRoute = async ({ request }) => {
         
         // 2. Read Body
         let rawBody = "";
+        let userNotes = "";
+
         try {
             const ab = await request.arrayBuffer();
             if (ab.byteLength > 0) {
@@ -66,71 +68,112 @@ export const ALL: APIRoute = async ({ request }) => {
             });
         }
         
-        let base64Image = "";
-        let mimeType = "image/jpeg";
+        let imageParts: Array<{ inlineData: { data: string; mimeType: string } }> = [];
 
         if (rawBody.trim().startsWith("data:")) {
-            // Option 1: Raw Data URL string (text/plain)
+            // Option 1: Raw Data URL string (text/plain) - Single Image
             const parts = rawBody.split(",");
-            // "data:image/png;base64" -> "image/png"
             const match = parts[0].match(/:(.*?);/);
-            if (match) mimeType = match[1];
-            base64Image = parts[1];
+            const mime = match ? match[1] : "image/jpeg";
+            imageParts.push({
+                inlineData: {
+                    data: parts[1],
+                    mimeType: mime
+                }
+            });
         } else if (rawBody.trim().startsWith("{")) {
             // Option 2: JSON payload
             try {
                 const json = JSON.parse(rawBody);
-                // supports { image: "data:..." }
-                const imageStr = json.image || "";
-                if (imageStr.startsWith("data:")) {
-                     const parts = imageStr.split(",");
-                     const match = parts[0].match(/:(.*?);/);
-                     if (match) mimeType = match[1];
-                     base64Image = parts[1];
-                } else {
-                     base64Image = imageStr;
+                
+                // Extract User Notes if present
+                if (json.notes) {
+                    userNotes = json.notes;
                 }
+                
+                // Helper to process a single data-url string
+                const processDataUrl = (url: string) => {
+                     if (url.startsWith("data:")) {
+                         const parts = url.split(",");
+                         const match = parts[0].match(/:(.*?);/);
+                         return {
+                             inlineData: {
+                                 data: parts[1],
+                                 mimeType: match ? match[1] : "image/jpeg"
+                             }
+                         };
+                     }
+                     return null;
+                };
+
+                // Check for 'images' array
+                if (Array.isArray(json.images)) {
+                    json.images.forEach((img: string) => {
+                        const part = processDataUrl(img);
+                        if (part) imageParts.push(part);
+                    });
+                } 
+                // Fallback check for single 'image'
+                else if (json.image) {
+                     const part = processDataUrl(json.image);
+                     if (part) imageParts.push(part);
+                }
+
             } catch (e) {
                 console.error("JSON parse failed", e);
             }
         } 
-        
+
         // Option 3: Fallback (maybe just raw base64?)
-        if (!base64Image) {
-             // Attempt to treat whole body as base64 if it looks like it
-             if (rawBody.length > 100 && !rawBody.includes("{")) {
-                 base64Image = rawBody;
-             } else {
+        if (imageParts.length === 0 && rawBody.length > 100 && !rawBody.includes("{")) {
+             // Assume raw base64 string
+             imageParts.push({
+                 inlineData: {
+                     data: rawBody,
+                     mimeType: "image/jpeg"
+                 }
+             });
+        }
+        
+        if (imageParts.length === 0) {
                  return new Response(JSON.stringify({ error: "Parsing Failed", details: "Could not detect image data in body." }), { 
                     status: 400,
                     headers: { "Access-Control-Allow-Origin": "*" }
                 });
-             }
         }
 
         const prompt = `
-          Analyze this item for resale. 
+          Analyze these items (or multiple views of the same item) for resale. 
+          
+          USER NOTES (from seller): "${userNotes}"
+          
+          TASK:
+          Identify the item(s) in the image. 
+          - If it is a SINGLE item (or multiple angles of one item), return an array with ONE result.
+          - If it is a GROUP/LOT of distinct items (e.g. a row of books, several video games, a pile of clothes), return an array with a result for EACH distinct item you can identify.
           
           OUTPUT FORMAT:
-          Return strictly JSON.
-          - 'identity': A single string describing the item (e.g. "Nike Air Max 90").
+          Return strictly a JSON object with property "items": [ ... ].
+          
+          Each item object in the array must contain:
+          - 'identity': A single string describing the item (e.g. "Nike Air Max 90" or "Harry Potter Book 1").
           - 'title': A short SEO-friendly title string.
           - 'keywords': An array of strings.
-          - 'condition_notes': A string describing the visible condition from the image.
-          - 'price_breakdown': An object with estimated values for 3 conditions:
+          - 'condition_notes': A string describing the visible condition.
+          - 'red_flags': An array of strings highlighting potential issues (e.g. "Stained", "Torn", "Missing Button", "Discolored"). Return empty if none.
+          - 'price_breakdown': An object with estimated values:
               - 'mint': Price range if New/Mint.
               - 'fair': Price range if Used/Good.
               - 'poor': Price range if Poor/Damaged.
+          - 'comparables': An array of 3-5 similar items sold on eBay/etc.
+               - 'name': Specific item name/title.
+               - 'price': approx sold price.
+               - 'status': "Sold" or "Listed".
         `;
 
         const result = await model.generateContent([
           prompt,
-          {
-            inlineData: {
-              data: base64Image,
-              mimeType: mimeType
-            }
-          }
+          ...imageParts
         ]);
 
         const taskResponse = result.response.text();

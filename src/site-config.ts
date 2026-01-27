@@ -15,16 +15,11 @@ export const featureFlags = {
 // Navigation menu items
 export const nav = [
   {
-    text: "Home",
+    text: "Dashboard",
     url: "/",
   },
   {
-    text: "Daisyui",
-    url: "/daisyui",
+    text: "Inventory",
+    url: "/inventory",
   },
-  {
-    text: "404",
-    url: "/404",
-  },
-  
 ];

@@ -1,15 +1,24 @@
 ---
-import Code from "@components/Code.astro";
-import SimpleCTA from "@components/SimpleCTA.astro";
-import SectionVideo from "@components/SectionVideo.astro";
+import CameraCapture from "@components/CameraCapture.astro";
 import Layout from "@layouts/Layout.astro";
 ---
 
 <Layout>
+  <div class="container mx-auto px-4 py-8">
+    <div class="text-center mb-8">
+      <h1 class="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-2">
+        Resale Command
+      </h1>
+      <p class="text-lg opacity-70">
+        AI-Powered Resale Inventory Assistant
+      </p>
+    </div>
 
-  <Code />
-  <SimpleCTA />
-  <SectionVideo />
-
+    <CameraCapture />
+    
+    <div class="mt-12 text-center text-sm opacity-50">
+      <p>Powered by Gemini AI + Appwrite + Astro + DaisyUI</p>
+    </div>
+  </div>
 </Layout>
 
