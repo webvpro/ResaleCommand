@@ -1,0 +1,23 @@
+---
+import CameraCapture from "@components/CameraCapture.astro";
+import Layout from "@layouts/Layout.astro";
+---
+
+<Layout>
+  <div class="container mx-auto px-4 py-8">
+    <div class="text-center mb-8">
+      <h1 class="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-2">
+        Resale Command Dashboard
+      </h1>
+      <p class="text-lg opacity-70">
+        AI-Powered Resale Inventory Assistant
+      </p>
+    </div>
+
+    <CameraCapture />
+    
+    <div class="mt-12 text-center text-sm opacity-50">
+      <p>Powered by Gemini AI + Appwrite + Astro + DaisyUI</p>
+    </div>
+  </div>
+</Layout>

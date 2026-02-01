@@ -8,12 +8,15 @@ import vercel from "@astrojs/vercel";
 import alpinejs from "@astrojs/alpinejs";
 
 
+import vue from "@astrojs/vue";
+
+
 // https://astro.build/config
 export default defineConfig({
   output: 'server',
   site: "https://example.com",
   trailingSlash: "never",
-  integrations: [mdx(), sitemap(), icon(), alpinejs()],
+  integrations: [mdx(), sitemap(), icon(), alpinejs(), vue()],
   adapter: vercel(),
   vite: {
     plugins: [tailwindcss()],

@@ -1,5 +1,5 @@
 ---
-import Navbar from "@components/nav/Navbar.astro";
+import Navbar from "@components/nav/Navbar.vue";
 import Footer from "@components/Footer.astro";
 import { siteConfig } from "site-config";
 
@@ -16,7 +16,7 @@ const { title = siteConfig.title, description, image } = Astro.props;
 ---
 
 <!doctype html>
-<html lang="de">
+<html lang="en" data-theme="cupcake">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
@@ -30,9 +30,16 @@ const { title = siteConfig.title, description, image } = Astro.props;
   </head>
 </html>
 <body>
-  <Navbar />
+  <Navbar client:load />
   <main>
     <slot />
   </main>
   <Footer />
+  <script>
+    import { useAuth } from "../composables/useAuth";
+    
+    // Initialize auth state on client load
+    const { init } = useAuth();
+    init();
+  </script>
 </body>

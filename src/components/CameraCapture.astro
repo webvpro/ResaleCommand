@@ -193,6 +193,7 @@
                     <div x-show="mode === 'precision'">
                         <div x-data="profitCalculator(localSalePrice)" 
                              @max-buy-update="item.maxBuyPrice = $event.detail.value"
+                             @resale-price-update="item.resalePrice = $event.detail.value"
                              class="bg-base-100 p-4 rounded-lg shadow-sm border border-base-200">
                              
                             <h4 class="font-bold text-sm mb-2 opacity-70">💰 Max Buy Calculator</h4>
@@ -312,10 +313,18 @@
                     </div>
                 </div>
                 
-                <button @click="saveToInventory(item, $el)" class="btn btn-success w-full mt-4 text-white">
-                    <span x-show="mode === 'speed'">⚡ Save to Cart</span>
-                    <span x-show="mode === 'precision'">Save to 'Need to List'</span>
-                </button>
+                <template x-if="isAuthenticated">
+                    <button @click="saveToInventory(item, $el)" class="btn btn-success w-full mt-4 text-white">
+                        <span x-show="mode === 'speed'">⚡ Save to Cart</span>
+                        <span x-show="mode === 'precision'">Save to 'Need to List'</span>
+                    </button>
+                </template>
+                <template x-if="!isAuthenticated">
+                    <div class="mt-4">
+                         <a href="/login?redirect=/scout" class="btn btn-outline btn-primary w-full">Login to Save</a>
+                         <p class="text-xs text-center mt-2 opacity-60" x-text="`Free Daily Scans: ${5 - dailyScans} remaining`"></p>
+                    </div>
+                </template>
             </div>
         </template>
     </div>
@@ -323,6 +332,7 @@
 
 <script>
     import { saveItemToInventory } from '../lib/inventory';
+    import { authStore } from '../lib/store';
 
     // Helper to parse price strings like "$15.00", "$150", or Range "$40-70"
     // Made global so Alpine x-effect can access it
@@ -362,18 +372,21 @@
                 const max = this.salePrice - costs;
                 this.maxBuyPrice = max > 0 ? max : 0;
                 this.$dispatch('max-buy-update', { value: this.maxBuyPrice });
+                this.$dispatch('resale-price-update', { value: this.salePrice });
             }
         }));
 
         Alpine.data('cameraAnalysis', () => ({
             mode: 'speed', // Default mode
+            isAuthenticated: false,
+            dailyScans: 0,
             images: [],
             imageFiles: [],
             userNotes: '',
             paidPrice: '',
             purchaseLocation: '',
-            binLocation: '', // New field
-            receiptFile: null, // New field
+            binLocation: '', 
+            receiptFile: null, 
             gettingLocation: false,
             loading: false,
             result: null,
@@ -381,6 +394,41 @@
             isCameraOpen: false,
             stream: null,
             currentFacingMode: 'environment',
+
+            init() {
+                this.isAuthenticated = authStore.get().isAuthenticated;
+                authStore.subscribe(state => {
+                    this.isAuthenticated = state.isAuthenticated;
+                });
+
+                const stored = localStorage.getItem('scout_daily_scans');
+                if (stored) {
+                    const data = JSON.parse(stored);
+                    const today = new Date().toISOString().split('T')[0];
+                    if (data.date === today) {
+                        this.dailyScans = data.count;
+                    } else {
+                        this.dailyScans = 0;
+                        localStorage.removeItem('scout_daily_scans');
+                    }
+                }
+            },
+            
+            checkGuestLimit() {
+                if (this.isAuthenticated) return true;
+                if (this.dailyScans >= 5) {
+                    alert("Guest Limit Reached (5 scans/day). Please Login or Sign Up to continue scanning unlimited items!");
+                    return false;
+                }
+                return true;
+            },
+            
+            incrementGuestCount() {
+                if (this.isAuthenticated) return;
+                this.dailyScans++;
+                const today = new Date().toISOString().split('T')[0];
+                localStorage.setItem('scout_daily_scans', JSON.stringify({ date: today, count: this.dailyScans }));
+            },
 
             switchCamera() {
                 this.currentFacingMode = this.currentFacingMode === 'environment' ? 'user' : 'environment';
@@ -624,6 +672,7 @@
             },
 
             async analyzeImage() {
+                if (!this.checkGuestLimit()) return;
                 if (this.images.length === 0) {
                     alert("No images selected!");
                     return;
@@ -669,6 +718,8 @@
                     }
 
                     this.result = await response.json();
+                    this.incrementGuestCount();
+
 
                     // Fallback backward compatibility if API returns old structure
                     if (this.result && !this.result.items && (this.result.identity || this.result.title)) {
@@ -702,6 +753,7 @@
                             paidPrice: this.paidPrice,
                             purchaseLocation: this.purchaseLocation,
                             maxBuyPrice: itemData.maxBuyPrice?.toString() || "0",
+                            resalePrice: itemData.resalePrice?.toString() || "0",
                             binLocation: this.binLocation,
                             receiptFile: this.receiptFile,
                             status: this.mode === 'speed' ? 'in_cart' : 'need_to_list',

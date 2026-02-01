@@ -171,6 +171,7 @@ export const ALL: APIRoute = async ({ request }) => {
                - 'status': "Sold" or "Listed".
         `;
 
+
         const result = await model.generateContent([
           prompt,
           ...imageParts

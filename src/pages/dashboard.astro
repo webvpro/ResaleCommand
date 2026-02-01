@@ -1,0 +1,63 @@
+---
+import Layout from "@layouts/Layout.astro";
+---
+
+<Layout title="Dashboard | Resale Command">
+  <div class="container mx-auto px-4 py-8">
+    <div class="flex flex-col md:flex-row justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold">Dashboard</h1>
+            <p class="opacity-70">Overview of your resale business</p>
+        </div>
+        <div class="flex gap-4 mt-4 md:mt-0">
+            <a href="/scout" class="btn btn-primary gap-2">
+                📸 Start Scout Session
+            </a>
+            <a href="/inventory" class="btn btn-outline gap-2">
+                📦 Manage Inventory
+            </a>
+        </div>
+    </div>
+
+    <!-- Quick Stats Placeholder -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="stats shadow bg-base-100 border border-base-200">
+            <div class="stat">
+              <div class="stat-figure text-primary">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-8 h-8 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              </div>
+              <div class="stat-title">Items to List</div>
+              <div class="stat-value text-primary">--</div>
+              <div class="stat-desc">Pending in 'Need to List'</div>
+            </div>
+        </div>
+        
+        <div class="stats shadow bg-base-100 border border-base-200">
+            <div class="stat">
+              <div class="stat-figure text-secondary">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-8 h-8 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+              </div>
+              <div class="stat-title">Total Inventory</div>
+              <div class="stat-value text-secondary">--</div>
+              <div class="stat-desc">Active items</div>
+            </div>
+        </div>
+
+        <div class="stats shadow bg-base-100 border border-base-200">
+            <div class="stat">
+               <div class="stat-figure text-secondary">
+                 <div class="avatar online">
+                   <div class="w-16 rounded-full">
+                     <img src="https://ui-avatars.com/api/?name=User" />
+                   </div>
+                 </div>
+               </div>
+               <div class="stat-value">86%</div>
+               <div class="stat-title">Tasks Done</div>
+               <div class="stat-desc text-secondary">Remaining items listed</div>
+             </div>
+        </div>
+    </div>
+    
+  </div>
+</Layout>

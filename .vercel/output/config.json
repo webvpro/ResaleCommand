@@ -1,0 +1,91 @@
+{
+	"version": 3,
+	"routes": [
+		{
+			"src": "^/(.*)/$",
+			"headers": {
+				"Location": "/$1"
+			},
+			"status": 308
+		},
+		{
+			"handle": "filesystem"
+		},
+		{
+			"src": "^/_astro/(.*)$",
+			"headers": {
+				"cache-control": "public, max-age=31536000, immutable"
+			},
+			"continue": true
+		},
+		{
+			"src": "^/_server-islands/([^/]+?)$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/_image$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/404$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/generate-description$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/identify-item$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/daisyui$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/dashboard$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/dataprotection$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/imprint$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/inventory$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/join$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/login$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/logout$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/scan$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/signup$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/.*$",
+			"dest": "_render",
+			"status": 404
+		}
+	]
+}

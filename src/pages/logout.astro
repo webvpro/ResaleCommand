@@ -1,0 +1,40 @@
+---
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout title="Logging out...">
+  <div class="flex min-h-screen items-center justify-center bg-gray-50" x-data="logoutPage">
+    <div class="text-center">
+      <h2 class="text-2xl font-bold mb-4">Logging out...</h2>
+      <span class="loading loading-spinner loading-lg text-primary"></span>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  import { auth } from "../lib/auth";
+  import Alpine from 'alpinejs';
+
+  document.addEventListener('alpine:init', () => {
+    Alpine.data('logoutPage', () => ({
+      async init() {
+         // Perform logout via store if possible, or directly via auth lib
+         // Accessing store from here might be tricky if not initialized yet? 
+         // Layout initializes store...
+         // But simpler to just call auth.logout() and redirect.
+         // However, we want to clear the global store state too.
+         // We can access Alpine.store('auth') if it's initialized.
+         
+         // Give a small delay for store init
+         setTimeout(async () => {
+             if (Alpine.store('auth')) {
+                 await Alpine.store('auth').logout();
+             } else {
+                 await auth.logout();
+                 window.location.href = '/login';
+             }
+         }, 100);
+      }
+    }))
+  })
+</script>

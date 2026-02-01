@@ -8,4 +8,5 @@ const apiKey = import.meta.env.GEMINI_API_KEY;
 export const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 
 // Using the detected available model for this API Key
-export const model = genAI ? genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" }) : null;
+
+export const model = genAI ? genAI.getGenerativeModel({ model: "gemini-2.5-flash" }) : null;

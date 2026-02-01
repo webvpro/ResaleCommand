@@ -1,4 +1,6 @@
-import { databases, storage, ID } from './appwrite';
+import { databases, storage, ID, Query } from './appwrite';
+import type { Models } from 'appwrite';
+import { Permission, Role } from 'appwrite';
 
 const DB_ID = import.meta.env.PUBLIC_APPWRITE_DB_ID || 'resale_db'; 
 const COLLECTION_ID = import.meta.env.PUBLIC_APPWRITE_COLLECTION_ID || 'items';
@@ -15,9 +17,10 @@ export interface ExtraItemData {
     imageFile?: File | null;
     galleryFiles?: File[];
     existingGalleryIds?: string[];
+    resalePrice?: string;
 }
 
-export async function saveItemToInventory(itemData: any, imageFile: File | null, extraData: ExtraItemData = {}) {
+export async function saveItemToInventory(itemData: any, imageFile: File | null, extraData: ExtraItemData = {}, teamId?: string) {
     if (!import.meta.env.PUBLIC_APPWRITE_DB_ID) {
         throw new Error("Missing PUBLIC_APPWRITE_DB_ID in .env");
     }
@@ -82,17 +85,26 @@ export async function saveItemToInventory(itemData: any, imageFile: File | null,
             purchaseLocation: extraData.purchaseLocation || "",
             maxBuyPrice: extraData.maxBuyPrice || "0",
             binLocation: extraData.binLocation || "",
+            resalePrice: extraData.resalePrice || "0",
             receiptImageId: receiptImageId,
             createdAt: new Date().toISOString(),
-            status: extraData.status || 'draft'
+            status: extraData.status || 'draft',
+            teamId: teamId || null,
         };
+
+        const permissions = teamId ? [
+            Permission.read(Role.team(teamId)),
+            Permission.update(Role.team(teamId)),
+            Permission.delete(Role.team(teamId)),
+        ] : []; // Default permissions are current user only if empty
 
         // 3. Create Document
         const response = await databases.createDocument(
             DB_ID,
             COLLECTION_ID,
             ID.unique(),
-            doc
+            doc,
+            permissions
         );
 
 // ... existing code ...
@@ -103,16 +115,14 @@ export async function saveItemToInventory(itemData: any, imageFile: File | null,
     }
 }
 
-export async function getInventoryItems() {
+export async function getInventoryItems(teamId?: string) {
     try {
         const response = await databases.listDocuments(
             DB_ID,
             COLLECTION_ID,
             [
-                // Order by newest first
-                // Query.orderDesc('createdAt') // unexpected token error if Query not imported?
-                // Let's rely on default order or add Query import if needed.
-                // For now, strict 'Query' usage might require importing it from appwrite.
+                Query.orderDesc('$createdAt'),
+                ...(teamId ? [Query.equal('teamId', teamId)] : [])
             ]
         );
         return response.documents; 
@@ -187,6 +197,7 @@ export async function updateInventoryItem(documentId: string, updates: Partial<E
         if (updates.purchaseLocation) data.purchaseLocation = updates.purchaseLocation;
         if (updates.title) data.title = updates.title;
         if (updates.binLocation) data.binLocation = updates.binLocation;
+        if (updates.resalePrice) data.resalePrice = updates.resalePrice;
 
         const response = await databases.updateDocument(
             DB_ID,
