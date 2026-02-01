@@ -28,6 +28,8 @@
     "astro-seo": "^0.8.4",
     "dotenv": "^17.2.3",
     "marked": "^17.0.1",
+    "nanostores": "^0.10.0",
+    "@nanostores/vue": "^0.10.0",
     "node-appwrite": "^21.1.0",
     "tailwindcss": "^4.1.13",
     "vue": "^3.5.27"
