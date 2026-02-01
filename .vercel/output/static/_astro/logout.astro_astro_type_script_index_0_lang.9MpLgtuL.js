@@ -1,1 +1,0 @@
-import{a as o}from"./auth.DG5h8cRj.js";import{m as t}from"./module.esm.BaMlba_H.js";import"./appwrite.Cu45kNVr.js";document.addEventListener("alpine:init",()=>{t.data("logoutPage",()=>({async init(){setTimeout(async()=>{t.store("auth")?await t.store("auth").logout():(await o.logout(),window.location.href="/login")},100)}}))});
