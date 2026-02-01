@@ -8,12 +8,8 @@
     ],
     "routes": [
         {
-            "handle": "filesystem"
-        },
-        {
             "src": "/(.*)",
-            "dest": "/dist/server/entry.mjs"
+            "dest": "/"
         }
-    ],
-    "outputDirectory": "dist"
+    ]
 }
