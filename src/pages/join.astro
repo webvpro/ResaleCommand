@@ -9,7 +9,9 @@ import Layout from "../layouts/Layout.astro";
       <div x-show="loading" class="loading loading-spinner loading-lg text-primary"></div>
       <div x-show="error" class="text-red-500" x-text="error"></div>
       <div x-show="success" class="text-green-500">
-        Successfully joined! Redirecting...
+        <p class="text-xl font-bold mb-2">Successfully joined <span x-text="teamName"></span>!</p>
+        <p class="text-sm text-gray-600 mb-4">Managed by: <span x-text="owners"></span></p>
+        <p>Redirecting to dashboard...</p>
       </div>
     </div>
   </div>
@@ -24,6 +26,8 @@ import Layout from "../layouts/Layout.astro";
       loading: true,
       error: '',
       success: false,
+      teamName: '',
+      owners: '',
 
       async init() {
         const urlParams = new URLSearchParams(window.location.search);
@@ -38,15 +42,34 @@ import Layout from "../layouts/Layout.astro";
           return;
         }
 
+        // Check if user is logged in
+        const currentUser = await auth.getCurrentUser();
+        if (!currentUser) {
+            // Redirect to login preserving the current URL
+            const redirectUrl = encodeURIComponent(window.location.href);
+            window.location.href = `/login?redirect=${redirectUrl}`;
+            return;
+        }
+
         try {
           await auth.acceptInvite(teamId, membershipId, userId, secret);
+          
+          // Fetch Team Details to Show User
+          const { teams } = await import('../lib/appwrite'); // Dynamic import to avoid top-level issues if any
+          const team = await teams.get(teamId);
+          this.teamName = team.name;
+
+          // Fetch Owners
+          const members = await teams.listMemberships(teamId);
+          const owners = members.memberships.filter((m: any) => m.roles.includes('owner'));
+          this.owners = owners.map((o: any) => o.userName || o.userEmail).join(', ');
+
           this.success = true;
           this.loading = false;
-          // Refresh auth state ? The layout will re-init on navigation? 
-          // We should redirect to home after a moment.
+          
           setTimeout(() => {
              window.location.href = '/';
-          }, 2000);
+          }, 3000);
         } catch (err: any) {
           console.error(err);
           this.error = err.message || 'Failed to join team.';

@@ -90,17 +90,16 @@ async function run() {
     await createAttribute('conditionNotes', 'string', 1000, false); // Reduced to 1000
 
     // 3. Price Breakdown & Metadata
-    await createAttribute('priceMint', 'string', 255, false);
-    await createAttribute('priceFair', 'string', 255, false);
-    await createAttribute('pricePoor', 'string', 255, false);
-    await createAttribute('keywords', 'string', 255, false, true); 
-    await createAttribute('imageId', 'string', 255, false);
+    // 3. Price Breakdown & Metadata - ALIGNED WITH ACTUAL DB
+    // Note: The UI uses 'resalePrice' mostly, but we keep these if they exist for legacy or detailed records.
+    // If 'resalePrice' is the main one, we ensure it exists.
     
     // 4. Sourcing & Cart Fields 
-    await createAttribute('purchasePrice', 'string', 255, false);
+    await createAttribute('paidPrice', 'float', 0, false); // float matches useInventory
     await createAttribute('purchaseLocation', 'string', 255, false);
-    await createAttribute('maxBuyPrice', 'string', 255, false); // Retry
-    await createAttribute('binLocation', 'string', 255, false); // Retry
+    await createAttribute('resalePrice', 'float', 0, false); // float matches useInventory
+    await createAttribute('maxBuyPrice', 'float', 0, false);
+    await createAttribute('binLocation', 'string', 255, false);
     
     // 5. New Fields
     await createAttribute('receiptImageId', 'string', 255, false); // Retry
@@ -112,6 +111,18 @@ async function run() {
 
     // 7. AI Description
     await createAttribute('marketDescription', 'string', 5000, false);
+
+    // 8. INDEXES (Crucial for Queries)
+    console.log("Creating Indexes...");
+    try {
+        await databases.createIndex(DB_ID, COLLECTION_ID, 'idx_title', 'key', ['title'], ['asc']);
+        console.log("Created index: idx_title");
+    } catch (e) { console.log("Index idx_title might already exist or error:", e.message); }
+
+    try {
+        await databases.createIndex(DB_ID, COLLECTION_ID, 'idx_purchaseLocation', 'key', ['purchaseLocation'], ['asc']);
+        console.log("Created index: idx_purchaseLocation");
+    } catch (e) { console.log("Index idx_purchaseLocation might already exist or error:", e.message); }
 
     console.log("Schema Update Requests Sent. Please wait 1-2 minutes for Appwrite to process deletions and additions.");
 }

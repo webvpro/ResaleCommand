@@ -37,7 +37,6 @@
                  </svg>
               </div>
               <ul tabindex="0" class="dropdown-content z-[50] menu p-2 shadow bg-base-100 rounded-box w-52">
-                 <li><a @click="handleSwitchTeam(null)" :class="{ active: !currentTeam }">Personal Inventory</a></li>
                  <li v-for="team in teams" :key="team.$id">
                     <a @click="handleSwitchTeam(team)" :class="{ active: currentTeam && currentTeam.$id === team.$id }">{{ team.name }}</a>
                  </li>
@@ -58,6 +57,11 @@
               </div>
               <ul tabindex="0" class="mt-3 z-50 p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52">
                 <li v-if="isPartner"><div class="badge badge-secondary w-full">Partner</div></li>
+                
+                <div class="divider my-0"></div>
+                <li><a @click="showCreateModal = true">+ Create Organization</a></li>
+                <div class="divider my-0"></div>
+
                 <li><a @click="logout">Logout</a></li>
               </ul>
            </div>
@@ -145,7 +149,7 @@ const navLinks = computed(() => {
     links.push(
       { text: 'Dashboard', url: '/dashboard' },
       { text: 'Inventory', url: '/inventory' },
-      { text: 'Partners', url: '/partners' }
+      { text: 'Organization', url: '/org/settings' }
     );
   }
   return links;
@@ -190,7 +194,11 @@ const handleInvite = async () => {
         inviteEmail.value = '';
         alert('Invitation sent!');
     } catch(e: any) {
-        alert(e.message);
+        if (e.message.includes('unique') || e.code === 409) {
+            alert('This user is already a member or has a pending invitation.');
+        } else {
+            alert(e.message);
+        }
     }
 };
 </script>
