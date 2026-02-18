@@ -19,9 +19,15 @@
     <div class="flex-1 overflow-y-auto w-full bg-base-100 p-4 md:p-6 space-y-6 pb-32">
         
         <!-- HEADER -->
-        <div class="text-center space-y-1">
-            <h1 class="text-3xl font-bold text-primary">Resale Scout</h1>
-            <p class="text-sm opacity-60">AI-Powered Item Identification & Valuation</p>
+        <div v-if="activeCart" class="navbar bg-base-200 min-h-12 border-b border-base-300 px-4 sticky top-0 z-30">
+            <div class="flex-1 text-sm">
+                <span class="opacity-70 mr-2">🛒 Active Cart:</span>
+                <span class="font-bold">{{ activeCart.source }}</span>
+            </div>
+            <div class="flex-none text-sm">
+                <span class="badge badge-neutral mr-2">{{ cartItems ? cartItems.length : 0 }} Items</span>
+                <a href="/cart" class="link link-primary no-underline font-bold">View Cart &rarr;</a>
+            </div>
         </div>
 
         <!-- 1. INPUT SECTION -->
@@ -76,7 +82,7 @@
         <!-- 2. SHARED DETAILS SECTION (Only if results or manual entry) -->
         <div v-if="result || images.length > 0" class="card bg-base-100 shadow-sm border border-base-200">
              <div class="card-body p-4">
-                <h3 class="font-bold text-lg">Details for All Items</h3>
+
                 
                 <div class="form-control w-full">
                     <label class="label"><span class="label-text opacity-70">Paid Price ($)</span></label>
@@ -119,7 +125,7 @@
                     </div>
 
                     <!-- Pricing Grid -->
-                    <div class="grid grid-cols-3 gap-2 text-center mt-2">
+    <div class="grid grid-cols-3 gap-2 text-center mt-2">
                         <div class="bg-base-200 rounded p-2 flex flex-col">
                             <span class="text-[10px] uppercase font-bold opacity-50">NEW/MINT</span>
                             <span class="text-success font-bold text-sm md:text-base">{{ item.price_breakdown?.mint || '-' }}</span>
@@ -204,16 +210,45 @@
 
     <!-- CAMERA MODAL (Full Screen Overlay) -->
     <dialog ref="cameraModal" class="modal">
-        <div class="modal-box p-0 bg-black w-full h-full max-h-none rounded-none max-w-none flex flex-col">
+        <div class="modal-box p-0 bg-black w-full h-full max-h-none rounded-none max-w-none flex flex-col relative">
             <video ref="videoPreview" autoplay playsinline class="w-full h-full object-cover flex-1"></video>
             
+            <!-- OVERLAYS -->
+            <div class="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/50 to-transparent flex justify-between items-start z-20">
+                 <div class="badge badge-lg overflow-hidden transition-all" :class="images.length >= 5 ? 'badge-error' : 'badge-neutral'">
+                    {{ images.length }} / 5 Photos
+                 </div>
+                 <button @click="closeCamera" class="btn btn-sm btn-circle btn-ghost text-white bg-black/20 backdrop-blur">✕</button>
+            </div>
+
+            <!-- IN-CAMERA TERMINALS -->
+             <div v-if="images.length > 0" class="absolute left-0 right-0 bottom-32 z-20 px-4">
+                 <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+                     <div v-for="(img, idx) in images" :key="idx" class="relative w-16 h-16 shrink-0 rounded border-2 border-white/50 overflow-hidden shadow-lg animate-fade-in-up">
+                         <img :src="img" class="w-full h-full object-cover" />
+                     </div>
+                 </div>
+             </div>
+
             <div class="absolute bottom-10 left-0 right-0 flex justify-center items-center gap-8 pb-safe z-50">
-                <button @click="stopCamera" class="btn btn-circle btn-ghost text-white bg-black/30 backdrop-blur-md">✕</button>
-                <button @click="capturePhoto" class="btn btn-circle btn-primary h-20 w-20 border-4 border-white shadow-xl transform active:scale-95 transition-all">
-                    <span class="sr-only">Capture</span>
+                <!-- Done Button (Left) -->
+                <button v-if="images.length > 0" @click="closeCamera" class="btn btn-neutral rounded-full px-6 bg-white/20 backdrop-blur border-white/30 text-white min-w-[80px]">
+                    Done
                 </button>
-                <button @click="switchCamera" class="btn btn-circle btn-ghost text-white bg-black/30 backdrop-blur-md">
-                   🔄
+                <div v-else class="w-[80px]"></div> <!-- Spacer -->
+
+                <!-- Capture Button (Center) -->
+                <button @click="capturePhoto" 
+                    class="btn btn-circle h-20 w-20 border-4 shadow-xl transform active:scale-95 transition-all"
+                    :class="images.length >= 5 ? 'btn-disabled border-gray-500 opacity-50' : 'btn-primary border-white'"
+                >
+                    <span class="sr-only">Capture</span>
+                    <div class="w-16 h-16 rounded-full bg-white" :class="{'scale-90': capturing}"></div>
+                </button>
+
+                <!-- Switch Camera (Right) -->
+                <button @click="switchCamera" class="btn btn-circle btn-ghost text-white bg-black/30 backdrop-blur-md w-[80px]">
+                   <span class="text-2xl">🔄</span>
                 </button>
             </div>
         </div>
@@ -223,24 +258,63 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { useAuth } from '../../composables/useAuth';
 import { useCart } from '../../composables/useCart';
-import { storage, ID } from '../../lib/appwrite';
+import { storage, databases, ID } from '../../lib/appwrite'; // Modified this line
 
+// APPWRITE
+const DB_ID = import.meta.env.PUBLIC_APPWRITE_DB_ID; // Added this line
+const ITEMS_COL = import.meta.env.PUBLIC_APPWRITE_ITEMS_COL; // Added this line
 const BUCKET_ID = import.meta.env.PUBLIC_APPWRITE_BUCKET_ID;
 
 // -- COMPOSABLES --
 const { isAuthenticated, currentTeam, user } = useAuth();
 const { 
-    activeCart, addItemToCart, startCart, checkActiveCart
+    activeCart, addItemToCart, startCart, checkActiveCart, cartItems
 } = useCart();
+
+// -- LIFECYCLE --
+onMounted(async () => {
+    // Check for Re-Scout
+    const urlParams = new URLSearchParams(window.location.search);
+    const rescoutId = urlParams.get('rescout');
+    
+    if (rescoutId && databases) {
+        console.log('[ScoutView] Re-scouting item:', rescoutId);
+        analyzing.value = true;
+        try {
+            const itemDoc = await databases.getDocument(DB_ID, ITEMS_COL, rescoutId);
+            if (itemDoc.rawAnalysis) {
+                const analysis = JSON.parse(itemDoc.rawAnalysis);
+                // Hydrate the view
+                result.value = { items: [analysis] };
+                console.log('[ScoutView] Hydrated analysis:', analysis);
+                
+                // Pre-fill inputs
+                if(analysis.condition_notes) userNotes.value = analysis.condition_notes;
+                
+                // If it was already saved, we might want to know that, but user said "re run if need"
+                // So we just show the result.
+            } else {
+                console.warn('[ScoutView] Item found but no rawAnalysis:', itemDoc);
+                alert("This item was saved before the 'Re-Scout' feature was added. Cannot reload analysis.");
+            }
+        } catch (e) {
+            console.error('[ScoutView] Failed to load re-scout item:', e);
+            alert("Failed to load item for re-scouting.");
+        } finally {
+            analyzing.value = false;
+        }
+    }
+});
 
 // -- STATE --
 const successMessage = ref<string | null>(null);
 const error = ref<string | null>(null);
 const mode = ref<'speed' | 'precision'>('speed');
 const loading = ref(false);
+const analyzing = ref(false); // Added for re-scout feature
 const images = ref<string[]>([]);
 const imageFiles = ref<File[]>([]); 
 const receiptFile = ref<File | null>(null);
@@ -260,16 +334,33 @@ let stream: MediaStream | null = null;
 let currentFacingMode = 'environment';
 
 // -- INIT --
-onMounted(async () => {
-    if (user.value) {
+const initCartCheck = async () => {
+   if (user.value) {
+        console.log('[ScoutView] User present, checking cart:', user.value.$id);
         await checkActiveCart(user.value.$id);
+        console.log('[ScoutView] checkActiveCart complete. ActiveCart:', activeCart.value);
         if (activeCart.value) {
             purchaseLocation.value = activeCart.value.source || '';
         }
     }
+};
+
+onMounted(async () => {
+    console.log('[ScoutView] onMounted');
+    await initCartCheck();
+});
+
+// Watch for user to load if not ready on mount
+watch(user, async (newUser) => {
+    if (newUser) {
+        console.log('[ScoutView] User loaded via watch, checking cart...');
+        await initCartCheck();
+    }
 });
 
 // -- CAMERA LOGIC --
+const capturing = ref(false);
+
 async function startCamera() {
     try {
         cameraModal.value?.showModal();
@@ -285,7 +376,7 @@ async function startCamera() {
     }
 }
 
-function stopCamera() {
+function closeCamera() {
     if (stream) {
         stream.getTracks().forEach(track => track.stop());
         stream = null;
@@ -295,12 +386,16 @@ function stopCamera() {
 
 function switchCamera() {
     currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
-    stopCamera();
+    closeCamera();
     setTimeout(startCamera, 300); // Small delay to allow modal to stay open logic
 }
 
 function capturePhoto() {
     if (!stream || !videoPreview.value) return;
+    if (images.value.length >= 5) return;
+
+    capturing.value = true;
+    setTimeout(() => capturing.value = false, 150);
     
     const video = videoPreview.value;
     const canvas = document.createElement('canvas');
@@ -318,7 +413,10 @@ function capturePhoto() {
     
     const ctx = canvas.getContext('2d');
     if (ctx) {
-        ctx.drawImage(video, 0, 0, width, height);
+        ctx.scale(currentFacingMode === 'user' ? -1 : 1, 1); // Mirror if front cam
+        if (currentFacingMode === 'user') ctx.translate(-width, 0);
+        
+        ctx.drawImage(video as unknown as CanvasImageSource, 0, 0, width, height);
         const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
         images.value.push(dataUrl);
         
@@ -329,8 +427,7 @@ function capturePhoto() {
             }
         }, 'image/jpeg', 0.8);
     }
-    
-    stopCamera();
+    // Don't close camera!
 }
 
 function removeImage(index: number) {
@@ -449,9 +546,30 @@ function calculateMaxBuy(fairPriceStr: string) {
 
 // -- SAVE ACTION --
 async function handleSaveItem(item: any, index: number) {
-    if (!user.value || !currentTeam.value) {
+    console.log('[ScoutView] handleSaveItem callled for item:', item.identity);
+    
+    if (!user.value) {
         alert("Please login first.");
         return;
+    }
+    
+    // Auto-select first team if currentTeam is stuck (Common issue on fresh load)
+    if (!currentTeam.value && user.value.prefs?.teamId) {
+        // We could try to switch, but for now just warn
+        console.warn('[ScoutView] User has prefs.teamId but currentTeam is null');
+    }
+
+    if (!currentTeam.value) {
+        // Fallback: Check useAuth teams list and pick one
+        const { teams, switchTeam } = useAuth();
+        if (teams.value && teams.value.length > 0) {
+            console.log('[ScoutView] Auto-switching to first team:', teams.value[0].name);
+            await switchTeam(teams.value[0]);
+        } else {
+            error.value = "Active Team Missing. Resale Command requires an active organization to save data.";
+            alert("No active organization found. Please create one in the dashboard or navbar.");
+            return;
+        }
     }
 
     item.saving = true;
@@ -459,15 +577,18 @@ async function handleSaveItem(item: any, index: number) {
         // 1. Upload Images
         let galleryIds: string[] = [];
         if (imageFiles.value.length > 0 && BUCKET_ID) {
+             console.log('[ScoutView] Uploading images...', imageFiles.value.length);
              const uploads = await Promise.all(imageFiles.value.map(file => 
                  storage.createFile(BUCKET_ID, ID.unique(), file)
              ));
              galleryIds = uploads.map(u => u.$id);
+             console.log('[ScoutView] Images uploaded:', galleryIds);
         }
         
         // 2. Upload Receipt if present
-        let receiptId = null;
+        let receiptId: string | null = null;
         if (receiptFile.value && BUCKET_ID) {
+             console.log('[ScoutView] Uploading receipt...');
              const up = await storage.createFile(BUCKET_ID, ID.unique(), receiptFile.value);
              receiptId = up.$id;
         }
@@ -491,7 +612,7 @@ async function handleSaveItem(item: any, index: number) {
             
             // Temporary storage for images/receipts until schema is perfect
             galleryImageIds: galleryIds,
-            imageId: galleryIds[0] || null,
+            // imageId removed as it causes schema error
         };
 
         // Note Hack for Receipt
@@ -504,13 +625,25 @@ async function handleSaveItem(item: any, index: number) {
             itemPayload.conditionNotes = `[BIN: ${binLocation.value}]\n` + itemPayload.conditionNotes;
         }
 
+        // Save Full Analysis for Re-Scout
+        try {
+            itemPayload.rawAnalysis = JSON.stringify(item); 
+        } catch (e) {
+            console.error('[ScoutView] Failed to stringify analysis:', e);
+        }
+
         // 4. Ensure Cart
+        console.log('[ScoutView] Checking activeCart:', activeCart.value);
         if (!activeCart.value) {
+             console.log('[ScoutView] No active cart, starting new one...');
              await startCart(purchaseLocation.value || "Quick Trip", currentTeam.value.$id, user.value.$id);
+             console.log('[ScoutView] New cart started:', activeCart.value);
         }
 
         // 5. Save Item
+        console.log('[ScoutView] Adding item to cart...', itemPayload);
         await addItemToCart(itemPayload);
+        console.log('[ScoutView] Item added to cart successfully');
         
         item.saved = true;
         successMessage.value = `Saved ${item.identity}!`;
@@ -524,7 +657,7 @@ async function handleSaveItem(item: any, index: number) {
         }, 2000);
 
     } catch (e: any) {
-        console.error(e);
+        console.error('[ScoutView] Save Failed:', e);
         error.value = "Save Failed: " + e.message;
     } finally {
         item.saving = false;

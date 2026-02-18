@@ -11,9 +11,34 @@ export interface CartExpense extends Models.Document {
     tenantId: string;
 }
 
+export interface Cart extends Models.Document {
+    source: string;
+    tenantId: string;
+    buyerId: string;
+    date: string;
+    status: string;
+    itemCount: number;
+    totalCost?: number;
+    completedAt?: string;
+}
+
+export interface CartItem extends Models.Document {
+    title: string;
+    identity: string;
+    paidPrice: number;
+    resalePrice: number;
+    condition?: string;
+    galleryImageIds: string[];
+    imageId: string | null;
+    rawAnalysis?: string;
+    conditionNotes?: string;
+    url?: string;
+    status?: string;
+}
+
 // -- Shared State --
-const activeCart = ref<Models.Document | null>(null);
-const cartItems = ref<Models.Document[]>([]);
+const activeCart = ref<Cart | null>(null);
+const cartItems = ref<CartItem[]>([]);
 const cartExpenses = ref<CartExpense[]>([]); // NEW: Expenses list
 const loading = ref(false);
 const error = ref<string | null>(null);
@@ -41,6 +66,7 @@ export function useCart() {
     // -- Actions --
 
     const startCart = async (source: string, teamId: string, userId: string) => {
+        console.log('[useCart] startCart called with:', { source, teamId, userId });
         loading.value = true;
         try {
             const cart = await databases.createDocument(
@@ -56,9 +82,10 @@ export function useCart() {
                     itemCount: 0
                 }
             );
-            setActiveCart(cart);
+            console.log('[useCart] startCart success, new cart:', cart);
+            setActiveCart(cart as unknown as Cart);
         } catch (e: any) {
-            console.error('Failed to start cart:', e);
+            console.error('[useCart] Failed to start cart:', e);
             error.value = e.message;
             throw e; // Propagate error to caller
         } finally {
@@ -66,7 +93,8 @@ export function useCart() {
         }
     };
 
-    const setActiveCart = (cart: Models.Document) => {
+    const setActiveCart = (cart: Cart) => {
+        console.log('[useCart] setActiveCart called with:', cart);
         activeCart.value = cart;
         cartItems.value = []; 
         cartExpenses.value = []; // Reset
@@ -77,7 +105,8 @@ export function useCart() {
             `databases.${DB_ID}.collections.${CARTS_COL}.documents.${cart.$id}`,
             (response) => {
                 if (response.events.includes('databases.*.documents.*.update')) {
-                    activeCart.value = response.payload as Models.Document;
+                    console.log('[useCart] Cart updated via subscription:', response.payload);
+                    activeCart.value = response.payload as unknown as Cart;
                 }
             }
         );
@@ -87,20 +116,23 @@ export function useCart() {
     };
 
     const fetchCartItems = async (cartId: string) => {
+        console.log('[useCart] fetchCartItems called for cartId:', cartId);
         try {
             const result = await databases.listDocuments(
                 DB_ID,
                 ITEMS_COL,
                 [Query.equal('cartId', cartId)]
             );
-            cartItems.value = result.documents;
+            cartItems.value = result.documents as unknown as CartItem[];
+            console.log('[useCart] fetchCartItems result:', result.documents);
         } catch (e) {
-            console.error('Failed to fetch cart items', e);
+            console.error('[useCart] Failed to fetch cart items', e);
         }
     };
 
     // NEW: Fetch Expenses
     const fetchExpenses = async (cartId: string) => {
+        console.log('[useCart] fetchExpenses called for cartId:', cartId);
         try {
             const result = await databases.listDocuments(
                 DB_ID,
@@ -108,15 +140,21 @@ export function useCart() {
                 [Query.equal('cartId', cartId)]
             );
             cartExpenses.value = result.documents as unknown as CartExpense[];
+            console.log('[useCart] fetchExpenses result:', result.documents);
         } catch (e) {
             // Expenses collection might not exist yet, ignore silently for now
-            console.warn('Could not fetch expenses (Collection might be missing)');
+            console.warn('[useCart] Could not fetch expenses (Collection might be missing)');
         }
     };
 
     const addItemToCart = async (itemData: any) => {
-        if (!activeCart.value) return;
+        console.log('[useCart] addItemToCart called with:', itemData);
+        if (!activeCart.value) {
+            console.error('[useCart] No active cart found in addItemToCart');
+            return;
+        }
         try {
+            console.log('[useCart] Creating item in database...');
             const newItem = await databases.createDocument(
                 DB_ID,
                 ITEMS_COL,
@@ -127,11 +165,14 @@ export function useCart() {
                     tenantId: activeCart.value.tenantId,
                 }
             );
-            cartItems.value.push(newItem);
+            console.log('[useCart] Item created successfully:', newItem);
+            cartItems.value.push(newItem as unknown as CartItem);
             await databases.updateDocument(DB_ID, CARTS_COL, activeCart.value.$id, {
                 itemCount: cartItems.value.length
             });
+            console.log('[useCart] Cart updated with new item count.');
         } catch (e: any) {
+            console.error('[useCart] addItemToCart failed:', e);
             error.value = e.message;
             throw e;
         }
@@ -142,7 +183,7 @@ export function useCart() {
         if (!activeCart.value) return;
         loading.value = true;
         try {
-            let receiptImageId = null;
+            let receiptImageId: string | null = null;
             if (receiptFile) {
                 // Upload to Storage
                 const upload = await storage.createFile(BUCKET_ID, ID.unique(), receiptFile);
@@ -208,7 +249,7 @@ export function useCart() {
                      Query.limit(1)
                  ]
              );
-             if (result.documents.length > 0) setActiveCart(result.documents[0]);
+             if (result.documents.length > 0) setActiveCart(result.documents[0] as unknown as Cart);
          } catch (e) {
              console.log("No active cart found");
          } finally {
@@ -222,6 +263,41 @@ export function useCart() {
         activeCart.value = null;
         cartItems.value = [];
         cartExpenses.value = [];
+    };
+
+    const deleteItem = async (itemId: string) => {
+        if (!activeCart.value) return;
+        loading.value = true;
+        try {
+            await databases.deleteDocument(DB_ID, ITEMS_COL, itemId);
+            cartItems.value = cartItems.value.filter(i => i.$id !== itemId);
+            await databases.updateDocument(DB_ID, CARTS_COL, activeCart.value.$id, {
+                itemCount: cartItems.value.length
+            });
+        } catch (e: any) {
+            console.error('[useCart] Failed to delete item:', e);
+            error.value = e.message;
+            throw e;
+        } finally {
+            loading.value = false;
+        }
+    };
+
+    const updateItem = async (itemId: string, updates: any) => {
+        loading.value = true;
+        try {
+            const updated = await databases.updateDocument(DB_ID, ITEMS_COL, itemId, updates);
+            const index = cartItems.value.findIndex(i => i.$id === itemId);
+            if (index !== -1) {
+                cartItems.value[index] = updated as unknown as CartItem;
+            }
+        } catch (e: any) {
+            console.error('[useCart] Failed to update item:', e);
+            error.value = e.message;
+            throw e;
+        } finally {
+            loading.value = false;
+        }
     };
 
     return {
@@ -238,6 +314,8 @@ export function useCart() {
         addExpense,
         finishCart,
         checkActiveCart,
-        leaveCart
+        leaveCart,
+        deleteItem,
+        updateItem
     };
 }

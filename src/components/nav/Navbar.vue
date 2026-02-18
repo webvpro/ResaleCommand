@@ -8,7 +8,8 @@
       <!-- Nav Links -->
       <a v-for="link in navLinks" 
          :key="link.url"
-         :href="link.url" 
+         :href="link.url"
+         @click="link.url === '/cart' ? (e) => { e.preventDefault(); window.location.href = '/cart'; } : null"
          class="hidden md:inline-flex btn btn-lg btn-ghost hover:bg-base-200">
         {{ link.text }}
       </a>
@@ -148,6 +149,7 @@ const navLinks = computed(() => {
   if (isAuthenticated.value) {
     links.push(
       { text: 'Dashboard', url: '/dashboard' },
+      { text: 'Cart', url: '/cart' },
       { text: 'Inventory', url: '/inventory' },
       { text: 'Organization', url: '/org/settings' }
     );

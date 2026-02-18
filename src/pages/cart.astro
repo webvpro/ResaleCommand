@@ -1,0 +1,10 @@
+---
+import Layout from "../layouts/Layout.astro";
+import CartView from "../components/cart/CartView.vue";
+---
+
+<Layout title="Your Cart | Resale Command">
+  <div class="bg-base-100 min-h-screen">
+    <CartView client:only="vue" />
+  </div>
+</Layout>
