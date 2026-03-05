@@ -48,6 +48,12 @@ export async function initAuth() {
             active = teamsList.find(t => t.$id === storedTeamId) || null;
         }
 
+        // Enforce Team Selection (No Personal Inventory)
+        if (!active && teamsList.length > 0) {
+            active = teamsList[0];
+            localStorage.setItem('activeTeamId', active.$id);
+        }
+
         authStore.set({
           user: currentUser,
           isAuthenticated: true,

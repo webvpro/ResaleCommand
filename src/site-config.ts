@@ -1,8 +1,8 @@
 // Define the configuration for the site
 export const siteConfig = {
-  title: "My Astro Site",
-  description: "This is a fantastic Astro site",
-  githubRepo: "aholbreich/astrostart_TD"
+  title: "Resale Command",
+  description: "Inventory Management for Resellers",
+  githubRepo: "webvpro/resale-command"
 };
 
 // Feature flags examles

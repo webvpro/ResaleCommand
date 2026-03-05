@@ -1,5 +1,5 @@
 ---
-import CameraCapture from "@components/CameraCapture.astro";
+import ScoutView from "@components/scout/ScoutView.vue";
 import Layout from "@layouts/Layout.astro";
 ---
 
@@ -14,7 +14,7 @@ import Layout from "@layouts/Layout.astro";
       </p>
     </div>
 
-    <CameraCapture />
+    <ScoutView client:only="vue" />
     
     <div class="mt-12 text-center text-sm opacity-50">
       <p>Powered by Gemini AI</p>

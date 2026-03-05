@@ -23,7 +23,7 @@ import Layout from "../layouts/Layout.astro";
 
         <div class="flex items-center justify-between">
           <div class="text-sm">
-            <a href="/signup" class="font-medium text-indigo-600 hover:text-indigo-500">Don't have an account? Sign up</a>
+            <a :href="'/signup' + window.location.search" class="font-medium text-indigo-600 hover:text-indigo-500">Don't have an account? Sign up</a>
           </div>
         </div>
 
@@ -64,7 +64,13 @@ import Layout from "../layouts/Layout.astro";
           // store.login calls initAuth but doesn't redirect. Wait, let me check store.ts.
           // store.ts: login calls auth.login then initAuth. It does NOT redirect.
           // So we MUST redirect here.
-          window.location.href = '/dashboard'; 
+          const urlParams = new URLSearchParams(window.location.search);
+          const redirect = urlParams.get('redirect');
+          if (redirect) {
+             window.location.href = redirect;
+          } else {
+             window.location.href = '/dashboard';
+          } 
         } catch (err: any) {
           console.error(err);
           this.error = err.message || 'Login failed';

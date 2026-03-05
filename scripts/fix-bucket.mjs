@@ -42,7 +42,7 @@ async function run() {
             false, // File Security (false = bucket permissions apply to all files)
             true,  // Enabled
             undefined, // Max Size
-            ['jpg', 'jpeg', 'png', 'webp', 'gif'] // Allowed extensions
+            ['jpg', 'jpeg', 'png', 'webp', 'gif', 'json', 'txt'] // Allowed extensions
         );
         
         console.log("✅ Bucket permissions updated! Images should now be visible.");

@@ -55,11 +55,7 @@ export const POST: APIRoute = async ({ request }) => {
         }
 
         if (imageIds.length === 0) {
-            console.warn('[API] No images found for item');
-            return new Response(JSON.stringify({ message: 'No images to analyze' }), { 
-                status: 200,
-                 headers: { 'Content-Type': 'application/json' }
-            });
+            console.warn('[API] No images found for item, proceeding with text-only generation.');
         }
 
         // 3. Download Images & Prepare for Gemini
@@ -82,12 +78,8 @@ export const POST: APIRoute = async ({ request }) => {
 
         const validImageParts = imageParts.filter(p => p !== null);
 
-        if (validImageParts.length === 0) {
-            console.error('[API] All image downloads failed');
-            return new Response(JSON.stringify({ error: 'Failed to download any images. Check Storage permissions.' }), { 
-                status: 500,
-                headers: { 'Content-Type': 'application/json' }
-            });
+        if (imageIds.length > 0 && validImageParts.length === 0) {
+            console.warn('[API] Image downloads failed, falling back to text only');
         }
 
         // 4. Call Gemini
@@ -96,7 +88,7 @@ export const POST: APIRoute = async ({ request }) => {
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
         const prompt = `
-        You are an expert eBay reseller. Write a compelling, SEO-friendly product description for this item based on the provided photos.
+        You are an expert eBay reseller. Write a compelling, SEO-friendly product description for this item${validImageParts.length > 0 ? ' based on the provided photos.' : '.'}
         
         Item Title: ${item.title}
         Brand/Keywords: ${item.keywords || 'N/A'}
@@ -105,7 +97,7 @@ export const POST: APIRoute = async ({ request }) => {
         The description should be in Markdown format and include:
         - A catchy headline.
         - Key features bullet points.
-        - Condition assessment based on photos and notes (be honest but highlighting value).
+        - Condition assessment ${validImageParts.length > 0 ? 'based on photos and notes' : 'based on provided notes'} (be honest but highlighting value).
         - Measurements if visible (estimate if possible or state "See photos for measurements").
         - "Why buy this?" section.
         

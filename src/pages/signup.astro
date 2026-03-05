@@ -26,7 +26,7 @@ import Layout from "../layouts/Layout.astro";
 
         <div class="flex items-center justify-between">
           <div class="text-sm">
-            <a href="/login" class="font-medium text-indigo-600 hover:text-indigo-500">Already have an account? Sign in</a>
+            <a :href="'/login' + window.location.search" class="font-medium text-indigo-600 hover:text-indigo-500">Already have an account? Sign in</a>
           </div>
         </div>
 
@@ -59,7 +59,13 @@ import Layout from "../layouts/Layout.astro";
         this.error = '';
         try {
           await register(this.email, this.password, this.name);
-          window.location.href = '/dashboard';
+          const urlParams = new URLSearchParams(window.location.search);
+          const redirect = urlParams.get('redirect');
+          if (redirect) {
+             window.location.href = redirect;
+          } else {
+             window.location.href = '/dashboard';
+          }
         } catch (err: any) {
           console.error(err);
           this.error = err.message || 'Registration failed';
