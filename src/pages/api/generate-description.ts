@@ -68,6 +68,7 @@ export const POST: APIRoute = async ({ request }) => {
 
         if (imageIds.length === 0) {
             console.warn('[API] No images found for item, proceeding with text-only generation.');
+            console.warn('[API] No images found for item, proceeding with text-only generation.');
         }
 
         // 3. Download Images & Prepare for Gemini
@@ -92,6 +93,8 @@ export const POST: APIRoute = async ({ request }) => {
 
         if (imageIds.length > 0 && validImageParts.length === 0) {
             console.warn('[API] Image downloads failed, falling back to text only');
+        if (imageIds.length > 0 && validImageParts.length === 0) {
+            console.warn('[API] Image downloads failed, falling back to text only');
         }
 
         // 4. Call Gemini
@@ -101,6 +104,7 @@ export const POST: APIRoute = async ({ request }) => {
 
         const prompt = `
         You are an expert eBay reseller. Write a compelling, SEO-friendly product description for this item${validImageParts.length > 0 ? ' based on the provided photos.' : '.'}
+        You are an expert eBay reseller. Write a compelling, SEO-friendly product description for this item${validImageParts.length > 0 ? ' based on the provided photos.' : '.'}
         
         Item Title: ${item.title}
         Brand/Keywords: ${item.keywords || 'N/A'}
@@ -108,8 +112,8 @@ export const POST: APIRoute = async ({ request }) => {
         
         The description MUST be written in plain text (no HTML, no Markdown) and include:
         - A catchy headline.
-        - Key features bullet points (using simple dashes or bullets).
-        - Condition assessment ${validImageParts.length > 0 ? 'based on photos and notes' : 'based on provided notes'} (be honest but highlight value).
+        - Key features bullet points.
+        - Condition assessment ${validImageParts.length > 0 ? 'based on photos and notes' : 'based on provided notes'} (be honest but highlighting value).
         - Measurements if visible (estimate if possible or state "See photos for measurements").
         - "Why buy this?" section.
         
