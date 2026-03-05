@@ -38,20 +38,29 @@
         </div>
 
         <!-- MAIN INVENTORY SECTION -->
-        <div>
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold">In Inventory</h2>
-                <div class="flex gap-2 items-center">
-                    <button class="btn btn-sm btn-primary gap-2" @click="openAdd">
-                        ➕ Add New
-                    </button>
-                    <button class="btn btn-sm btn-outline gap-2" @click="showImport = true">
-                        📥 Import CSV
-                    </button>
-                    <span v-if="loading" class="loading loading-spinner loading-sm"></span>
-                    <span class="badge badge-lg">{{ filteredInventory.length }} / {{ totalItems }} Items</span>
+        <div class="drawer lg:drawer-open">
+            <input id="inventory-sidebar" type="checkbox" class="drawer-toggle" />
+            
+            <div class="drawer-content flex flex-col pb-8 lg:pl-6 pt-1">
+                <!-- Mobile Toggle & Header -->
+                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+                    <div class="flex items-center gap-3">
+                        <label for="inventory-sidebar" class="btn btn-square btn-ghost lg:hidden shadow-sm border border-base-200 bg-base-100">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-5 h-5 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                        </label>
+                        <h2 class="text-2xl font-bold">In Inventory</h2>
+                    </div>
+                    <div class="flex flex-wrap gap-2 items-center">
+                        <button class="btn btn-sm btn-primary gap-2" @click="openAdd">
+                            ➕ Add New
+                        </button>
+                        <button class="btn btn-sm btn-outline gap-2" @click="showImport = true">
+                            📥 Import CSV
+                        </button>
+                        <span v-if="loading" class="loading loading-spinner loading-sm"></span>
+                        <span class="badge badge-lg shadow-sm border border-base-200">{{ filteredInventory.length }} / {{ totalItems }} Items</span>
+                    </div>
                 </div>
-            </div>
 
             <!-- DEBUG / ERROR ALERT -->
             <div v-if="error" class="alert alert-error mb-4">
@@ -63,20 +72,59 @@
                 <p class="text-lg opacity-60 mb-4">No items in inventory.</p>
             </div>
             
-            <div v-else class="grid grid-cols-2 min-[450px]:grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-3">
-                <div v-for="item in filteredInventory" :key="item.$id" class="card bg-base-100 shadow-sm border border-base-200 hover:border-primary transition-colors group text-xs">
+            <div v-else>
+                <!-- BULK ACTIONS BAR -->
+                <div v-if="selectedItems.length > 0" class="bg-primary/10 border border-primary text-primary-content p-3 rounded-lg flex justify-between items-center mb-4 transition-all animate-fade-in">
+                    <div class="flex items-center gap-4">
+                        <span class="font-bold text-sm text-primary">{{ selectedItems.length }} items selected</span>
+                        <div class="join">
+                            <select v-model="bulkStatusTarget" class="select select-sm select-bordered join-item bg-base-100 text-base-content min-w-[120px]">
+                                <option value="" disabled selected>Change Status...</option>
+                                <option value="scouted">Scouted</option>
+                                <option value="acquired">Acquired</option>
+                                <option value="processing">Processing</option>
+                                <option value="need_to_list">Need to List</option>
+                                <option value="listed">Listed</option>
+                                <option value="at_location">At Location</option>
+                                <option value="sold">Sold</option>
+                            </select>
+                            <button class="btn btn-sm btn-primary join-item" @click="applyBulkStatus" :disabled="!bulkStatusTarget || processingBulk">
+                                <span v-if="processingBulk" class="loading loading-spinner loading-xs"></span>
+                                Apply
+                            </button>
+                        </div>
+                    </div>
+                    <button class="btn btn-sm btn-ghost text-error" @click="selectedItems = []">Cancel</button>
+                </div>
+
+                <!-- ALL CHECKBOX (Optional header) -->
+                <div class="flex items-center gap-2 mb-2 px-2">
+                    <input type="checkbox" :checked="isAllSelected" @change="toggleAll" class="checkbox checkbox-sm checkbox-primary" />
+                    <span class="text-xs font-bold opacity-70">Select All in View</span>
+                </div>
+
+                <div class="grid grid-cols-2 min-[450px]:grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-3">
+                    <div v-for="item in filteredInventory" :key="item.$id" class="card bg-base-100 shadow-sm border border-base-200 hover:border-primary transition-colors group text-xs relative" :class="{'ring-2 ring-primary': selectedItems.includes(item.$id)}">
+                        
+                        <!-- Item Checkbox -->
+                        <div class="absolute top-1 left-1 z-10">
+                            <input type="checkbox" :value="item.$id" v-model="selectedItems" class="checkbox checkbox-sm checkbox-primary bg-base-100/80 backdrop-blur shadow-sm z-20" />
+                        </div>
                     <figure class="aspect-square bg-base-200 relative overflow-hidden group-hover:opacity-90 transition-opacity">
                         <img v-if="getImageUrl(item)" :src="getImageUrl(item)" :alt="item.title" class="w-full h-full object-cover" />
                         <div v-else class="flex items-center justify-center w-full h-full text-xl grayscale opacity-50">📦</div>
                         
                         <div class="absolute top-0 right-0 p-1 badge rounded-none rounded-bl-lg badge-xs gap-1 font-bold" 
                             :class="{
-                                'badge-warning': item.status === 'draft',
-                                'badge-info': item.status === 'need_to_list',
+                                'badge-warning': item.status === 'scouted',
+                                'badge-info': item.status === 'acquired',
+                                'badge-secondary': item.status === 'processing',
+                                'badge-primary': item.status === 'need_to_list',
                                 'badge-success': item.status === 'listed',
+                                'badge-accent': item.status === 'at_location',
                                 'badge-neutral': item.status === 'sold'
                             }">
-                            {{ item.status ? item.status.replace(/_/g, ' ') : 'Draft' }}
+                            {{ item.status ? item.status.replace(/_/g, ' ') : 'Scouted' }}
                         </div>
                     </figure>
                     <div class="card-body p-2 gap-0.5">
@@ -110,15 +158,45 @@
                             </button>
                         </div>
                     </div>
-                </div>
+                </div> <!-- End item card -->
             </div>
+            </div> <!-- End v-else -->
 
-            <!-- LOAD MORE BTN -->
-            <div v-if="hasMore" class="flex justify-center mt-8">
-                <button class="btn btn-outline" @click="loadMore" :disabled="loading">
-                    <span v-if="loading" class="loading loading-spinner"></span>
-                    Load More Items
-                </button>
+            <!-- ALL ITEMS LOADED (Pagination Removed) -->
+            </div> <!-- End drawer-content -->
+
+            <!-- Sidebar Filters -->
+            <div class="drawer-side z-50 lg:z-auto">
+                <label for="inventory-sidebar" aria-label="close sidebar" class="drawer-overlay"></label> 
+                <div class="p-4 w-72 min-h-full bg-base-100 lg:bg-transparent border-r lg:border-transparent border-base-200 text-base-content flex flex-col gap-6 lg:p-0">
+                    <div class="flex lg:hidden justify-between items-center pb-2 border-b border-base-200">
+                        <span class="font-bold text-lg">Filters</span>
+                        <label for="inventory-sidebar" class="btn btn-sm btn-circle btn-ghost">✕</label>
+                    </div>
+
+                    <div class="bg-base-200/50 rounded-xl p-4 border border-base-200 flex flex-col gap-4 shadow-sm">
+                        <h3 class="font-bold border-b border-base-300 pb-2 hidden lg:block">Filters & Search</h3>
+
+                        <div class="form-control w-full">
+                            <label class="label pt-0"><span class="label-text font-bold text-[10px] uppercase opacity-70">Search</span></label>
+                            <input type="text" v-model="searchQuery" placeholder="Search title, ID, bin..." class="input input-bordered input-sm w-full font-mono text-xs shadow-inner" />
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label"><span class="label-text font-bold text-[10px] uppercase opacity-70">Status</span></label>
+                            <select v-model="filterStatus" class="select select-bordered select-sm w-full text-xs shadow-sm bg-base-100">
+                                <option value="all">All Items</option>
+                                <option value="scouted">Scouted</option>
+                                <option value="acquired">Acquired</option>
+                                <option value="processing">Processing</option>
+                                <option value="need_to_list">Need to List</option>
+                                <option value="listed">Listed</option>
+                                <option value="at_location">At Location</option>
+                                <option value="sold">Sold</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -367,10 +445,12 @@
                     <div class="form-control w-full">
                         <label class="label"><span class="label-text">Status</span></label>
                         <select v-model="editForm.status" class="select select-bordered">
-                            <option value="draft">Draft</option>
-                            <option value="in_cart">In Cart</option>
+                            <option value="scouted">Scouted</option>
+                            <option value="acquired">Acquired</option>
+                            <option value="processing">Processing</option>
                             <option value="need_to_list">Need to List</option>
                             <option value="listed">Listed</option>
+                            <option value="at_location">At Location</option>
                             <option value="sold">Sold</option>
                         </select>
                     </div>
@@ -482,9 +562,34 @@ const loadMore = loadNextPage; // Alias for template
 const { currentTeam } = useAuth();
 const currentTeamId = computed(() => currentTeam.value?.$id); 
 
+// State for Filters
+const searchQuery = ref('');
+const filterStatus = ref('all');
+
 // Lifecycle
-const cartItems = computed(() => inventoryItems.value.filter(i => i.status === 'in_cart'));
-const filteredInventory = computed(() => inventoryItems.value.filter(i => i.status !== 'in_cart'));
+const cartItems = computed(() => inventoryItems.value.filter(i => i.status === 'scouted'));
+const filteredInventory = computed(() => {
+    return inventoryItems.value.filter(item => {
+        // Exclude cart items
+        if (item.status === 'scouted') return false;
+        
+        // Filter by Status
+        if (filterStatus.value !== 'all' && item.status !== filterStatus.value) {
+            return false;
+        }
+
+        // Filter by Search
+        if (searchQuery.value) {
+            const query = searchQuery.value.toLowerCase();
+            const titleMatch = (item.title || item.itemName || '').toLowerCase().includes(query);
+            const idMatch = (item.identity || item.$id || '').toLowerCase().includes(query);
+            const binMatch = (item.binLocation || '').toLowerCase().includes(query);
+            if (!titleMatch && !idMatch && !binMatch) return false;
+        }
+        
+        return true;
+    });
+});
 
 const cartGroups = computed(() => {
     return cartItems.value.reduce((groups, item) => {
@@ -551,7 +656,53 @@ const scoutTotalRange = computed(() => {
 // State
 const processingId = ref(null); // deleting/updating ID
 const processing = ref(false); // general loading state
+const processingBulk = ref(false); // bulk action state
 const activeItem = ref(null);
+
+// Bulk Selection State
+const selectedItems = ref([]);
+const bulkStatusTarget = ref('');
+
+const isAllSelected = computed(() => {
+    return filteredInventory.value.length > 0 && selectedItems.value.length === filteredInventory.value.length;
+});
+
+const toggleAll = (event) => {
+    if (event.target.checked) {
+        selectedItems.value = filteredInventory.value.map(i => i.$id);
+    } else {
+        selectedItems.value = [];
+    }
+};
+
+const applyBulkStatus = async () => {
+    if (!bulkStatusTarget.value || selectedItems.value.length === 0) return;
+    
+    processingBulk.value = true;
+    const targetStatus = bulkStatusTarget.value;
+    const idsToUpdate = [...selectedItems.value];
+    
+    try {
+        // Run updates in parallel
+        const promises = idsToUpdate.map(id => updateInventoryItem(id, { status: targetStatus }));
+        await Promise.all(promises);
+        
+        // Optimistically update local state so we don't need a full refetch immediately
+        inventoryItems.value.forEach(item => {
+            if (idsToUpdate.includes(item.$id)) {
+                item.status = targetStatus;
+            }
+        });
+        
+        // Reset selection
+        selectedItems.value = [];
+        bulkStatusTarget.value = '';
+    } catch (e) {
+        alert("Failed to apply bulk update: " + e.message);
+    } finally {
+        processingBulk.value = false;
+    }
+};
 
 // Checkout State
 const checkoutModal = ref(null);
@@ -565,7 +716,7 @@ const generatedDescription = ref('');
 const isEditDrawerOpen = ref(false);
 const descTab = ref('edit');
 const editForm = ref({
-    title: '', paidPrice: '', resalePrice: '', binLocation: '', purchaseLocation: '', status: 'draft', description: '', existingGalleryIds: []
+    title: '', paidPrice: '', resalePrice: '', binLocation: '', purchaseLocation: '', status: 'scouted', description: '', existingGalleryIds: []
 });
 const editMainFile = ref(null);
 const editMainPhotoPreview = ref(null);
@@ -789,7 +940,7 @@ const openAdd = () => {
         binLocation: '', 
         purchaseLocation: '', 
         orderId: '',
-        status: 'draft', 
+        status: 'scouted', 
         description: '', 
         existingGalleryIds: []
     };
@@ -816,7 +967,7 @@ const openEdit = (item) => {
         binLocation: item.binLocation || getNoteValue(item.conditionNotes, 'Bin') || '',
         purchaseLocation: item.purchaseLocation || getNoteValue(item.conditionNotes, 'Location') || '',
         orderId: item.orderId || getNoteValue(item.conditionNotes, 'Order #') || getNoteValue(item.conditionNotes, 'Imported from Order #') || '',
-        status: item.status || 'draft',
+        status: item.status || 'scouted',
         description: item.marketDescription || item.description || '', // Fallback
         existingGalleryIds: item.galleryImageIds || []
     };

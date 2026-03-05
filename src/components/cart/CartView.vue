@@ -222,9 +222,12 @@
                         <div class="form-control w-full mt-4">
                             <label class="label"><span class="label-text font-bold">Item Status</span></label>
                             <select v-model="editingItem.status" class="select select-bordered w-full">
-                                <option value="active">Active (In Cart)</option>
-                                <option value="purchased">Purchased</option>
+                                <option value="scouted">Scouted</option>
+                                <option value="acquired">Acquired / Purchased</option>
+                                <option value="processing">Processing</option>
+                                <option value="need_to_list">Need to List</option>
                                 <option value="listed">Listed</option>
+                                <option value="at_location">At Location</option>
                                 <option value="sold">Sold</option>
                             </select>
                         </div>

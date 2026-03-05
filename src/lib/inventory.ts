@@ -13,7 +13,7 @@ export interface ExtraItemData {
     binLocation?: string;
     orderId?: string;
     title?: string;
-    status?: 'draft' | 'in_cart' | 'need_to_list' | 'listed' | 'sold';
+    status?: 'scouted' | 'acquired' | 'processing' | 'need_to_list' | 'listed' | 'at_location' | 'sold';
     receiptFile?: File | null;
     imageFile?: File | null;
     galleryFiles?: File[];
@@ -193,7 +193,7 @@ export async function saveItemToInventory(itemData: any, imageFile: File | null,
             identity: typeof itemData.identity === 'object' ? JSON.stringify(itemData.identity) : itemData.identity,
             conditionNotes: safeNotes,
             // createdAt: new Date().toISOString(), // REMOVED: Appwrite handles this automatically
-            status: extraData.status || 'draft',
+            status: extraData.status || 'scouted',
             tenantId: teamId || null, // tenantId is required by your DB
             // teamId: teamId // REMOVED: Likely invalid attribute
         };

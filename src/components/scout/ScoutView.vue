@@ -608,7 +608,7 @@ async function handleSaveItem(item: any, index: number) {
             purchaseLocation: purchaseLocation.value,
             binLocation: binLocation.value,
             
-            status: 'in_cart',
+            status: 'scouted',
             
             // Temporary storage for images/receipts until schema is perfect
             galleryImageIds: galleryIds,

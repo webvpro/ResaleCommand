@@ -677,7 +677,7 @@ async function importSelected() {
                     const extraData = {
                          paidPrice: item.totalCost,
                          resalePrice: item.estimatedResale ? item.estimatedResale.toString() : undefined,
-                         status: 'need_to_list' as const,
+                         status: 'acquired' as const,
                          purchaseLocation: item.sourceLink ? item.sourceLink : 'ShopGoodwill'
                     };
                     

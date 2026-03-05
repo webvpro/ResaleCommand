@@ -295,7 +295,7 @@ export const ALL: APIRoute = async ({ request }) => {
           Return strictly a JSON object with property "items": [ ... ].
           
           Each item object in the array must contain:
-          - 'identity': A single string describing the item (e.g. "Nike Air Max 90" or "Harry Potter Book 1").
+          - 'identity': A single string describing the item.
           - 'title': A short SEO-friendly title string.
           - 'keywords': An array of strings.
           - 'condition_notes': A string describing the visible condition (or noted condition).
@@ -308,7 +308,7 @@ export const ALL: APIRoute = async ({ request }) => {
           - 'comparables': An array of 3-5 similar items sold on eBay/etc.
                - 'name': Specific item name/title.
                - 'price': approx sold price.
-               - 'status': "Sold" or "Listed".
+               - 'status': "Sold" or "Listed" or "scouted" or "acquired" or "at_location"
         `;
 
         const contentParts: any[] = [prompt];

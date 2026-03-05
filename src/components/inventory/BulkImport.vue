@@ -426,7 +426,7 @@ const processRows = async (rows) => {
                 purchaseLocation: isOrderProxy && orderId 
                     ? `https://shopgoodwill.com/shopgoodwill/order/${orderId}` 
                     : `https://shopgoodwill.com/item/${itemId}`,
-                status: 'need_to_list',
+                status: 'acquired',
                 title: title,
                 orderId: orderId,
                 scoutData: scoutData, // Pass the AI data

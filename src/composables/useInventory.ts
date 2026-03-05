@@ -53,26 +53,22 @@ export function useInventory() {
     };
 
     // State
-    const hasMore = ref(true);
-    const PAGE_SIZE = 100;
+    const hasMore = ref(false);
     
     /**
-     * Fetch items (Initial or Load More)
+     * Fetch items (all)
      */
-    const fetchInventory = async (teamId: string, loadMore = false) => {
+    const fetchInventory = async (teamId: string) => {
         currentTeamId = teamId;
         loading.value = true;
         error.value = null;
         
         try {
-            const currentCount = loadMore ? inventoryItems.value.length : 0;
-            // console.log(`[Inventory] Fetching offset ${currentCount}, limit ${PAGE_SIZE}`);
-
+            // Appwrite limit is max 5000 documents per request
             const queries = [
                 Query.orderDesc('$createdAt'),
-                Query.orderDesc('$id'), // Secondary sort to prevent duplicates on identical timestamps
-                Query.limit(PAGE_SIZE),
-                Query.offset(currentCount)
+                Query.orderDesc('$id'), 
+                Query.limit(5000)
             ];
 
             if (teamId) {
@@ -87,29 +83,10 @@ export function useInventory() {
             
             totalItems.value = response.total;
 
-            if (loadMore) {
-                // Deduplicate (Safety net)
-                const existingIds = new Set(inventoryItems.value.map(i => i.$id));
-                const newItems = response.documents.filter(i => !existingIds.has(i.$id));
-                
-                if (newItems.length === 0 && response.documents.length > 0) {
-                     console.warn("Pagination warning: Received only duplicate items. Reached end?");
-                     hasMore.value = false;
-                }
-
-                inventoryItems.value = [...inventoryItems.value, ...newItems];
-            } else {
-                inventoryItems.value = response.documents;
-                initRealtime();
-            }
+            inventoryItems.value = response.documents;
+            initRealtime();
             
-            // Robust End-of-List Check
-            if (inventoryItems.value.length >= totalItems.value) {
-                hasMore.value = false;
-            } else {
-                hasMore.value = true;
-            }
-
+            hasMore.value = false;
         } catch (e: any) {
             console.error("Failed to fetch inventory:", e);
             error.value = e.message;
@@ -119,8 +96,7 @@ export function useInventory() {
     };
     
     const loadNextPage = () => {
-        if (currentTeamId === null || loading.value || !hasMore.value) return;
-        fetchInventory(currentTeamId, true);
+        // No-op
     };
 
     /**
