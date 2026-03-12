@@ -2,8 +2,12 @@ import { ref, computed } from 'vue';
 import { databases, Query, client } from '../lib/appwrite';
 import type { Models } from 'appwrite';
 
+import { isAlphaMode } from '../stores/env';
+
 const DB_ID = import.meta.env.PUBLIC_APPWRITE_DB_ID;
-const ITEMS_COL_ID = import.meta.env.PUBLIC_APPWRITE_COLLECTION_ID;
+const getCollectionId = () => isAlphaMode.get() 
+    ? (import.meta.env.PUBLIC_APPWRITE_ALPHA_COLLECTION_ID || 'alpha_items') 
+    : (import.meta.env.PUBLIC_APPWRITE_COLLECTION_ID || 'items');
 
 // Shared state for the general inventory view
 const inventoryItems = ref<Models.Document[]>([]);
@@ -21,7 +25,7 @@ export function useInventory() {
         
         console.log('[Inventory] Starting Realtime Subscription...');
         unsubscribe = client.subscribe(
-            `databases.${DB_ID}.collections.${ITEMS_COL_ID}.documents`,
+            `databases.${DB_ID}.collections.${getCollectionId()}.documents`,
             (response) => {
                 const eventType = response.events[0];
                 const item = response.payload as Models.Document;
@@ -72,12 +76,12 @@ export function useInventory() {
             ];
 
             if (teamId) {
-                queries.push(Query.equal('teamId', teamId));
+                queries.push(Query.equal('tenantId', teamId));
             }
 
             const response = await databases.listDocuments(
                 DB_ID,
-                ITEMS_COL_ID,
+                getCollectionId(),
                 queries
             );
             

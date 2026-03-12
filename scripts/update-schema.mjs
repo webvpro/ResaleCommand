@@ -26,9 +26,9 @@ const databases = new Databases(client);
 // Helper to wait
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-async function deleteAttribute(key) {
+async function deleteAttribute(collectionId, key) {
     try {
-        await databases.deleteAttribute(DB_ID, COLLECTION_ID, key);
+        await databases.deleteAttribute(DB_ID, collectionId, key);
         console.log(`Deleted attribute: ${key}`);
         await wait(500); // Wait for deletion to propagate
     } catch (e) {
@@ -36,25 +36,25 @@ async function deleteAttribute(key) {
     }
 }
 
-async function createAttribute(key, type, size = 255, required = false, array = false) {
+async function createAttribute(collectionId, key, type, size = 255, required = false, array = false) {
     try {
         console.log(`Creating attribute: ${key}...`);
         
         switch (type) {
             case 'string':
-                await databases.createStringAttribute(DB_ID, COLLECTION_ID, key, size, required, null, array);
+                await databases.createStringAttribute(DB_ID, collectionId, key, size, required, undefined, array);
                 break;
             case 'integer':
-                await databases.createIntegerAttribute(DB_ID, COLLECTION_ID, key, required, null, null, array);
+                await databases.createIntegerAttribute(DB_ID, collectionId, key, required, undefined, undefined, undefined, array);
                 break;
             case 'float':
-                await databases.createFloatAttribute(DB_ID, COLLECTION_ID, key, required, null, null, array);
+                await databases.createFloatAttribute(DB_ID, collectionId, key, required, undefined, undefined, undefined, array);
                 break;
             case 'boolean':
-                await databases.createBooleanAttribute(DB_ID, COLLECTION_ID, key, required, null, array);
+                await databases.createBooleanAttribute(DB_ID, collectionId, key, required, undefined, array);
                 break;
             case 'datetime':
-                await databases.createDatetimeAttribute(DB_ID, COLLECTION_ID, key, required, null, array);
+                await databases.createDatetimeAttribute(DB_ID, collectionId, key, required, undefined, array);
                 break;
             default:
                 console.error("Unknown type");
@@ -72,59 +72,82 @@ async function createAttribute(key, type, size = 255, required = false, array = 
 }
 
 async function run() {
-    console.log("Starting Optimized Schema Update...");
+    console.log("Starting Optimized Schema Update on Both Collections...");
 
-    // 1. DELETE OVERSIZED OR WRONG-TYPE ATTRIBUTES
-    // Warning: This deletes data in these columns, but needed to fix the DB.
-    console.log("Optimizing table size and fixing types...");
-    await deleteAttribute('identity'); 
-    await deleteAttribute('conditionNotes');
-    // Fix: Strings are needed for ranges (e.g. "100-150"), but DB has them as floats.
-    await deleteAttribute('priceMint');
-    await deleteAttribute('priceFair');
-    await deleteAttribute('pricePoor');
-    
-    // 2. RECREATE CORE ATTRIBUTES (Smaller)
-    await createAttribute('title', 'string', 255, true); 
-    await createAttribute('identity', 'string', 2000, false); // Reduced to 2000
-    await createAttribute('conditionNotes', 'string', 1000, false); // Reduced to 1000
+    const collectionsToUpdate = [
+        process.env.PUBLIC_APPWRITE_COLLECTION_ID || 'items',
+        process.env.PUBLIC_APPWRITE_ALPHA_COLLECTION_ID || 'alpha_items'
+    ];
 
-    // 3. Price Breakdown & Metadata
-    // 3. Price Breakdown & Metadata - ALIGNED WITH ACTUAL DB
-    // Note: The UI uses 'resalePrice' mostly, but we keep these if they exist for legacy or detailed records.
-    // If 'resalePrice' is the main one, we ensure it exists.
-    
-    // 4. Sourcing & Cart Fields 
-    await createAttribute('paidPrice', 'float', 0, false); // float matches useInventory
-    await createAttribute('purchaseLocation', 'string', 255, false);
-    await createAttribute('resalePrice', 'float', 0, false); // float matches useInventory
-    await createAttribute('maxBuyPrice', 'float', 0, false);
-    await createAttribute('binLocation', 'string', 255, false);
-    
-    // 5. New Fields
-    await createAttribute('receiptImageId', 'string', 255, false); // Retry
-    await createAttribute('status', 'string', 50, false); 
-    await createAttribute('red_flags', 'string', 255, false, true); 
-    
-    // 6. Multi-Image Support
-    await createAttribute('galleryImageIds', 'string', 255, false, true); // Array for extra photos
+    for (const collectionId of collectionsToUpdate) {
+        console.log(`\n===========================================`)
+        console.log(`Applying to Collection: ${collectionId}`)
+        console.log(`===========================================\n`)
+        
+        // 1. DELETE OVERSIZED OR WRONG-TYPE ATTRIBUTES
+        // Warning: This deletes data in these columns, but needed to fix the DB.
+        console.log("Optimizing table size and fixing types...");
+        await deleteAttribute(collectionId, 'identity'); 
+        await deleteAttribute(collectionId, 'conditionNotes');
+        // Fix: Strings are needed for ranges (e.g. "100-150"), but DB has them as floats.
+        await deleteAttribute(collectionId, 'priceMint');
+        await deleteAttribute(collectionId, 'priceFair');
+        await deleteAttribute(collectionId, 'pricePoor');
+        
+        // 2. RECREATE CORE ATTRIBUTES (Smaller)
+        await createAttribute(collectionId, 'title', 'string', 255, true); 
+        await createAttribute(collectionId, 'identity', 'string', 2000, false); // Reduced to 2000
+        await createAttribute(collectionId, 'conditionNotes', 'string', 1000, false); // Reduced to 1000
 
-    // 7. AI Description
-    await createAttribute('marketDescription', 'string', 5000, false);
+        // 3. Price Breakdown & Metadata - ALIGNED WITH ACTUAL DB
+        // Note: The UI uses 'resalePrice' mostly, but we keep these if they exist for legacy or detailed records.
+        // If 'resalePrice' is the main one, we ensure it exists.
+        
+        // 4. Sourcing & Cart Fields 
+        await createAttribute(collectionId, 'cost', 'float', null, false); // float matches useInventory
+        await createAttribute(collectionId, 'purchaseLocation', 'string', 255, false);
+        await createAttribute(collectionId, 'resalePrice', 'float', null, false); // float matches useInventory
+        await createAttribute(collectionId, 'maxBuyPrice', 'float', null, false);
+        await createAttribute(collectionId, 'binLocation', 'string', 255, false);
+        
+        // 5. New Fields
+        await createAttribute(collectionId, 'receiptImageId', 'string', 255, false); // Retry
+        await createAttribute(collectionId, 'status', 'string', 50, false); 
+        await createAttribute(collectionId, 'red_flags', 'string', 255, false, true); 
+        await createAttribute(collectionId, 'cartId', 'string', 36, false); // Link to Cart
+        await createAttribute(collectionId, 'tenantId', 'string', 255, false);
+        await createAttribute(collectionId, 'imageId', 'string', 255, false);
+        
+        // 6. Multi-Image Support
+        await createAttribute(collectionId, 'galleryImageIds', 'string', 255, false, true); // Array for extra photos
 
-    // 8. INDEXES (Crucial for Queries)
-    console.log("Creating Indexes...");
-    try {
-        await databases.createIndex(DB_ID, COLLECTION_ID, 'idx_title', 'key', ['title'], ['asc']);
-        console.log("Created index: idx_title");
-    } catch (e) { console.log("Index idx_title might already exist or error:", e.message); }
+        // 7. AI Description
+        await createAttribute(collectionId, 'marketDescription', 'string', 5000, false);
 
-    try {
-        await databases.createIndex(DB_ID, COLLECTION_ID, 'idx_purchaseLocation', 'key', ['purchaseLocation'], ['asc']);
-        console.log("Created index: idx_purchaseLocation");
-    } catch (e) { console.log("Index idx_purchaseLocation might already exist or error:", e.message); }
+        // 8. INDEXES (Crucial for Queries)
+        console.log("Creating Indexes...");
+        try {
+            await databases.createIndex(DB_ID, collectionId, 'idx_title', 'key', ['title'], ['asc']);
+            console.log("Created index: idx_title");
+        } catch (e) { console.log("Index idx_title might already exist or error:", e.message); }
 
-    console.log("Schema Update Requests Sent. Please wait 1-2 minutes for Appwrite to process deletions and additions.");
+        try {
+            await databases.createIndex(DB_ID, collectionId, 'idx_purchaseLocation', 'key', ['purchaseLocation'], ['asc']);
+            console.log("Created index: idx_purchaseLocation");
+        } catch (e) { console.log("Index idx_purchaseLocation might already exist or error:", e.message); }
+
+        try {
+            await databases.createIndex(DB_ID, collectionId, 'idx_cartId', 'key', ['cartId'], ['asc']);
+            console.log("Created index: idx_cartId");
+        } catch (e) { console.log("Index idx_cartId might already exist or error:", e.message); }
+
+        try {
+            await databases.createIndex(DB_ID, collectionId, 'idx_tenantId', 'key', ['tenantId'], ['asc']);
+            console.log("Created index: idx_tenantId");
+        } catch (e) { console.log("Index idx_tenantId might already exist or error:", e.message); }
+    }
+
+    console.log("\nSchema Update Requests Sent. Please wait 1-2 minutes for Appwrite to process deletions and additions.");
 }
 
 run();

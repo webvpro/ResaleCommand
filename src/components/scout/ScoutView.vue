@@ -1,22 +1,22 @@
 <template>
-  <div class="h-[calc(100vh-4rem)] flex flex-col bg-base-100 overflow-hidden relative">
+  <div class="min-h-[calc(100vh-4rem)] flex flex-col bg-base-100 relative">
     
     <!-- ERROR TOAST -->
-    <div v-if="error" class="toast toast-top toast-center z-[100]">
+    <div v-if="error" class="toast toast-top toast-center z-100">
         <div class="alert alert-error shadow-lg">
             <span>{{ error }}</span>
             <button class="btn btn-xs btn-ghost" @click="error = null">✕</button>
         </div>
     </div>
     <!-- SUCCESS TOAST -->
-    <div v-if="successMessage" class="toast toast-top toast-center z-[100]">
+    <div v-if="successMessage" class="toast toast-top toast-center z-100">
         <div class="alert alert-success shadow-lg text-white">
             <span>{{ successMessage }}</span>
         </div>
     </div>
 
     <!-- MAIN SCROLLABLE AREA -->
-    <div class="flex-1 overflow-y-auto w-full bg-base-100 p-4 md:p-6 space-y-6 pb-32">
+    <div class="flex-1 w-full bg-base-100 p-4 md:p-6 space-y-6 pb-32">
         
         <!-- HEADER -->
         <div v-if="activeCart" class="navbar bg-base-200 min-h-12 border-b border-base-300 px-4 sticky top-0 z-30">
@@ -86,7 +86,7 @@
                 
                 <div class="form-control w-full">
                     <label class="label"><span class="label-text opacity-70">Paid Price ($)</span></label>
-                    <input v-model="paidPrice" type="number" step="0.01" class="input input-bordered w-full" placeholder="0.00" />
+                    <input v-model="cost" type="number" step="0.01" class="input input-bordered w-full" placeholder="0.00" />
                 </div>
 
                 <div class="form-control w-full">
@@ -214,7 +214,7 @@
             <video ref="videoPreview" autoplay playsinline class="w-full h-full object-cover flex-1"></video>
             
             <!-- OVERLAYS -->
-            <div class="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/50 to-transparent flex justify-between items-start z-20">
+            <div class="absolute top-0 left-0 right-0 p-4 bg-linear-to-b from-black/50 to-transparent flex justify-between items-start z-20">
                  <div class="badge badge-lg overflow-hidden transition-all" :class="images.length >= 5 ? 'badge-error' : 'badge-neutral'">
                     {{ images.length }} / 5 Photos
                  </div>
@@ -321,7 +321,7 @@ const receiptFile = ref<File | null>(null);
 const userNotes = ref('');
 
 // Shared Inputs
-const paidPrice = ref('');
+const cost = ref('');
 const purchaseLocation = ref('');
 const binLocation = ref('');
 
@@ -597,16 +597,15 @@ async function handleSaveItem(item: any, index: number) {
         const itemPayload: any = {
             identity: item.identity,
             title: item.title || item.identity,
-            keywords: item.keywords || [],
             conditionNotes: (userNotes.value ? `User Note: ${userNotes.value}\n` : '') + (item.condition_notes || ''),
-            redFlags: item.red_flags || [],
+            red_flags: item.red_flags || [],
             
-            paidPrice: paidPrice.value ? parseFloat(paidPrice.value) : 0,
-            resalePrice: parsePrice(item.price_breakdown?.fair),
-            maxBuyPrice: calculateMaxBuy(item.price_breakdown?.fair),
+            cost: cost.value ? parseFloat(parseFloat(cost.value).toFixed(2)) : 0.0,
+            resalePrice: parsePrice(item.price_breakdown?.fair) || 0.0,
+            maxBuyPrice: calculateMaxBuy(item.price_breakdown?.fair) || 0.0,
             
-            purchaseLocation: purchaseLocation.value,
-            binLocation: binLocation.value,
+            purchaseLocation: purchaseLocation.value || '',
+            binLocation: binLocation.value || '',
             
             status: 'scouted',
             
@@ -627,7 +626,7 @@ async function handleSaveItem(item: any, index: number) {
 
         // Save Full Analysis for Re-Scout
         try {
-            itemPayload.rawAnalysis = JSON.stringify(item); 
+            itemPayload.marketDescription = JSON.stringify(item); 
         } catch (e) {
             console.error('[ScoutView] Failed to stringify analysis:', e);
         }

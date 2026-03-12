@@ -73,7 +73,7 @@
                         <label class="label"><span class="label-text">Paid Price</span></label>
                         <div class="relative">
                             <span class="absolute left-3 top-1/2 -translate-y-1/2 opacity-50">$</span>
-                            <input v-model="form.paidPrice" type="number" step="0.01" placeholder="0.00" class="input input-bordered w-full pl-7" />
+                            <input v-model="form.cost" type="number" step="0.01" placeholder="0.00" class="input input-bordered w-full pl-7" />
                         </div>
                     </div>
                     <div class="form-control">
@@ -146,7 +146,7 @@ const imageFiles = ref<File[]>([]);
 
 const form = reactive({
     title: '',
-    paidPrice: '',
+    cost: '',
     listPrice: '',
     bin: '',
     description: ''
@@ -247,7 +247,7 @@ async function saveItem() {
         // 2. Construct Payload
         const payload = {
             title: form.title,
-            paidPrice: parseFloat(form.paidPrice) || 0,
+            cost: parseFloat(form.cost) || 0,
             resalePrice: form.listPrice, 
             binLocation: form.bin,
             conditionNotes: form.description,
@@ -264,7 +264,7 @@ async function saveItem() {
         isOpen.value = false;
         // Reset
         form.title = '';
-        form.paidPrice = '';
+        form.cost = '';
         form.listPrice = '';
         form.bin = '';
         form.description = '';

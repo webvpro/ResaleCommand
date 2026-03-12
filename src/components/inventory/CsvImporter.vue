@@ -196,6 +196,11 @@ import { saveItemToInventory } from '../../lib/inventory';
 import { databases, ID } from '../../lib/appwrite';
 import { addToast, updateToast, removeToast } from '../../stores/toast';
 import Papa from 'papaparse';
+import { isAlphaMode } from '../../stores/env';
+
+const getCollectionId = () => isAlphaMode.get() 
+    ? (import.meta.env.PUBLIC_APPWRITE_ALPHA_COLLECTION_ID || 'alpha_items') 
+    : (import.meta.env.PUBLIC_APPWRITE_COLLECTION_ID || 'items');
 
 const emit = defineEmits(['close', 'imported']);
 
@@ -631,15 +636,20 @@ async function importSelected() {
 
                     // 2. CHECK FOR DUPLICATE & UPDATE
                     try {
-                        const existing = await retryOperation(() => databases.listDocuments(DB, 'items', [
+                        const existing = await retryOperation(() => databases.listDocuments(DB, getCollectionId(), [
                             Query.equal('title', item.title),
-                            Query.equal('purchaseLocation', 'ShopGoodwill'),
-                            Query.limit(1)
+                            Query.limit(50) // Search broadly for this title
                         ]));
                         
-                        if (existing.total > 0) {
+                        // Check memory to see if we have a match
+                        const match = existing.documents.find(doc => 
+                            doc.identity === item.itemId || 
+                            doc.purchaseLocation?.includes('ShopGoodwill')
+                        );
+                        
+                        if (match) {
                             // ITEM EXISTS: Update it!
-                            const doc = existing.documents[0];
+                            const doc = match;
                             console.log(`[Import] Updating existing item: ${item.title}`);
                             
                             // Merge Notes
@@ -653,9 +663,10 @@ async function importSelected() {
                             }
                             
                             // Only update if something changed or we are enriching
-                            await retryOperation(() => databases.updateDocument(DB, 'items', doc.$id, {
-                                paidPrice: item.totalCost, 
+                            await retryOperation(() => databases.updateDocument(DB, getCollectionId(), doc.$id, {
+                                cost: item.totalCost, 
                                 conditionNotes: newNotes,
+                                imageId: finalImageId || doc.imageId,
                             }));
                             
                             updated++;
@@ -675,10 +686,11 @@ async function importSelected() {
 
                     // Use saveItemToInventory for schema safety
                     const extraData = {
-                         paidPrice: item.totalCost,
+                         cost: item.totalCost,
                          resalePrice: item.estimatedResale ? item.estimatedResale.toString() : undefined,
                          status: 'acquired' as const,
-                         purchaseLocation: item.sourceLink ? item.sourceLink : 'ShopGoodwill'
+                         purchaseLocation: item.sourceLink ? item.sourceLink : 'ShopGoodwill',
+                         imageId: finalImageId || undefined
                     };
                     
                     // But we will import it at the top component level.

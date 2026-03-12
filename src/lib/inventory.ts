@@ -2,16 +2,21 @@ import { databases, storage, ID, Query } from './appwrite';
 import type { Models } from 'appwrite';
 import { Permission, Role } from 'appwrite';
 
+import { isAlphaMode } from '../stores/env';
+
 const DB_ID = import.meta.env.PUBLIC_APPWRITE_DB_ID || 'resale_db'; 
-const COLLECTION_ID = import.meta.env.PUBLIC_APPWRITE_COLLECTION_ID || 'items';
+const getCollectionId = () => isAlphaMode.get() 
+    ? (import.meta.env.PUBLIC_APPWRITE_ALPHA_COLLECTION_ID || 'alpha_items') 
+    : (import.meta.env.PUBLIC_APPWRITE_COLLECTION_ID || 'items');
 const BUCKET_ID = import.meta.env.PUBLIC_APPWRITE_BUCKET_ID || 'item_images';
 
 export interface ExtraItemData {
-    paidPrice?: string;
+    cost?: string;
     purchaseLocation?: string;
     maxBuyPrice?: string;
     binLocation?: string;
     orderId?: string;
+    cartId?: string;
     title?: string;
     status?: 'scouted' | 'acquired' | 'processing' | 'need_to_list' | 'listed' | 'at_location' | 'sold';
     receiptFile?: File | null;
@@ -25,6 +30,7 @@ export interface ExtraItemData {
     imageId?: string; // Pre-uploaded image ID
     estLow?: string;
     estHigh?: string;
+    keywords?: string[];
 }
 
 export async function saveItemToInventory(itemData: any, imageFile: File | null, extraData: ExtraItemData = {}, teamId?: string, ownerType: 'team' | 'user' = 'team') {
@@ -32,7 +38,7 @@ export async function saveItemToInventory(itemData: any, imageFile: File | null,
         throw new Error("Missing PUBLIC_APPWRITE_DB_ID in .env");
     }
 
-    console.log(`[Inventory] Save called. Bucket=${BUCKET_ID}, DB=${DB_ID}, Collection=${COLLECTION_ID}`);
+    console.log(`[Inventory] Save called. Bucket=${BUCKET_ID}, DB=${DB_ID}, Collection=${getCollectionId()}`);
     if (imageFile) console.log(`[Inventory] Has Image File: ${imageFile.name} (${imageFile.size})`);
     else console.log(`[Inventory] NO Image File passed.`);
 
@@ -91,7 +97,7 @@ export async function saveItemToInventory(itemData: any, imageFile: File | null,
         
         // Append extra analytics/data to notes since DB columns might be missing
         const extraInfo: string[] = [];
-        if (extraData.paidPrice) extraInfo.push(`Paid: $${extraData.paidPrice}`);
+        if (extraData.cost) extraInfo.push(`Paid: $${extraData.cost}`);
         if (extraData.resalePrice) extraInfo.push(`Resale: $${extraData.resalePrice}`);
         if (extraData.maxBuyPrice) extraInfo.push(`Max Buy: $${extraData.maxBuyPrice}`);
         if (extraData.purchaseLocation) extraInfo.push(`Location: ${extraData.purchaseLocation}`);
@@ -107,8 +113,37 @@ export async function saveItemToInventory(itemData: any, imageFile: File | null,
 
         if (extraData.scoutData) {
             try {
+                // Generate Markdown Structure
+                const items = Array.isArray(extraData.scoutData) ? extraData.scoutData : (extraData.scoutData.items || [extraData.scoutData]);
+                let md = `# Scout Report - ${new Date().toLocaleDateString()}\n\n`;
+                items.forEach((item: any, index: number) => {
+                    md += `## ${index + 1}. ${item.title || item.identity || 'Item'}\n\n`;
+                    if (item.condition_notes) md += `**Condition:** ${item.condition_notes}\n\n`;
+                    if (item.red_flags?.length) md += `**🚩 Red Flags:** ${item.red_flags.join(', ')}\n\n`;
+                    if (item.price_breakdown) {
+                        md += `### Valuation\n`;
+                        md += `- **Mint:** ${item.price_breakdown.mint || 'N/A'}\n`;
+                        md += `- **Fair:** ${item.price_breakdown.fair || 'N/A'}\n`;
+                        md += `- **Poor:** ${item.price_breakdown.poor || 'N/A'}\n\n`;
+                    }
+                    if (item.comparables?.length) {
+                        md += `### Comparables\n`;
+                        item.comparables.forEach((c: any) => { md += `- ${c.name}: ${c.price}\n`; });
+                        md += '\n';
+                    }
+                });
+
                 const jsonStr = JSON.stringify(extraData.scoutData);
                 let fileId: string | null = null;
+                let mdFileId: string | null = null;
+                
+                // Save MD File
+                try {
+                    const dateStr = new Date().toISOString().split('T')[0];
+                    const mdFile = new File([md], `scout_${dateStr}.md`, { type: 'text/markdown' });
+                    const mdUpload = await storage.createFile(BUCKET_ID, ID.unique(), mdFile);
+                    mdFileId = mdUpload.$id;
+                } catch(e) { console.warn("MD upload failed", e); }
                 
                 // Strategy 1: Try .json
                 try {
@@ -149,9 +184,10 @@ export async function saveItemToInventory(itemData: any, imageFile: File | null,
                     }
                 }
 
-                if (fileId) {
-                    extraInfo.push(`[SCOUT_REPORT_ID: ${fileId}]`);
-                } else {
+                if (fileId) extraInfo.push(`[SCOUT_REPORT_ID: ${fileId}]`);
+                if (mdFileId) extraInfo.push(`[SCOUT_REPORT_MD: ${mdFileId}]`);
+                
+                if (!fileId && !mdFileId) {
                      throw new Error("File upload failed to return ID");
                 }
             } catch (e) {
@@ -192,11 +228,23 @@ export async function saveItemToInventory(itemData: any, imageFile: File | null,
             title: itemData.title,
             identity: typeof itemData.identity === 'object' ? JSON.stringify(itemData.identity) : itemData.identity,
             conditionNotes: safeNotes,
-            // createdAt: new Date().toISOString(), // REMOVED: Appwrite handles this automatically
             status: extraData.status || 'scouted',
-            tenantId: teamId || null, // tenantId is required by your DB
-            // teamId: teamId // REMOVED: Likely invalid attribute
+            tenantId: teamId || null,
+            imageId: imageId || undefined,
+            galleryImageIds: galleryIds.length > 0 ? galleryIds : undefined,
+            receiptImageId: receiptImageId || undefined,
+            cost: extraData.cost !== undefined ? parseFloat(extraData.cost.toString()) || 0 : undefined,
+            resalePrice: extraData.resalePrice !== undefined ? parseFloat(extraData.resalePrice.toString()) || 0 : undefined,
+            maxBuyPrice: extraData.maxBuyPrice !== undefined ? parseFloat(extraData.maxBuyPrice.toString()) || 0 : undefined,
+            purchaseLocation: extraData.purchaseLocation || undefined,
+            binLocation: extraData.binLocation || undefined,
+            cartId: extraData.cartId || undefined,
+            marketDescription: extraData.marketDescription || undefined,
+            keywords: Array.isArray(extraData.keywords) ? extraData.keywords : (extraData.scoutData && Array.isArray(extraData.scoutData.keywords) ? extraData.scoutData.keywords : undefined)
         };
+
+        // Remove undefined keys to satisfy Appwrite's strict document validation
+        Object.keys(doc).forEach(key => doc[key] === undefined && delete doc[key]);
 
 
         let permissions: string[] = [];
@@ -212,7 +260,7 @@ export async function saveItemToInventory(itemData: any, imageFile: File | null,
         // 3. Create Document
         const response = await databases.createDocument(
             DB_ID,
-            COLLECTION_ID,
+            getCollectionId(),
             ID.unique(),
             doc,
             permissions
@@ -230,7 +278,7 @@ export async function getInventoryItems(teamId?: string) {
     try {
         const response = await databases.listDocuments(
             DB_ID,
-            COLLECTION_ID,
+            getCollectionId(),
             [
                 Query.orderDesc('$createdAt'),
                 Query.limit(100),
@@ -247,7 +295,7 @@ export async function getInventoryItems(teamId?: string) {
 export async function deleteInventoryItem(documentId: string) {
     try {
         // 1. Fetch the item to find associated images
-        const item = await databases.getDocument(DB_ID, COLLECTION_ID, documentId);
+        const item = await databases.getDocument(DB_ID, getCollectionId(), documentId);
         
         const imagesToDelete = new Set<string>();
 
@@ -293,7 +341,7 @@ export async function deleteInventoryItem(documentId: string) {
         // 3. Delete Document
         await databases.deleteDocument(
             DB_ID, 
-            COLLECTION_ID, 
+            getCollectionId(), 
             documentId
         );
         return true;
@@ -306,14 +354,15 @@ export async function deleteInventoryItem(documentId: string) {
 export async function updateInventoryItem(documentId: string, updates: Partial<ExtraItemData>) {
     try {
         // 1. Fetch current document to safely update notes
-        const currentDoc = await databases.getDocument(DB_ID, COLLECTION_ID, documentId);
+        const currentDoc = await databases.getDocument(DB_ID, getCollectionId(), documentId);
         let notes = currentDoc.conditionNotes || '';
 
         // Helper to update or append values in notes
         const updateNoteValue = (key: string, value: string) => {
             // Escape key for regex usage (e.g. "Est. Low" -> "Est\. Low")
             const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const regex = new RegExp(`${escapedKey}:\\s*(.+)`, 'i');
+            // Use [ \t]* to prevent matching \n and eating the next line
+            const regex = new RegExp(`^${escapedKey}:[ \\t]*(.*)$`, 'mi');
             
             if (regex.test(notes)) {
                 notes = notes.replace(regex, `${key}: ${value}`);
@@ -324,7 +373,7 @@ export async function updateInventoryItem(documentId: string, updates: Partial<E
 
         // Helper for bracket tags [TAG: Value]
         const updateTagValue = (tag: string, value: string) => {
-            const regex = new RegExp(`\\[${tag}:\\s*([^\\]]+)\\]`, 'i');
+            const regex = new RegExp(`\\[${tag}:[ \\t]*([^\\]]+)\\]`, 'i');
             if (regex.test(notes)) {
                 notes = notes.replace(regex, `[${tag}: ${value}]`);
             } else {
@@ -382,25 +431,50 @@ export async function updateInventoryItem(documentId: string, updates: Partial<E
 
         // --- Handle Text Fields (Safe Mode updates to Notes) ---
 
-        if (updates.paidPrice !== undefined && updates.paidPrice !== '') {
-             updateNoteValue('Paid', `$${parseFloat(updates.paidPrice).toFixed(2)}`);
-             data.purchasePrice = parseFloat(updates.paidPrice); 
+        // --- Handle Text Fields ---
+
+        // Helper to handle clearing or updating both Schema and Notes
+        // Since some users might expect data inside notes vs schema
+        if (updates.cost !== undefined) {
+             if (updates.cost === '') {
+                 data.cost = null; // Clear from schema
+                 updateNoteValue('Paid', ''); // We could remove the line, but blanking works
+             } else {
+                 data.cost = parseFloat(updates.cost.toString()); 
+                 updateNoteValue('Paid', `$${data.cost.toFixed(2)}`);
+             }
         }
-        if (updates.resalePrice !== undefined && updates.resalePrice !== '') {
-             updateNoteValue('Resale', `$${parseFloat(updates.resalePrice).toFixed(2)}`);
-             data.resalePrice = parseFloat(updates.resalePrice);
-        }
-        if (updates.purchaseLocation) updateNoteValue('Location', updates.purchaseLocation);
-        if (updates.binLocation) updateNoteValue('Bin', updates.binLocation);
-        if (updates.orderId) updateNoteValue('Order #', updates.orderId);
         
-        if (updates.estLow !== undefined && updates.estLow !== '') {
-            updateNoteValue('Est. Low', `$${parseFloat(updates.estLow).toFixed(2)}`);
-            data.estLow = parseFloat(updates.estLow);
+        if (updates.resalePrice !== undefined) {
+             if (updates.resalePrice === '') {
+                 data.resalePrice = null;
+                 updateNoteValue('Resale', '');
+             } else {
+                 data.resalePrice = parseFloat(updates.resalePrice.toString());
+                 updateNoteValue('Resale', `$${data.resalePrice.toFixed(2)}`);
+             }
         }
-        if (updates.estHigh !== undefined && updates.estHigh !== '') {
-            updateNoteValue('Est. High', `$${parseFloat(updates.estHigh).toFixed(2)}`);
-            data.estHigh = parseFloat(updates.estHigh);
+
+        if (updates.purchaseLocation !== undefined) {
+            data.purchaseLocation = updates.purchaseLocation === '' ? null : updates.purchaseLocation;
+            updateNoteValue('Location', updates.purchaseLocation);
+        }
+
+        if (updates.binLocation !== undefined) {
+            data.binLocation = updates.binLocation === '' ? null : updates.binLocation;
+            updateNoteValue('Bin', updates.binLocation);
+        }
+
+        if (updates.orderId !== undefined) {
+            // No top-level orderId column in standard flow, but save to notes
+            updateNoteValue('Order #', updates.orderId);
+        }
+        
+        if (updates.estLow !== undefined) {
+            updateNoteValue('Est. Low', updates.estLow === '' ? '' : `$${parseFloat(updates.estLow).toFixed(2)}`);
+        }
+        if (updates.estHigh !== undefined) {
+            updateNoteValue('Est. High', updates.estHigh === '' ? '' : `$${parseFloat(updates.estHigh).toFixed(2)}`);
         }
         
         // Save Scout Data (Base64 encoded JSON to avoid regex issues)
@@ -502,7 +576,7 @@ export async function updateInventoryItem(documentId: string, updates: Partial<E
         
         const response = await databases.updateDocument(
             DB_ID,
-            COLLECTION_ID,
+            getCollectionId(),
             documentId,
             data
         );

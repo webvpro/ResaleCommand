@@ -163,7 +163,7 @@ if (!API_KEY) {
     );
 
     // Attributes for Items
-    // identity, title, keywords(arr), conditionNotes, redFlags(arr), paidPrice, resalePrice, maxBuyPrice, purchaseLocation, binLocation, status, cartId, tenantId
+    // identity, title, keywords(arr), conditionNotes, redFlags(arr), cost, resalePrice, maxBuyPrice, purchaseLocation, binLocation, status, cartId, tenantId
     await db.createStringAttribute(DB_ID, ITEMS_COL, "identity", 255, false);
     await db.createStringAttribute(DB_ID, ITEMS_COL, "title", 255, false);
     await db.createStringAttribute(
@@ -191,7 +191,7 @@ if (!API_KEY) {
       undefined,
       true,
     ); // Array
-    await db.createFloatAttribute(DB_ID, ITEMS_COL, "paidPrice", false, 0.0);
+    await db.createFloatAttribute(DB_ID, ITEMS_COL, "cost", false, 0.0);
     await db.createFloatAttribute(DB_ID, ITEMS_COL, "resalePrice", false, 0.0);
     await db.createFloatAttribute(DB_ID, ITEMS_COL, "maxBuyPrice", false, 0.0);
     await db.createStringAttribute(

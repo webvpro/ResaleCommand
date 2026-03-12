@@ -63,6 +63,11 @@ import Papa from 'papaparse';
 import { saveItemToInventory } from '../../lib/inventory';
 import { useAuth } from '../../composables/useAuth';
 import { databases, Query } from '../../lib/appwrite';
+import { isAlphaMode } from '../../stores/env';
+
+const getCollectionId = () => isAlphaMode.get() 
+    ? (import.meta.env.PUBLIC_APPWRITE_ALPHA_COLLECTION_ID || 'alpha_items') 
+    : (import.meta.env.PUBLIC_APPWRITE_COLLECTION_ID || 'items');
 
 const props = defineProps({
     isOpen: Boolean
@@ -175,7 +180,7 @@ const processRows = async (rows) => {
         try {
             const dbCheck = await databases.listDocuments(
                 import.meta.env.PUBLIC_APPWRITE_DB_ID, 
-                import.meta.env.PUBLIC_APPWRITE_COLLECTION_ID,
+                getCollectionId(),
                 [
                     Query.equal('identity', itemId),
                     Query.limit(1)
@@ -422,7 +427,7 @@ const processRows = async (rows) => {
                 condition_notes: notes,
             }, null, { // PASS NULL FOR FILE
                 imageId: mainImageId, // PASS ID HERE
-                paidPrice: price,
+                cost: price,
                 purchaseLocation: isOrderProxy && orderId 
                     ? `https://shopgoodwill.com/shopgoodwill/order/${orderId}` 
                     : `https://shopgoodwill.com/item/${itemId}`,

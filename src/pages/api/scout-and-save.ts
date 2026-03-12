@@ -160,7 +160,7 @@ export const ALL: APIRoute = async ({ request }) => {
             keywords: aiData.keywords || [],
             conditionNotes: (notes ? `Import notes: ${notes}\n` : "") + (aiData.conditionNotes || ""),
             redFlags: [],
-            paidPrice: 0.0,
+            cost: 0.0,
             resalePrice: parseFloat(aiData.resalePrice) || 0.0,
             maxBuyPrice: 0.0,
             purchaseLocation: "Headless Import",

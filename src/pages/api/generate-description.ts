@@ -94,14 +94,14 @@ export const POST: APIRoute = async ({ request }) => {
         Brand/Keywords: ${item.keywords || 'N/A'}
         Details: ${item.conditionNotes || 'N/A'}
         
-        The description should be in Markdown format and include:
-        - A catchy headline.
-        - Key features bullet points.
-        - Condition assessment ${validImageParts.length > 0 ? 'based on photos and notes' : 'based on provided notes'} (be honest but highlighting value).
+        The description MUST be written in raw HTML markup (eBay compatible) and include:
+        - A catchy headline wrapped in an <h2> or <h3> tag.
+        - Key features bullet points wrapped in <ul> and <li> tags.
+        - Condition assessment ${validImageParts.length > 0 ? 'based on photos and notes' : 'based on provided notes'} (be honest but highlight value) wrapped in paragraph <p> or bold <b> tags.
         - Measurements if visible (estimate if possible or state "See photos for measurements").
         - "Why buy this?" section.
         
-        Do not include placeholder text like "[Insert size here]". If you don't know, omit it or describe what you see.
+        Use modern but simple inline styles or standard tags (<b>, <i>, <br>, <ul>, <li>) to structure the description so it looks good when pasted into an eBay listing. Do NOT use markdown asterisks. Do not include placeholder text like "[Insert size here]". If you don't know, omit it or describe what you see.
         `;
 
         const result = await model.generateContent([prompt, ...validImageParts]);
