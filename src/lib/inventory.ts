@@ -18,7 +18,7 @@ export interface ExtraItemData {
     orderId?: string;
     cartId?: string;
     title?: string;
-    status?: 'scouted' | 'acquired' | 'processing' | 'need_to_list' | 'listed' | 'at_location' | 'sold';
+    status?: 'scouted' | 'received' | 'placed' | 'sold';
     receiptFile?: File | null;
     imageFile?: File | null;
     galleryFiles?: File[];
@@ -31,6 +31,7 @@ export interface ExtraItemData {
     estLow?: string;
     estHigh?: string;
     keywords?: string[];
+    salesChannel?: string;
 }
 
 export async function saveItemToInventory(itemData: any, imageFile: File | null, extraData: ExtraItemData = {}, teamId?: string, ownerType: 'team' | 'user' = 'team') {
@@ -228,7 +229,7 @@ export async function saveItemToInventory(itemData: any, imageFile: File | null,
             title: itemData.title,
             identity: typeof itemData.identity === 'object' ? JSON.stringify(itemData.identity) : itemData.identity,
             conditionNotes: safeNotes,
-            status: extraData.status || 'scouted',
+            status: extraData.status || 'received',
             tenantId: teamId || null,
             imageId: imageId || undefined,
             galleryImageIds: galleryIds.length > 0 ? galleryIds : undefined,
@@ -463,6 +464,10 @@ export async function updateInventoryItem(documentId: string, updates: Partial<E
         if (updates.binLocation !== undefined) {
             data.binLocation = updates.binLocation === '' ? null : updates.binLocation;
             updateNoteValue('Bin', updates.binLocation);
+        }
+        
+        if (updates.salesChannel !== undefined) {
+            data.salesChannel = updates.salesChannel;
         }
 
         if (updates.orderId !== undefined) {

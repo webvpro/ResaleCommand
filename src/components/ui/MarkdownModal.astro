@@ -2,6 +2,41 @@
 // Global Markdown Viewer Modal
 ---
 
+<style is:global>
+  @media print {
+    body * {
+      visibility: hidden;
+    }
+    #md-modal-content,
+    #md-modal-content * {
+      visibility: visible;
+    }
+    #md-modal-content {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: auto;
+      overflow: visible !important;
+      padding: 0;
+      border: none;
+      box-shadow: none;
+      background: white;
+      color: black;
+    }
+    /* Hide the scrollbar in print */
+    .modal-box {
+      overflow: visible !important;
+    }
+    /* Hide buttons and title */
+    .modal-action,
+    #md-modal-title,
+    .modal-box form {
+      display: none !important;
+    }
+  }
+</style>
+
 <dialog id="global-md-modal" class="modal">
   <div class="modal-box w-11/12 max-w-4xl h-[80vh] flex flex-col p-6">
     <div class="flex justify-between items-center mb-4">
@@ -19,6 +54,11 @@
 
     <div class="modal-action mt-4">
       <form method="dialog" class="w-full flex justify-end gap-2">
+        <button
+          id="md-modal-print-btn"
+          type="button"
+          class="btn btn-outline btn-secondary">🖨️ Print Report</button
+        >
         <button id="md-modal-copy-btn" type="button" class="btn btn-outline"
           >Copy Raw text</button
         >
@@ -74,6 +114,14 @@
       } catch (err) {
         console.error("Failed to copy text: ", err);
       }
+    });
+  }
+
+  // Setup Print Button
+  const printBtn = document.getElementById("md-modal-print-btn");
+  if (printBtn) {
+    printBtn.addEventListener("click", () => {
+      window.print();
     });
   }
 </script>

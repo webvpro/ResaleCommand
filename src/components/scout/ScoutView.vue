@@ -42,27 +42,45 @@
 
                 <!-- IMAGE INPUTS -->
                 <div class="form-control w-full">
-                    <label class="label pt-0"><span class="label-text opacity-70">Capture or Upload Item(s)</span></label>
-                    <div class="flex gap-2">
-                        <button @click="startCamera" class="btn btn-outline gap-2 flex-1">
-                            📷 Add Photo
-                        </button>
-                        <div class="join flex-1">
-                            <button class="btn btn-primary join-item" @click="$refs.fileInput.click()">Choose Files</button>
-                            <div class="btn btn-outline join-item no-animation cursor-default flex-1 opacity-70 text-xs font-normal overflow-hidden text-ellipsis whitespace-nowrap block pt-3">
-                                {{ imageFiles.length > 0 ? `${imageFiles.length} files` : 'No file chosen' }}
+                    <label class="label pt-0">
+                        <span class="label-text opacity-70">Capture or Upload Item(s)</span>
+                        <span v-if="dragOver" class="badge badge-primary badge-sm animate-pulse">Drop images here!</span>
+                    </label>
+                    <div class="border-2 border-dashed rounded-lg p-4 transition-colors relative flex flex-col justify-center cursor-pointer min-h-32 mb-4"
+                         :class="dragOver ? 'border-primary bg-primary/10' : 'border-base-300 hover:border-primary/50'"
+                         @dragenter.prevent="dragOver = true"
+                         @dragover.prevent="dragOver = true"
+                         @dragleave.prevent="onDragLeave"
+                         @drop.prevent="handleDrop"
+                         @click.self="fileInput?.click()">
+                         
+                        <input type="file" ref="fileInput" @change="handleFileUpload" accept="image/*" multiple class="hidden" />
+
+                        <!-- Empty State -->
+                        <div v-if="images.length === 0" class="flex flex-col items-center justify-center opacity-50 pointer-events-none text-center h-full py-4">
+                            <div class="text-4xl mb-2">📸</div>
+                            <div class="text-sm font-bold font-mono">Drag & Drop images here<br/>or Click to Browse</div>
+                        </div>
+
+                        <!-- Gallery Mode -->
+                        <div v-else class="flex gap-3 overflow-x-auto pb-2 w-full items-center pointer-events-auto">
+                            <div v-for="(img, index) in images" :key="index" class="relative w-20 h-20 shrink-0 group cursor-pointer" @click="fileInput?.click()">
+                                <img :src="img" class="w-full h-full object-cover rounded shadow-sm border border-base-300" />
+                                <button @click.stop="removeImage(index)" class="btn btn-xs btn-circle btn-error absolute -top-2 -right-2 w-5 h-5 min-h-0 text-[10px] flex items-center justify-center z-30 shadow hover:scale-110">✕</button>
+                            </div>
+                            <!-- Add More Button -->
+                            <div class="relative w-20 h-20 shrink-0 border-2 border-dashed border-base-300 rounded flex items-center justify-center cursor-pointer hover:border-primary/50 hover:bg-base-200 transition-colors"
+                                 @click="fileInput?.click()">
+                                <div class="text-3xl opacity-50 font-light leading-none mb-1">+</div>
                             </div>
                         </div>
-                        <input type="file" ref="fileInput" @change="handleFileUpload" accept="image/*" multiple class="hidden" />
                     </div>
-                </div>
-
-                <!-- THUMBNAILS -->
-                <div v-if="images.length > 0" class="flex gap-2 mt-4 overflow-x-auto pb-2">
-                    <div v-for="(img, index) in images" :key="index" class="relative w-24 h-24 shrink-0 rounded-lg overflow-hidden border border-base-300 group">
-                        <img :src="img" class="w-full h-full object-cover" />
-                        <button @click="removeImage(index)" class="btn btn-circle btn-xs btn-error absolute top-1 right-1 opacity-90">✕</button>
-                    </div>
+                    
+                    <div class="divider my-0 mb-4 opacity-50">OR</div>
+                    
+                    <button @click="startCamera" class="btn btn-outline btn-primary w-full gap-2">
+                        📷 Add Photo with Camera
+                    </button>
                 </div>
 
                 <!-- ADDITIONAL DETAILS -->
@@ -105,7 +123,7 @@
                 <div class="form-control w-full">
                     <label class="label"><span class="label-text opacity-70">Receipt Photo (Optional)</span></label>
                     <div class="join w-full">
-                         <button class="btn btn-outline join-item" @click="$refs.receiptInput.click()">Choose File</button>
+                         <button class="btn btn-outline join-item" @click="receiptInput?.click()">Choose File</button>
                          <input type="text" readonly class="input input-bordered join-item w-full text-xs opacity-70" :value="receiptFile ? receiptFile.name : 'No file chosen'" />
                     </div>
                     <input type="file" ref="receiptInput" @change="handleReceiptUpload" accept="image/*" class="hidden" />
@@ -121,7 +139,7 @@
                     <!-- Header -->
                     <div class="flex justify-between items-start gap-4">
                         <h2 class="text-xl font-bold text-primary">{{ item.identity || 'Unidentified Item' }}</h2>
-                        <div class="badge badge-neutral">#{{ index + 1 }}</div>
+                        <div class="badge badge-neutral">#{{ Number(index) + 1 }}</div>
                     </div>
 
                     <!-- Pricing Grid -->
@@ -181,9 +199,12 @@
 
                     <div class="mt-4">
                         <label class="label pt-0"><span class="label-text font-bold opacity-70">Keywords</span></label>
-                        <div class="flex flex-wrap gap-1">
-                            <span v-for="kw in (item.keywords || [])" :key="kw" class="badge badge-outline bg-base-100 text-xs">{{ kw }}</span>
-                            <span v-if="!item.keywords?.length" class="text-xs opacity-50 italic">No keywords generated</span>
+                        <div class="border border-base-300 rounded-lg p-2 bg-base-100 flex flex-wrap gap-2 items-center">
+                            <span v-for="(kw, idx) in item.keywords" :key="idx" class="badge badge-secondary gap-1">
+                                {{ kw }}
+                                <button @click="item.keywords.splice(idx, 1)" class="hover:text-error hover:font-bold">✕</button>
+                            </span>
+                            <input type="text" placeholder="Add..." class="input input-xs grow border-none focus:outline-none min-w-[80px]" @keydown.enter.prevent="addKeyword(item, $event)" />
                         </div>
                     </div>
 
@@ -195,7 +216,7 @@
                     </div>
 
                     <!-- SAVE BUTTON -->
-                    <button @click="handleSaveItem(item, index)" 
+                    <button @click="handleSaveItem(item, Number(index))" 
                             class="btn btn-outline btn-primary w-full mt-6"
                             :disabled="item.saving || item.saved">
                         <span v-if="item.saving" class="loading loading-spinner"></span>
@@ -319,6 +340,9 @@ const images = ref<string[]>([]);
 const imageFiles = ref<File[]>([]); 
 const receiptFile = ref<File | null>(null);
 const userNotes = ref('');
+const dragOver = ref(false);
+const fileInput = ref<HTMLInputElement | null>(null);
+const receiptInput = ref<HTMLInputElement | null>(null);
 
 // Shared Inputs
 const cost = ref('');
@@ -447,6 +471,63 @@ async function handleFileUpload(e: Event) {
     }
 }
 
+async function handleDrop(e: DragEvent) {
+    dragOver.value = false;
+    
+    const files = e.dataTransfer?.files;
+    if (files && files.length > 0) {
+        let processedAtLeastOne = false;
+        for (let i = 0; i < files.length; i++) {
+             if (files[i].type.startsWith('image/')) {
+                 await processFile(files[i]);
+                 processedAtLeastOne = true;
+             }
+        }
+        if (!processedAtLeastOne) {
+             alert('No valid image files detected in drop. (File type: ' + files[0].type + ')');
+        }
+    } else {
+        // Attempt to handle dropped URL (e.g. dragging image from another tab)
+        let urlString = e.dataTransfer?.getData("text/uri-list");
+        if (!urlString) {
+            const html = e.dataTransfer?.getData("text/html");
+            if (html) {
+                const imgMatch = html.match(/src=["'](.*?)["']/);
+                if (imgMatch) urlString = imgMatch[1];
+            }
+        }
+        if (!urlString) urlString = e.dataTransfer?.getData("text/plain");
+        
+        if (urlString && urlString.trim().startsWith("http")) {
+            const url = urlString.trim();
+            try {
+                const proxyUrl = "/api/proxy-image?url=" + encodeURIComponent(url);
+                const res = await fetch(proxyUrl);
+                if (res.ok) {
+                    const blob = await res.blob();
+                    const urlPart = url.split('/').pop();
+                    const filename = (urlPart ? urlPart.split('?')[0] : "dragged_image.jpg") || "dragged_image.jpg";
+                    const file = new File([blob], filename, { type: blob.type || 'image/jpeg' });
+                    await processFile(file);
+                } else {
+                    alert("Could not load image from website due to security restrictions. Please save it to your computer first.");
+                }
+            } catch(err: any) {
+                alert("Error fetching dropped image: " + err.message);
+            }
+        } else {
+            console.warn('No files found in dataTransfer');
+            alert('No images or valid links detected in drop.');
+        }
+    }
+}
+
+function onDragLeave(e: DragEvent) {
+    if (!(e.currentTarget as Node)?.contains(e.relatedTarget as Node)) {
+        dragOver.value = false;
+    }
+}
+
 function handleReceiptUpload(e: Event) {
      const input = e.target as HTMLInputElement;
      if (input.files && input.files[0]) {
@@ -528,6 +609,18 @@ async function analyzeImage() {
     }
 }
 
+// -- KEYWORDS --
+function addKeyword(item: any, event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input) return;
+    const val = input.value.trim();
+    if (val) {
+        item.keywords = item.keywords || [];
+        if (!item.keywords.includes(val)) item.keywords.push(val);
+        input.value = '';
+    }
+}
+
 // -- PRICE HELPERS --
 function parsePrice(priceStr: string) {
     if (!priceStr) return 0;
@@ -554,7 +647,7 @@ async function handleSaveItem(item: any, index: number) {
     }
     
     // Auto-select first team if currentTeam is stuck (Common issue on fresh load)
-    if (!currentTeam.value && user.value.prefs?.teamId) {
+    if (!currentTeam.value && (user.value.prefs as any)?.teamId) {
         // We could try to switch, but for now just warn
         console.warn('[ScoutView] User has prefs.teamId but currentTeam is null');
     }
@@ -607,7 +700,8 @@ async function handleSaveItem(item: any, index: number) {
             purchaseLocation: purchaseLocation.value || '',
             binLocation: binLocation.value || '',
             
-            status: 'scouted',
+            status: 'acquired',
+            keywords: item.keywords || [],
             
             // Temporary storage for images/receipts until schema is perfect
             galleryImageIds: galleryIds,
@@ -635,7 +729,7 @@ async function handleSaveItem(item: any, index: number) {
         console.log('[ScoutView] Checking activeCart:', activeCart.value);
         if (!activeCart.value) {
              console.log('[ScoutView] No active cart, starting new one...');
-             await startCart(purchaseLocation.value || "Quick Trip", currentTeam.value.$id, user.value.$id);
+             await startCart(purchaseLocation.value || "Quick Trip", currentTeam.value?.$id || '', user.value.$id);
              console.log('[ScoutView] New cart started:', activeCart.value);
         }
 

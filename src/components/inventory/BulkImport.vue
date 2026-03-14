@@ -421,23 +421,28 @@ const processRows = async (rows) => {
             }
 
             // Save to DB
-            await saveItemToInventory({
+            const itemToSave = {
                 title: title,
                 identity: itemId,
                 condition_notes: notes,
-            }, null, { // PASS NULL FOR FILE
-                imageId: mainImageId, // PASS ID HERE
+            };
+            const extraData = {
                 cost: price,
                 purchaseLocation: isOrderProxy && orderId 
                     ? `https://shopgoodwill.com/shopgoodwill/order/${orderId}` 
                     : `https://shopgoodwill.com/item/${itemId}`,
-                status: 'acquired',
+                status: 'received',
                 title: title,
                 orderId: orderId,
                 scoutData: scoutData, // Pass the AI data
                 marketDescription: scoutData ? scoutData.condition_notes : null,
                 galleryFiles: galleryFiles // Pass the gallery images
-            }, teamId);
+            };
+            if (mainImageId) {
+                extraData.galleryImageIds = [mainImageId];
+            }
+
+            await saveItemToInventory(itemToSave, null, extraData, teamId);
 
             logs.value.push(`✅ Imported: ${title.substring(0, 30)}... ${orderId ? '(with Order Link)' : ''}`);
 

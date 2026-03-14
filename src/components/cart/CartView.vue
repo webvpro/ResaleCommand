@@ -42,48 +42,44 @@
           <div class="flex-1 overflow-y-auto p-4 space-y-4 pb-32">
               
               <!-- ITEMS LIST -->
-              <div class="space-y-4">
-                  <div v-for="item in cartItems" :key="item.$id" class="card card-side bg-base-100 shadow-sm border border-base-200 compact">
-                      <figure class="w-24 h-24 bg-base-300 relative">
-                           <img v-if="item.galleryImageIds && item.galleryImageIds.length > 0" :src="getImageUrl(item.galleryImageIds[0])" class="w-full h-full object-cover" />
-                           <div v-else class="flex items-center justify-center w-full h-full text-2xl opacity-20">📦</div>
-                      </figure>
-                      <div class="card-body p-4">
-                          <div class="flex justify-between items-start">
-                              <h3 class="card-title text-sm line-clamp-2 flex-1 mr-2">{{ item.title || item.identity }}</h3>
-                              
-                              <!-- Actions Menu -->
-                              <div class="dropdown dropdown-end">
-                                  <label tabindex="0" class="btn btn-ghost btn-xs btn-circle">⋮</label>
-                                  <ul tabindex="0" class="dropdown-content z-1 menu p-2 shadow bg-base-100 rounded-box w-32 border border-base-200">
-                                      <li><a @click="openEditModal(item)">✏️ Edit</a></li>
-                                      <li><a :href="`/scout?rescout=${item.$id}`">🔍 Open in Scout</a></li>
-                                      <li><a @click="handleDeleteItem(item.$id)" class="text-error">🗑️ Delete</a></li>
-                                  </ul>
+              <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  <ItemCard 
+                      v-for="item in cartItems" 
+                      :key="item.$id" 
+                      :item="item" 
+                      :compact="false"
+                      @click-card="openPreview(item)">
+
+                      <template #absolute-top-left>
+                           <!-- Actions Menu Override -->
+                            <div class="dropdown dropdown-bottom absolute top-2 right-2 z-20" @click.stop>
+                                <label tabindex="0" class="btn btn-ghost btn-sm btn-circle bg-base-100/80 backdrop-blur shadow-sm cursor-pointer">⋮</label>
+                                <ul tabindex="0" class="dropdown-content menu p-2 shadow-lg bg-base-100 rounded-box w-40 border border-base-200">
+                                    <li><a @click="openEditModal(item)">✏️ Edit</a></li>
+                                    <li><a :href="`/scout?rescout=${item.$id}`">🔍 Open in Scout</a></li>
+                                    <li><a @click="handleDeleteItem(item.$id)" class="text-error">🗑️ Delete</a></li>
+                                </ul>
+                            </div>
+                      </template>
+                      
+                      <template #image-overlay>
+                          <!-- Profit Meter Bar overlaid on bottom of image -->
+                          <div class="absolute bottom-0 left-0 right-0 h-6 bg-black/50 backdrop-blur-sm overflow-hidden flex items-center">
+                              <div :class="[getProfitColor(item), getProfitWidth(item)]" class="h-full transition-all duration-500 opacity-90"></div>
+                              <div class="absolute inset-0 flex justify-between items-center px-2 font-bold z-10 text-[9px] text-white pointer-events-none">
+                                  <span class="opacity-90 uppercase tracking-wider">{{ item.condition || 'Mix' }}</span>
+                                  <span><span v-if="getROI(item) !== null" class="ml-1 opacity-90">ROI: {{ getROI(item) }}%</span></span>
                               </div>
                           </div>
-                          
-                          <div class="flex justify-between items-center text-xs mt-2 gap-2">
-                              <span class="badge badge-ghost badge-sm shrink-0">Paid: ${{ item.cost }}</span>
-                              
-                              <!-- Profit Meter -->
-                              <div class="flex-1 bg-base-200 h-6 rounded-full overflow-hidden relative flex items-center">
-                                  <!-- Meter Bar -->
-                                  <div :class="[getProfitColor(item), getProfitWidth(item)]" class="h-full transition-all duration-500"></div>
-                                  
-                              <!-- Text Overlay -->
-                                  <div class="absolute inset-0 flex justify-between items-center px-3 font-bold z-10 text-[10px] text-black">
-                                      <span class="opacity-70 uppercase tracking-wider">{{ item.condition || 'Mix' }}</span>
-                                      <span>Est: ${{ item.resalePrice }} <span v-if="getROI(item) !== null" class="ml-1 opacity-80">({{ getROI(item) }}%)</span></span>
-                                  </div>
-                              </div>
-                          </div>
-                      </div>
-                  </div>
+                      </template>
+                  </ItemCard>
               </div>
 
                <!-- EDIT SIDE PANEL -->
               <ItemDrawer v-if="editingItem" :item="editingItem" @close="closeEdit" @save="saveEdit" />
+              
+              <!-- FULLSCREEN PREVIEW -->
+              <ItemPreviewModal :item="previewItem" @close="previewItem = null" @edit="openEditModal" />
 
               <!-- EXPENSES SECTION -->
               <div class="divider text-xs opacity-50 uppercase">Expenses</div>
@@ -131,6 +127,8 @@ import { useCart, type CartItem } from '../../composables/useCart';
 import { useAuth } from '../../composables/useAuth';
 import ItemDrawer from '../common/ItemDrawer.vue';
 import { updateInventoryItem } from '../../lib/inventory';
+import ItemCard from '../common/ItemCard.vue';
+import ItemPreviewModal from '../inventory/ItemPreviewModal.vue';
 
 const BUCKET_ID = import.meta.env.PUBLIC_APPWRITE_BUCKET_ID;
 
@@ -144,8 +142,13 @@ const {
 const newExpenseNote = ref('');
 const newExpenseAmount = ref<number | ''>(''); 
 
-// -- EDIT STATE --
+// -- EDIT/PREVIEW STATE --
 const editingItem = ref<CartItem | null>(null);
+const previewItem = ref<CartItem | null>(null);
+
+function openPreview(item: CartItem) {
+    previewItem.value = item;
+}
 
 function openEditModal(item: CartItem) {
     editingItem.value = { ...item }; 
@@ -267,10 +270,15 @@ async function handleAddExpense() {
 
 async function handleFinishCart() {
     if (confirm("Are you sure you are done shopping?")) {
-        await finishCart();
-        window.location.href = '/dashboard';
+        try {
+            await finishCart();
+            window.location.href = '/dashboard';
+        } catch (e: any) {
+            alert("Checkout failed: " + e.message);
+        }
     }
 }
+
 function startNew() {
      if(confirm("Start new cart? Current one will be abandoned.")) {
          leaveCart();

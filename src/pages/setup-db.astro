@@ -208,11 +208,20 @@ if (!API_KEY) {
       "status",
       50,
       false,
-      "scouted",
+      "received",
     );
     await db.createStringAttribute(DB_ID, ITEMS_COL, "cartId", 255, false);
     await db.createStringAttribute(DB_ID, ITEMS_COL, "tenantId", 255, true);
     await db.createStringAttribute(DB_ID, ITEMS_COL, "imageId", 255, false);
+    await db.createStringAttribute(
+      DB_ID,
+      ITEMS_COL,
+      "salesChannel",
+      255,
+      false,
+      undefined,
+      true, // array = true
+    );
     log(`Items Schema Created.`);
 
     // 6. Create API Keys Collection

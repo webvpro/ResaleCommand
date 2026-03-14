@@ -663,11 +663,16 @@ async function importSelected() {
                             }
                             
                             // Only update if something changed or we are enriching
-                            await retryOperation(() => databases.updateDocument(DB, getCollectionId(), doc.$id, {
+                            const updateData: any = {
                                 cost: item.totalCost, 
-                                conditionNotes: newNotes,
-                                imageId: finalImageId || doc.imageId,
-                            }));
+                                conditionNotes: newNotes
+                            };
+                            if (finalImageId) {
+                                // Add to gallery (assuming existing galleryImageIds is array or we just overwrite with this new one if none)
+                                // Standard approach here: just override with the new gallery image if provided during import
+                                updateData.galleryImageIds = [finalImageId];
+                            }
+                            await retryOperation(() => databases.updateDocument(DB, getCollectionId(), doc.$id, updateData));
                             
                             updated++;
                             item.importStatus = 'updated';
@@ -685,13 +690,15 @@ async function importSelected() {
                     }
 
                     // Use saveItemToInventory for schema safety
-                    const extraData = {
+                    const extraData: any = {
                          cost: item.totalCost,
                          resalePrice: item.estimatedResale ? item.estimatedResale.toString() : undefined,
-                         status: 'acquired' as const,
-                         purchaseLocation: item.sourceLink ? item.sourceLink : 'ShopGoodwill',
-                         imageId: finalImageId || undefined
+                         status: 'received' as const,
+                         purchaseLocation: item.sourceLink ? item.sourceLink : 'ShopGoodwill'
                     };
+                    if (finalImageId) {
+                        extraData.galleryImageIds = [finalImageId];
+                    }
                     
                     // But we will import it at the top component level.
                     

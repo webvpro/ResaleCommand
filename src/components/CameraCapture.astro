@@ -39,24 +39,38 @@
     </label>
 
     <!-- Input Controls -->
-    <div class="flex gap-2 mb-4" x-show="!isCameraOpen">
+    <div class="flex flex-col gap-4 mb-4" x-show="!isCameraOpen">
+      <!-- Drag & Drop Zone -->
+      <div
+        class="border-2 border-dashed rounded-lg p-6 transition-colors relative flex flex-col items-center justify-center cursor-pointer min-h-32"
+        :class="isDragging ? 'border-primary bg-primary/10' : 'border-base-300 hover:border-primary/50'"
+        @click="$refs.fileInput.click()">
+        <div class="text-4xl mb-2 pointer-events-none">📸</div>
+        <div
+          class="text-sm font-bold font-mono pointer-events-none text-center">
+          Drag & Drop images here<br />or Click to Browse
+        </div>
+        <input
+          type="file"
+          x-ref="fileInput"
+          @change="handleFileUpload"
+          accept="image/*"
+          multiple
+          class="hidden"
+          :disabled="images.length >= 5"
+        />
+      </div>
+
+      <div class="divider my-0">OR</div>
+
       <button
         @click="startCamera"
-        class="btn btn-outline btn-primary flex-1 gap-2"
+        class="btn btn-outline btn-primary w-full gap-2"
         :disabled="images.length >= 5">
-        📷 <span x-text="images.length > 0 ? 'Add Photo' : 'Start Camera'"
+        📷 <span
+          x-text="images.length > 0 ? 'Add Photo with Camera' : 'Start Camera'"
         ></span>
       </button>
-      <div class="divider divider-horizontal">OR</div>
-      <input
-        type="file"
-        x-ref="fileInput"
-        @change="handleFileUpload"
-        accept="image/*"
-        multiple
-        class="file-input file-input-bordered file-input-primary w-full max-w-xs"
-        :disabled="images.length >= 5"
-      />
     </div>
 
     <!-- Live Camera View -->
@@ -489,7 +503,7 @@
             @click="saveToInventory(item, $el)"
             class="btn btn-success w-full mt-4 text-white">
             <span x-show="mode === 'speed'">⚡ Save to Cart</span>
-            <span x-show="mode === 'precision'">Save to 'Need to List'</span>
+            <span x-show="mode === 'precision'">Save to 'Acquired'</span>
           </button>
         </template>
         <template x-if="!isAuthenticated">
@@ -980,7 +994,7 @@
             resalePrice: itemData.resalePrice?.toString() || "0",
             binLocation: this.binLocation,
             receiptFile: this.receiptFile,
-            status: this.mode === "speed" ? "scouted" : "need_to_list",
+            status: this.mode === "speed" ? "scouted" : "received",
             galleryFiles: galleryImages,
           });
 

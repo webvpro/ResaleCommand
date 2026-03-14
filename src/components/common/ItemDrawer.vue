@@ -10,8 +10,102 @@
 
             <!-- Content -->
             <div class="flex-1 overflow-y-auto p-6 space-y-6">
-                 <div class="form-control w-full">
-                    <label class="label"><span class="label-text font-bold">Item Title</span></label>
+                <!-- SCOUT CONTEXT (Universal) -->
+                <div class="bg-base-200 border border-secondary/30 rounded-xl p-4 shadow-sm mb-6 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 bg-secondary text-secondary-content text-[10px] font-bold px-2 py-1 rounded-bl-lg uppercase tracking-wider">
+                        AI Scout Mode
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <!-- 1. Text Query -->
+                        <div class="form-control w-full">
+                            <label class="label pt-0 pb-1"><span class="label-text font-bold text-sm">Describe Item</span></label>
+                            <textarea v-model="scoutQuery" class="textarea textarea-bordered h-20 text-sm" placeholder="e.g. Vintage Sony Walkman in good condition..."></textarea>
+                        </div>
+                        
+                        <!-- 2. Photos -->
+                        <div class="form-control w-full">
+                            <label class="label py-1">
+                                <span class="label-text font-bold text-sm">Photos (Click to set Main ⭐)</span>
+                                <span v-if="dragOver" class="badge badge-primary badge-sm animate-pulse">Drop images here!</span>
+                            </label>
+                            
+                            <!-- Dropzone & Gallery Area -->
+                            <div class="border-2 border-dashed rounded-lg p-3 transition-colors relative min-h-24 flex flex-col justify-center cursor-pointer"
+                                 :class="dragOver ? 'border-primary bg-primary/10' : 'border-base-300 hover:border-primary/50'"
+                                 @dragenter.prevent="dragOver = true"
+                                 @dragover.prevent="dragOver = true"
+                                 @dragleave.prevent="onDragLeave"
+                                 @drop.prevent="handleDrop"
+                                 @click.self="$refs.fileInput.click()">
+                                
+                                <input type="file" ref="fileInput" multiple accept="image/*" class="hidden" @change="handleFileSelect" />
+
+                                <!-- Empty State -->
+                                <div v-if="editGalleryBuffer.length === 0 && (!editForm.existingGalleryIds || editForm.existingGalleryIds.length === 0)" 
+                                     class="flex flex-col items-center justify-center opacity-50 pointer-events-none text-center">
+                                    <div class="text-3xl mb-1">📸</div>
+                                    <div class="text-xs font-bold font-mono">Drag & Drop images here<br/>or Click to Browse</div>
+                                </div>
+
+                                <!-- Gallery Previews -->
+                                <div v-else class="flex gap-3 overflow-x-auto pb-2 w-full items-center pointer-events-auto">
+                                    <!-- Existing -->
+                                    <div v-for="id in editForm.existingGalleryIds" :key="id" class="relative w-16 h-16 shrink-0 group cursor-pointer" @click="setMainPhoto('existing', id)">
+                                        <img :src="getAssetUrl(id)" class="w-full h-full object-cover rounded shadow-sm border border-base-300" :class="{'ring-4 ring-primary ring-inset z-10': actualMainPhoto.id === id}"/>
+                                        <div v-if="actualMainPhoto.id === id" class="absolute -top-3 -left-3 text-2xl drop-shadow-md z-20">⭐</div>
+                                        <button @click.stop="removeGalleryItem(id, true)" class="btn btn-xs btn-circle btn-error absolute -top-2 -right-2 w-5 h-5 min-h-0 text-[10px] flex items-center justify-center z-30 shadow hover:scale-110">✕</button>
+                                    </div>
+                                    <!-- New -->
+                                    <div v-for="(file, idx) in editGalleryBuffer" :key="idx" class="relative w-16 h-16 shrink-0 group cursor-pointer" @click="setMainPhoto('new', idx)">
+                                        <img :src="getObjectUrl(file)" class="w-full h-full object-cover rounded shadow-sm border border-base-300" :class="{'ring-4 ring-primary ring-inset z-10': actualMainPhoto.file === file}"/>
+                                        <div v-if="actualMainPhoto.file === file" class="absolute -top-3 -left-3 text-2xl drop-shadow-md z-20">⭐</div>
+                                        <button @click.stop="removeGalleryItem(idx, false)" class="btn btn-xs btn-circle btn-error absolute -top-2 -right-2 w-5 h-5 min-h-0 text-[10px] flex items-center justify-center z-30 shadow hover:scale-110">✕</button>
+                                    </div>
+                                    
+                                    <!-- Add More Button -->
+                                    <div class="relative w-16 h-16 shrink-0 border-2 border-dashed border-base-300 rounded flex items-center justify-center cursor-pointer hover:border-primary/50 hover:bg-base-200 transition-colors"
+                                         @click="$refs.fileInput.click()">
+                                        <div class="text-3xl opacity-50 font-light leading-none mb-1">+</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Scanner Widget (Camera Only) -->
+                            <div class="mt-2">
+                                <ScannerWidget :photos="editGalleryBuffer" @photos-captured="handleCapturedPhotos" :hide-upload="true" />
+                            </div>
+                        </div>
+                        
+                        <!-- 3. Link -->
+                        <div class="form-control w-full">
+                            <label class="label py-1"><span class="label-text font-bold text-sm">Or Paste Link</span></label>
+                            <div class="join w-full flex">
+                                <input type="text" v-model="editForm.purchaseLocation" class="input input-bordered input-sm join-item grow font-mono" placeholder="URL or Item ID..." />
+                                <button class="btn btn-sm btn-primary join-item shrink-0" @click="fetchImagesFromUrl" :disabled="!editForm.purchaseLocation || fetchingImages">
+                                    <span v-if="fetchingImages" class="loading loading-spinner loading-xs"></span>
+                                    <span v-else>Fetch</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Analyze Button -->
+                        <div class="pt-2">
+                             <button class="btn btn-secondary w-full gap-2" @click="analyzeExistingItem" :disabled="analyzing || (!scoutQuery && !actualMainPhoto.url && !editForm.purchaseLocation)">
+                                <span v-if="analyzing" class="loading loading-spinner loading-sm"></span>
+                                <span v-else>✨ Run AI Scout</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-control w-full">
+                    <label class="label">
+                        <span class="label-text font-bold">Item Title</span>
+                        <span v-if="suggestedTitleStr" class="label-text-alt text-xs font-bold text-secondary cursor-pointer hover:underline bg-secondary/10 px-2 py-0.5 rounded" @click="editForm.title = suggestedTitleStr">
+                            ✨ Use: {{ suggestedTitleStr }}
+                        </span>
+                    </label>
                     <input type="text" v-model="editForm.title" class="input input-bordered w-full font-bold" />
                 </div>
 
@@ -59,25 +153,14 @@
                     <!-- Order ID (Editable) -->
                     <div class="form-control w-full">
                         <label class="label"><span class="label-text">Order #</span></label>
-                         <div class="join w-full">
-                            <input type="text" v-model="editForm.orderId" class="input input-bordered join-item w-full" placeholder="Order ID" />
-                            <a v-if="editForm.orderId && editForm.orderId.length > 5" :href="`https://shopgoodwill.com/shopgoodwill/order/${editForm.orderId}`" target="_blank" class="btn btn-neutral join-item">🔗</a>
+                         <div class="join w-full flex">
+                            <input type="text" v-model="editForm.orderId" class="input input-bordered join-item grow" placeholder="Order ID" />
+                            <a v-if="editForm.orderId && editForm.orderId.length > 5" :href="`https://shopgoodwill.com/shopgoodwill/order/${editForm.orderId}`" target="_blank" class="btn btn-neutral join-item shrink-0">🔗</a>
                          </div>
                     </div>
                 </div>
 
-                <!-- Item Link (Source) & AI Analysis -->
-                <div class="form-control w-full">
-                    <label class="label"><span class="label-text">Item Link (for Image Fetch)</span></label>
-                    <div class="join w-full">
-                        <input type="text" v-model="editForm.purchaseLocation" class="input input-bordered join-item w-full font-mono text-sm" placeholder="https://shopgoodwill.com/item/..." />
-                        <button class="btn btn-primary join-item" @click="fetchImagesFromUrl" :disabled="!editForm.purchaseLocation || fetchingImages">
-                            <span v-if="fetchingImages" class="loading loading-spinner loading-xs"></span>
-                            <span v-else>Fetch 🖼️</span>
-                        </button>
-                    </div>
-                </div>
-                
+
                 <!-- Scout Result Display (Scout View Mirror) -->
                  <div v-if="scoutResult" class="bg-base-200 rounded-xl p-4 border border-base-300 shadow-inner mt-4">
                     <div class="flex justify-between items-start mb-2">
@@ -120,6 +203,17 @@
                                  {{ scoutTotalRange.formatted }}
                             </span>
                         </div>
+                        
+                        <!-- Extract Items Button -->
+                        <div class="pt-4 border-t border-base-300">
+                             <button class="btn btn-primary w-full gap-2 shadow-md" @click="extractLotItems" :disabled="extractingLot">
+                                 <span v-if="extractingLot" class="loading loading-spinner"></span>
+                                 <span>✂️ Extract {{ scoutResult.length }} Items to Inventory</span>
+                             </button>
+                             <p class="text-xs text-center text-gray-400 mt-2">
+                                 This will create {{ scoutResult.length }} new separate items using the data above.
+                             </p>
+                        </div>
                     </div>
 
                     <!-- Old Single Item Layout (Fallback) -->
@@ -161,21 +255,11 @@
                     </div>
                 </div>
 
-                <!-- AI Scout Button (Photo OR Link) -->
-                <div v-if="editMainPhotoPreview || editForm.purchaseLocation" class="form-control w-full mt-4">
-                     <button class="btn btn-secondary w-full gap-2 shadow-sm" @click="analyzeExistingItem" :disabled="analyzing">
-                        <span v-if="analyzing" class="loading loading-spinner loading-xs"></span>
-                        <span v-else>
-                            <span v-if="scoutResult">🔄 Update Scout Report</span>
-                            <span v-else>✨ Analyze {{ editMainPhotoPreview ? 'Main Photo' : 'Item Link' }} with AI</span>
-                        </span>
-                    </button>
-                </div>
 
                 <!-- Fetched Images Preview -->
                 <div v-if="fetchedImages.length > 0" class="border border-base-300 rounded-lg p-4 bg-base-200">
                     <label class="label pt-0"><span class="label-text font-bold">Detected Images (Click to Add)</span></label>
-                    <div class="flex gap-2 overflow-x-auto pb-2 min-h-[5rem]">
+                    <div class="flex gap-2 overflow-x-auto pb-2 min-h-20">
                         <div v-for="(imgItem, idx) in fetchedImages" :key="idx" 
                              class="relative w-20 h-20 shrink-0 group cursor-pointer hover:ring-2 ring-primary rounded-lg overflow-hidden transition-all" 
                              @click="selectFetchedImage(imgItem.url || imgItem)">
@@ -190,64 +274,40 @@
                     </div>
                 </div>
 
-                <div class="form-control w-full">
-                    <label class="label"><span class="label-text">Status</span></label>
-                    <select v-model="editForm.status" class="select select-bordered">
-                        <option value="scouted">Scouted</option>
-                        <option value="acquired">Acquired</option>
-                        <option value="processing">Processing</option>
-                        <option value="need_to_list">Need to List</option>
-                        <option value="listed">Listed</option>
-                        <option value="at_location">At Location</option>
-                        <option value="sold">Sold</option>
-                    </select>
-                </div>
-
-                <!-- PHOTOS -->
-                <div class="divider">Photos</div>
-                
-                <!-- Main Photo Field -->
-                <div class="form-control w-full">
-                    <label class="label"><span class="label-text font-bold">Main Photo</span></label>
-                    <div class="flex gap-4 items-center">
-                        <div class="w-24 h-24 rounded-lg overflow-hidden border border-base-300 bg-base-200 relative shrink-0">
-                            <img v-if="editMainPhotoPreview" :src="proxify(editMainPhotoPreview)" class="w-full h-full object-cover" />
-                            <div v-else class="flex items-center justify-center text-2xl opacity-50 w-full h-full">📦</div>
-                        </div>
-                        <div class="flex flex-col gap-2">
-                             <input type="file" @change="handleFileSelect($event, 'main')" accept="image/*" class="file-input file-input-sm file-input-bordered w-full max-w-xs" />
-                        </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="form-control w-full">
+                        <label class="label"><span class="label-text">Status</span></label>
+                        <select v-model="editForm.status" class="select select-bordered">
+                            <option value="acquired">Acquired</option>
+                            <option value="placed">Placed</option>
+                            <option value="sold">Sold</option>
+                        </select>
                     </div>
-                </div>
-
-                <!-- Gallery -->
-                <div class="form-control w-full">
-                    <label class="label"><span class="label-text font-bold">Gallery</span></label>
                     
-                     <!-- Gallery Previews (Existing + New) -->
-                    <div class="flex gap-2 overflow-x-auto pb-2 min-h-[5rem]">
-                        <!-- Existing -->
-                        <div v-for="id in editForm.existingGalleryIds" :key="id" class="relative w-16 h-16 shrink-0 group">
-                            <img :src="getAssetUrl(id)" class="w-full h-full object-cover rounded border border-base-300" />
-                            <button @click="removeGalleryItem(id, true)" class="btn btn-xs btn-circle btn-error absolute -top-1 -right-1 w-4 h-4 min-h-0 text-[10px] flex items-center justify-center">✕</button>
+                    <div class="flex flex-col gap-2">
+                        <div class="form-control w-full">
+                            <label class="label"><span class="label-text">Sales Channels</span></label>
+                            <div class="border border-base-300 rounded-lg p-2 bg-base-100 flex flex-wrap gap-2 items-center">
+                                <span v-for="(chan, idx) in editForm.salesChannel" :key="idx" class="badge badge-primary gap-1">
+                                    {{ chan }}
+                                    <button @click="removeTag('salesChannel', idx)" class="hover:text-error hover:font-bold">✕</button>
+                                </span>
+                                <input type="text" placeholder="Add..." class="input input-xs grow border-none focus:outline-none min-w-[80px]" @keydown.enter.prevent="addTag('salesChannel', $event)" />
+                            </div>
                         </div>
-                        <!-- New -->
-                        <div v-for="(file, idx) in editGalleryBuffer" :key="idx" class="relative w-16 h-16 shrink-0 group">
-                            <img :src="getObjectUrl(file)" class="w-full h-full object-cover rounded border border-base-300" />
-                            <button @click="removeGalleryItem(idx, false)" class="btn btn-xs btn-circle btn-error absolute -top-1 -right-1 w-4 h-4 min-h-0 text-[10px] flex items-center justify-center">✕</button>
+                        <div class="form-control w-full">
+                            <label class="label"><span class="label-text">Keywords</span></label>
+                            <div class="border border-base-300 rounded-lg p-2 bg-base-100 flex flex-wrap gap-2 items-center">
+                                <span v-for="(kw, idx) in editForm.keywords" :key="idx" class="badge badge-secondary gap-1">
+                                    {{ kw }}
+                                    <button @click="removeTag('keywords', idx)" class="hover:text-error hover:font-bold">✕</button>
+                                </span>
+                                <input type="text" placeholder="Add..." class="input input-xs grow border-none focus:outline-none min-w-[80px]" @keydown.enter.prevent="addTag('keywords', $event)" />
+                            </div>
                         </div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-2 mt-2">
-                         <input type="file" ref="galleryInput" multiple accept="image/*" class="hidden" @change="handleFileSelect($event, 'gallery')" />
-                         <button @click="$refs.galleryInput.click()" class="btn btn-outline border-dashed">
-                            📁 Upload Files
-                         </button>
-                         <button @click="startCamera('gallery')" class="btn btn-outline border-dashed">
-                            📸 Camera
-                         </button>
                     </div>
                 </div>
+
 
                 <!-- Description -->
                 <div class="divider">Description</div>
@@ -271,7 +331,7 @@
             </div>
 
             <!-- Footer -->
-            <div class="p-4 border-t border-base-200 flexjustify-end bg-base-100 flex z-10 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] gap-2 shrink-0">
+            <div class="p-4 border-t border-base-200 flex justify-end bg-base-100 z-10 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] gap-2 shrink-0">
                 <button class="btn btn-ghost" @click="closeDrawer">Cancel</button>
                 <button class="btn btn-primary flex-1" @click="saveEdit" :disabled="processing">
                     <span v-if="processing" class="loading loading-spinner"></span>
@@ -279,23 +339,15 @@
                 </button>
             </div>
         </div>
-         <!-- Camera Modal Overlay -->
-         <dialog ref="cameraModal" class="modal">
-            <div class="modal-box p-0 bg-black w-full max-w-2xl h-[500px] flex flex-col">
-                 <video ref="cameraVideoDialog" class="w-full h-full object-cover flex-1" autoplay playsinline></video>
-                 <div class="bg-black/80 p-6 flex justify-center gap-8 items-center shrink-0">
-                     <button @click="stopCamera" class="btn btn-circle btn-ghost text-white bg-white/20">✕</button>
-                     <button @click="capturePhoto(cameraContext)" class="btn btn-circle btn-primary btn-lg border-4 border-white w-20 h-20"></button>
-                     <button @click="flipCamera" class="btn btn-circle btn-ghost text-white bg-white/20">🔄</button>
-                </div>
-            </div>
-        </dialog>
     </div>
 </template>
 
 <script setup>
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { marked } from 'marked';
+import ScannerWidget from './ScannerWidget.vue';
+import { saveItemToInventory } from '../../lib/inventory';
+import { account } from '../../lib/appwrite';
 
 onMounted(() => {
     document.body.style.overflow = 'hidden';
@@ -322,18 +374,45 @@ const descTab = ref('edit');
 const processing = ref(false);
 const editForm = ref({
     title: '', cost: '', resalePrice: '', estLow: '', estHigh: '',
-    binLocation: '', purchaseLocation: '', orderId: '', status: 'scouted',
-    description: '', existingGalleryIds: []
+    binLocation: '', purchaseLocation: '', orderId: '', status: 'acquired',
+    description: '', existingGalleryIds: [], salesChannel: [], keywords: []
 });
 
-const editMainFile = ref(null);
-const editMainPhotoPreview = ref(null);
 const editGalleryBuffer = ref([]);
+const mainPhotoSelection = ref({ type: 'none', val: null });
+
+const actualMainPhoto = computed(() => {
+    if (mainPhotoSelection.value.type === 'new' && editGalleryBuffer.value[mainPhotoSelection.value.val]) {
+        return { file: editGalleryBuffer.value[mainPhotoSelection.value.val], url: getObjectUrl(editGalleryBuffer.value[mainPhotoSelection.value.val]) };
+    } else if (mainPhotoSelection.value.type === 'existing' && editForm.value.existingGalleryIds.includes(mainPhotoSelection.value.val)) {
+        return { file: null, url: getAssetUrl(mainPhotoSelection.value.val), id: mainPhotoSelection.value.val };
+    } else {
+        if (editGalleryBuffer.value.length > 0) return { file: editGalleryBuffer.value[0], url: getObjectUrl(editGalleryBuffer.value[0]), type: 'new', idx: 0 };
+        if (editForm.value.existingGalleryIds?.length > 0) return { file: null, url: getAssetUrl(editForm.value.existingGalleryIds[0]), id: editForm.value.existingGalleryIds[0], type: 'existing' };
+        return { file: null, url: null, type: 'none' };
+    }
+});
+
+const setMainPhoto = (type, val) => {
+    mainPhotoSelection.value = { type, val };
+};
 const scoutResult = ref(null);
+
+const suggestedTitleStr = computed(() => {
+    if (!scoutResult.value) return null;
+    if (Array.isArray(scoutResult.value) && scoutResult.value.length === 1) {
+        return scoutResult.value[0].title || scoutResult.value[0].identity || null;
+    } else if (!Array.isArray(scoutResult.value) && scoutResult.value) {
+        return scoutResult.value.title || scoutResult.value.identity || null;
+    }
+    return null;
+});
 const scoutMdText = ref(null);
+const scoutQuery = ref('');
 const fetchedImages = ref([]);
 const fetchingImages = ref(false);
 const analyzing = ref(false);
+const extractingLot = ref(false); // New state for bulk extraction
 const generatingDescription = ref(false);
 
 const openMdModal = () => {
@@ -347,13 +426,7 @@ const openMdModal = () => {
     }
 };
 
-const cameraVideoDialog = ref(null);
-const cameraModal = ref(null);
-const isCameraOpen = ref(false);
-const cameraStream = ref(null);
-const cameraFacing = ref('environment');
-const cameraContext = ref('gallery');
-const galleryInput = ref(null);
+
 
 const getAssetUrl = (id) => {
     if (!id || !BUCKET) return '';
@@ -362,7 +435,11 @@ const getAssetUrl = (id) => {
     } catch (e) { return ''; }
 };
 
-const getObjectUrl = (file) => URL.createObjectURL(file);
+const objectUrls = new WeakMap();
+const getObjectUrl = (file) => {
+    if (!objectUrls.has(file)) objectUrls.set(file, URL.createObjectURL(file));
+    return objectUrls.get(file);
+};
 const renderMarkdown = (text) => marked(text || '');
 
 const proxify = (url) => {
@@ -492,16 +569,35 @@ const initForm = () => {
             binLocation: i.binLocation || getNoteValue(i.conditionNotes, 'Bin') || '',
             purchaseLocation: i.purchaseLocation || getNoteValue(i.conditionNotes, 'Location') || '',
             orderId: i.orderId || getNoteValue(i.conditionNotes, 'Order #') || getNoteValue(i.conditionNotes, 'Imported from Order #') || '',
-            status: i.status || 'scouted',
+            status: i.status || 'acquired',
             description: i.marketDescription || i.description || i.rawAnalysis || '', 
-            existingGalleryIds: i.galleryImageIds || []
+            existingGalleryIds: i.galleryImageIds || [],
+            salesChannel: i.salesChannel || [],
+            keywords: i.keywords || []
         };
         const existingUrl = getImageUrl(i);
-        editMainPhotoPreview.value = existingUrl || null;
+        let activeImageId = null;
+
+        if (i.imageId) {
+            activeImageId = i.imageId;
+        } else if (i.galleryImageIds?.length > 0) {
+            activeImageId = i.galleryImageIds[0];
+        } else if (i.conditionNotes) {
+            const match = i.conditionNotes.match(/\[MAIN IMAGE ID: ([^\]]+)\]/);
+            if (match) activeImageId = match[1].split(',')[0].trim();
+        }
+
+        if (existingUrl && activeImageId) {
+            if (!editForm.value.existingGalleryIds.includes(activeImageId)) {
+                editForm.value.existingGalleryIds.unshift(activeImageId);
+            }
+            mainPhotoSelection.value = { type: 'existing', val: activeImageId };
+        } else {
+            mainPhotoSelection.value = { type: 'none', val: null };
+        }
         
         scoutResult.value = null;
         scoutMdText.value = null;
-        showScoutMd.value = false;
 
         if (i.conditionNotes) {
             const mdMatch = i.conditionNotes.match(/\[SCOUT_REPORT_MD: ([^\]]+)\]/);
@@ -534,14 +630,14 @@ const initForm = () => {
     } else {
         editForm.value = {
             title: '', cost: '', resalePrice: '', estLow: '', estHigh: '',
-            binLocation: '', purchaseLocation: '', orderId: '', status: 'scouted', description: '', existingGalleryIds: []
+            binLocation: '', purchaseLocation: '', orderId: '', status: 'acquired', description: '', existingGalleryIds: [], salesChannel: [], keywords: []
         };
-        editMainPhotoPreview.value = null;
+        mainPhotoSelection.value = { type: 'none', val: null };
         scoutResult.value = null;
         scoutMdText.value = null;
+        scoutQuery.value = '';
     }
     
-    editMainFile.value = null;
     editGalleryBuffer.value = [];
     fetchedImages.value = [];
     fetchingImages.value = false;
@@ -550,7 +646,6 @@ const initForm = () => {
 watch(() => props.item, initForm, { immediate: true });
 
 const closeDrawer = () => {
-    stopCamera();
     emit('close');
 };
 
@@ -586,10 +681,19 @@ const generateDescription = async () => {
 const saveEdit = async () => {
     processing.value = true;
     try {
+        let finalGallery = [...editGalleryBuffer.value];
+        let finalImageFile = null;
+        if (actualMainPhoto.value.type === 'new' && editGalleryBuffer.value[actualMainPhoto.value.idx]) {
+             finalImageFile = editGalleryBuffer.value[actualMainPhoto.value.idx];
+             // Remove the new file from gallery buffer so we don't duplicate it in appwrite (appwrite creates new file for 'main')
+             finalGallery.splice(actualMainPhoto.value.idx, 1);
+        }
+
         const payload = {
             ...editForm.value,
-            imageFile: editMainFile.value,
-            galleryFiles: editGalleryBuffer.value,
+            imageId: actualMainPhoto.value.id || null, // Existing main photo
+            imageFile: finalImageFile, // New main photo
+            galleryFiles: finalGallery,
             scoutData: scoutResult.value
         };
         emit('save', payload);
@@ -608,63 +712,85 @@ const removeGalleryItem = (idOrIdx, isExisting) => {
     }
 };
 
+const addTag = (field, e) => {
+    const val = e.target.value.trim();
+    if (val) {
+        if (!editForm.value[field]) editForm.value[field] = [];
+        if (!editForm.value[field].includes(val)) {
+            editForm.value[field].push(val);
+        }
+        e.target.value = '';
+    }
+};
+
+const removeTag = (field, idx) => {
+    if (editForm.value[field]) {
+        editForm.value[field].splice(idx, 1);
+    }
+};
+
 const processFile = (file, cb) => cb(file, URL.createObjectURL(file));
 
-const handleFileSelect = (e, type) => {
+const dragOver = ref(false);
+const fileInput = ref(null);
+
+const handleDrop = async (e) => {
+    dragOver.value = false;
+    const files = e.dataTransfer?.files;
+    if (files && files.length > 0) {
+        handleCapturedPhotos(files);
+    } else {
+        // Attempt to handle dropped URL (e.g. from another browser tab)
+        let urlString = e.dataTransfer?.getData("text/uri-list");
+        if (!urlString) {
+            const html = e.dataTransfer?.getData("text/html");
+            if (html) {
+                const imgMatch = html.match(/src=["'](.*?)["']/);
+                if (imgMatch) urlString = imgMatch[1];
+            }
+        }
+        if (!urlString) urlString = e.dataTransfer?.getData("text/plain");
+        
+        if (urlString && urlString.trim().startsWith("http")) {
+            const url = urlString.trim();
+            const filename = url.split('/').pop().split('?')[0] || "dragged_image.jpg";
+            const file = await urlToFile(url, filename);
+            if (file) {
+                handleCapturedPhotos([file]);
+            } else {
+                alert("Could not load image from that link due to security restrictions. Please save it to your computer first.");
+            }
+        } else {
+            console.warn('No files found in drop dataTransfer');
+            alert('No images or valid links detected in drop.');
+        }
+    }
+};
+
+const onDragLeave = (e) => {
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+        dragOver.value = false;
+    }
+};
+
+const handleFileSelect = (e) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    if (type === 'main') {
-        processFile(files[0], (file, url) => {
-            editMainFile.value = file;
-            editMainPhotoPreview.value = url;
-        });
-    } else if (type === 'gallery') {
-        Array.from(files).forEach(f => editGalleryBuffer.value.push(f));
-    }
+    handleCapturedPhotos(files);
+    e.target.value = '';
 };
 
-const startCamera = async (context) => {
-    cameraContext.value = context;
-    try {
-        cameraStream.value = await navigator.mediaDevices.getUserMedia({ video: { facingMode: cameraFacing.value } });
-        cameraModal.value.showModal();
-        setTimeout(() => { if (cameraVideoDialog.value) cameraVideoDialog.value.srcObject = cameraStream.value; }, 100);
-    } catch (e) {
-        alert("Camera Error: " + e.message);
-    }
-};
-
-const stopCamera = () => {
-    if (cameraStream.value) {
-        cameraStream.value.getTracks().forEach(t => t.stop());
-        cameraStream.value = null;
-    }
-    isCameraOpen.value = false;
-    if(cameraModal.value) cameraModal.value.close();
-};
-
-const flipCamera = () => {
-    cameraFacing.value = cameraFacing.value === 'environment' ? 'user' : 'environment';
-    stopCamera();
-    startCamera(cameraContext.value);
-};
-
-onUnmounted(() => stopCamera());
-
-const capturePhoto = (context) => {
-    const videoEl = cameraVideoDialog.value;
-    if (!videoEl) return;
-    const canvas = document.createElement('canvas');
-    canvas.width = videoEl.videoWidth; canvas.height = videoEl.videoHeight;
-    canvas.getContext('2d').drawImage(videoEl, 0, 0);
-    canvas.toBlob(blob => {
-        const file = new File([blob], "capture.jpg", { type: "image/jpeg" });
+const handleCapturedPhotos = (files) => {
+    Array.from(files).forEach(file => {
         editGalleryBuffer.value.push(file);
-        const btn = document.activeElement;
-        if(btn) btn.classList.add('scale-90');
-        setTimeout(() => btn && btn.classList.remove('scale-90'), 100);
-    }, 'image/jpeg', 0.8);
+        // Auto-select first photo as main if none is set yet
+        if (!actualMainPhoto.value.file && !editForm.value.imageId && !actualMainPhoto.value.url) {
+            mainPhotoSelection.value = { type: 'new', val: editGalleryBuffer.value.length - 1 };
+        }
+    });
 };
+
+
 
 const fetchImagesFromUrl = async () => {
     const url = editForm.value.purchaseLocation;
@@ -711,14 +837,15 @@ const selectFetchedImage = async (url) => {
     const filename = url.split('/').pop().split('?')[0] || "downloaded.jpg";
     const file = await urlToFile(url, filename);
     if (file) {
-        if (!editMainFile.value && !editForm.value.imageId && !editMainPhotoPreview.value) {
-            processFile(file, (f, u) => { editMainFile.value = f; editMainPhotoPreview.value = u; });
-        } else editGalleryBuffer.value.push(file);
+        editGalleryBuffer.value.push(file);
+        if (!actualMainPhoto.value.file && !editForm.value.imageId && !actualMainPhoto.value.url) {
+            mainPhotoSelection.value = { type: 'new', val: editGalleryBuffer.value.length - 1 };
+        }
     } else alert("Could not download image.");
 };
 
 const analyzeExistingItem = async () => {
-    if (!editMainPhotoPreview.value && !editForm.value.purchaseLocation) return alert("Please add a Main Photo or Item Link to analyze.");
+    if (!actualMainPhoto.value.url && !editForm.value.purchaseLocation && !scoutQuery.value) return alert("Please provide text, a photo, or a link to analyze.");
     analyzing.value = true;
     try {
         let base64Image = null;
@@ -736,23 +863,24 @@ const analyzeExistingItem = async () => {
             const reader = new FileReader(); reader.onload = (e) => img.src = e.target.result; reader.readAsDataURL(blob);
         });
 
-        if (editMainFile.value) base64Image = await resize(editMainFile.value);
-        else if (editMainPhotoPreview.value && editMainPhotoPreview.value.startsWith('data:')) {
-            const res = await fetch(editMainPhotoPreview.value);
+        if (actualMainPhoto.value.file) base64Image = await resize(actualMainPhoto.value.file);
+        else if (actualMainPhoto.value.url && actualMainPhoto.value.url.startsWith('data:')) {
+            const res = await fetch(actualMainPhoto.value.url);
             base64Image = await resize(await res.blob());
-        } else if (editMainPhotoPreview.value) {
-            let url = editMainPhotoPreview.value;
+        } else if (actualMainPhoto.value.url) {
+            let url = actualMainPhoto.value.url;
             if (url.includes('/storage/buckets/') || !url.includes('/api/proxy-image')) url = `/api/proxy-image?url=${encodeURIComponent(url)}`;
             try { const res = await fetch(url); if (res.ok) base64Image = await resize(await res.blob()); } catch (e) { }
         }
 
         let contextNotes = editForm.value.description || '';
+        if (scoutQuery.value) contextNotes = `User Query/Description: ${scoutQuery.value}\n\n` + contextNotes;
         if (editForm.value.title) contextNotes = `Item Title: ${editForm.value.title}\n\n` + contextNotes;
         if (editForm.value.purchaseLocation) contextNotes += `\n\nItem URL: ${editForm.value.purchaseLocation}`;
 
         const response = await fetch(`/api/identify-item`, {
             method: 'PUT', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image: base64Image, imageUrl: editMainPhotoPreview.value, notes: contextNotes })
+            body: JSON.stringify({ image: base64Image, imageUrl: actualMainPhoto.value.url, notes: contextNotes })
         });
         if (!response.ok) throw new Error("Analysis API failed");
         
@@ -808,5 +936,84 @@ const analyzeExistingItem = async () => {
             descTab.value = 'edit';
         }
     } catch (e) { alert("Analysis Error: " + e.message); } finally { analyzing.value = false; }
+};
+
+const extractLotItems = async () => {
+    if (!Array.isArray(scoutResult.value) || scoutResult.value.length === 0) return;
+    
+    // Confirm extraction
+    if (!confirm(`Are you sure you want to create ${scoutResult.value.length} new items from this lot?`)) return;
+    
+    extractingLot.value = true;
+    try {
+        let successCount = 0;
+        const user = await account.get();
+        const teamId = user.prefs?.teamId || null;
+        
+        // Loop over each item found by AI
+        for (const [index, lotItem] of scoutResult.value.entries()) {
+            
+            // Build the core data for the new item
+            const title = lotItem.title || lotItem.identity || `Lot Item #${index + 1}`;
+            let notes = lotItem.condition_notes || '';
+            if (lotItem.red_flags?.length) {
+                notes = `[FLAGS: ${lotItem.red_flags.join(', ')}]\n` + notes;
+            }
+            notes = `Extracted from Bulk Lot.\n` + notes;
+            
+            // Try to assign a portion of the total cost to each item (e.g. Total / Count)
+            let apportionedCost = 0;
+            if (editForm.value.cost && parseFloat(editForm.value.cost) > 0) {
+                 apportionedCost = parseFloat(editForm.value.cost) / scoutResult.value.length;
+            }
+
+            // Estimate Resale Price from AI
+            let resalePrice = 0;
+            if (lotItem.price_breakdown) {
+                 resalePrice = getRationalPrice(lotItem);
+            }
+            
+            // Figure out image inheritance
+            let inheritedGallery = [];
+            let mainImageId = null;
+            if (editForm.value.existingGalleryIds && editForm.value.existingGalleryIds.length > 0) {
+                 inheritedGallery = [...editForm.value.existingGalleryIds];
+                 mainImageId = inheritedGallery[0];
+            } else if (actualMainPhoto.value.id) {
+                 inheritedGallery = [actualMainPhoto.value.id];
+                 mainImageId = actualMainPhoto.value.id;
+            }
+
+            const extraData = {
+                 cost: apportionedCost,
+                 resalePrice: resalePrice ? resalePrice.toFixed(2) : undefined,
+                 status: 'acquired', // New Workflow Status Standard
+                 purchaseLocation: editForm.value.purchaseLocation || 'Bulk Lot',
+                 orderId: editForm.value.orderId,
+                 binLocation: editForm.value.binLocation,
+                 imageId: mainImageId,
+                 galleryImageIds: inheritedGallery,
+                 scoutData: lotItem
+            };
+            
+            // Save the item
+            await saveItemToInventory(
+                { title, identity: lotItem.identity || Math.random().toString(36).substring(2, 10), condition_notes: notes },
+                null, // No new local file upload, we're passing gallery IDs above
+                extraData,
+                teamId
+            );
+            successCount++;
+        }
+        
+        alert(`Successfully extracted ${successCount} items!`);
+        // We can close drawer or leave open. We'll leave open so they can see the parent item still if they want to save changes to it.
+        
+    } catch (e) {
+        alert("Failed to extract lot: " + e.message);
+        console.error(e);
+    } finally {
+         extractingLot.value = false;
+    }
 };
 </script>

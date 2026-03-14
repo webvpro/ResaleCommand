@@ -286,25 +286,35 @@ export function useCart() {
         if (!activeCart.value) return;
         loading.value = true;
         try {
-            await databases.updateDocument(DB_ID, CARTS_COL, activeCart.value.$id, {
-                status: 'completed',
-                completedAt: new Date().toISOString()
-            });
+            try {
+                await databases.updateDocument(DB_ID, CARTS_COL, activeCart.value.$id, {
+                    status: 'completed',
+                    completedAt: new Date().toISOString()
+                });
+            } catch (innerErr: any) {
+                console.warn("Cart update failed, trying fallback without completedAt:", innerErr.message);
+                await databases.updateDocument(DB_ID, CARTS_COL, activeCart.value.$id, {
+                    status: 'completed'
+                });
+            }
 
-            // Update all items in this cart to 'acquired'
+            // Update all items in this cart to 'received'
             const updatePromises = cartItems.value.map(item => {
                  return databases.updateDocument(
                      DB_ID,
                      getCollectionId(),
                      item.$id,
-                     { status: 'acquired' }
-                 ).catch(err => console.error(`Failed to update item ${item.$id} to acquired:`, err));
+                     { status: 'received' }
+                 ).catch(err => {
+                     console.error(`Failed to update item ${item.$id} to received:`, err);
+                 });
             });
             await Promise.allSettled(updatePromises);
             
             leaveCart();
         } catch (e: any) {
             error.value = e.message;
+            throw e; // Throw error so UI can prevent navigation
         } finally {
             loading.value = false;
         }

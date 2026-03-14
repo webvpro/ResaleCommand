@@ -80,12 +80,8 @@
                         <div class="join">
                             <select v-model="bulkStatusTarget" class="select select-sm select-bordered join-item bg-base-100 text-base-content min-w-[120px]">
                                 <option value="" disabled selected>Change Status...</option>
-                                <option value="scouted">Scouted</option>
                                 <option value="acquired">Acquired</option>
-                                <option value="processing">Processing</option>
-                                <option value="need_to_list">Need to List</option>
-                                <option value="listed">Listed</option>
-                                <option value="at_location">At Location</option>
+                                <option value="placed">Placed</option>
                                 <option value="sold">Sold</option>
                             </select>
                             <button class="btn btn-sm btn-primary join-item" @click="applyBulkStatus" :disabled="!bulkStatusTarget || processingBulk">
@@ -104,64 +100,30 @@
                 </div>
 
                 <div class="grid grid-cols-2 min-[450px]:grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-3">
-                    <div v-for="item in filteredInventory" :key="item.$id" class="card bg-base-100 shadow-sm border border-base-200 hover:border-primary transition-colors group text-xs relative" :class="{'ring-2 ring-primary': selectedItems.includes(item.$id)}">
+                    <ItemCard 
+                        v-for="item in filteredInventory" 
+                        :key="item.$id" 
+                        :item="item"
+                        :compact="true"
+                        @click-card="openPreview(item)"
+                        :class="{'ring-2 ring-primary': selectedItems.includes(item.$id)}">
                         
-                        <!-- Item Checkbox -->
-                        <div class="absolute top-1 left-1 z-10">
-                            <input type="checkbox" :value="item.$id" v-model="selectedItems" class="checkbox checkbox-sm checkbox-primary bg-base-100/80 backdrop-blur shadow-sm z-20" />
-                        </div>
-                    <figure class="aspect-square bg-base-200 relative overflow-hidden group-hover:opacity-90 transition-opacity">
-                        <img v-if="getImageUrl(item)" :src="getImageUrl(item)" :alt="item.title" class="w-full h-full object-cover" />
-                        <div v-else class="flex flex-col items-center justify-center w-full h-full text-[10px] opacity-70 bg-warning/20 p-2 overflow-hidden break-all text-center">
-                            Failed: {{ getImageUrl(item) || 'null' }}
-                        </div>
-                        
-                        <div class="absolute top-0 right-0 p-1 badge rounded-none rounded-bl-lg badge-xs gap-1 font-bold" 
-                            :class="{
-                                'badge-warning': item.status === 'scouted',
-                                'badge-info': item.status === 'acquired',
-                                'badge-secondary': item.status === 'processing',
-                                'badge-primary': item.status === 'need_to_list',
-                                'badge-success': item.status === 'listed',
-                                'badge-accent': item.status === 'at_location',
-                                'badge-neutral': item.status === 'sold'
-                            }">
-                            {{ item.status ? item.status.replace(/_/g, ' ') : 'Scouted' }}
-                        </div>
-                    </figure>
-                    <div class="card-body p-2 gap-0.5">
-                        <h2 class="font-bold text-[11px] leading-tight line-clamp-2 h-[2.2em]">
-                            {{ item.title || item.itemName || "Untitled" }}
-                        </h2>
-                        
-                        <div v-if="item.binLocation" class="text-[9px] opacity-60 truncate">📍 {{ item.binLocation }}</div>
-                        
-                        <div class="flex justify-between items-end mt-1">
-                            <div class="flex flex-col">
-                                <span class="text-[9px] uppercase opacity-50 font-bold">Est Range</span>
-                                <span class="text-[10px] font-bold text-success font-mono">
-                                    {{ formatCurrency(item.estLow || getNoteValue(item.conditionNotes, 'Est. Low', true)) }} - 
-                                    {{ formatCurrency(item.estHigh || getNoteValue(item.conditionNotes, 'Est. High', true)) }}
-                                </span>
+                        <template #absolute-top-left>
+                            <div class="absolute top-1 left-1 z-20">
+                                <input type="checkbox" :value="item.$id" v-model="selectedItems" class="checkbox checkbox-sm checkbox-primary bg-base-100/80 backdrop-blur shadow-sm cursor-pointer" @click.stop />
                             </div>
-                            <div class="flex flex-col text-right">
-                                <span class="text-[9px] uppercase opacity-50 font-bold">Paid</span>
-                                <span class="text-[10px] font-mono opacity-80">
-                                    {{ formatCurrency(item.cost || item.purchasePrice || getNoteValue(item.conditionNotes, 'Paid', true)) }}
-                                </span>
-                            </div>
-                        </div>
+                        </template>
 
-                        <div class="flex justify-between items-center mt-1 pt-1 border-t border-base-200">
-                            <button class="btn btn-sm btn-square btn-ghost" @click="openEdit(item)">✏️</button> 
-                            <button class="btn btn-xs btn-ghost text-error btn-square h-6 min-h-0 w-6" @click="confirmDelete(item.$id)" :disabled="processingId === item.$id">
-                                <span v-if="processingId === item.$id" class="loading loading-spinner loading-xs"></span>
-                                <span v-else>🗑️</span>
-                            </button>
-                        </div>
-                    </div>
-                </div> <!-- End item card -->
-            </div>
+                        <template #actions>
+                            <div class="flex justify-end items-center mt-1 pt-1 border-t border-base-200">
+                                <button class="btn btn-xs btn-ghost text-error btn-square h-6 min-h-0 w-6" @click.stop="confirmDelete(item.$id)" :disabled="processingId === item.$id">
+                                    <span v-if="processingId === item.$id" class="loading loading-spinner loading-xs"></span>
+                                    <span v-else>🗑️</span>
+                                </button>
+                            </div>
+                        </template>
+                    </ItemCard>
+            </div> <!-- End grid -->
             </div> <!-- End v-else -->
 
             <!-- ALL ITEMS LOADED (Pagination Removed) -->
@@ -188,12 +150,8 @@
                             <label class="label"><span class="label-text font-bold text-[10px] uppercase opacity-70">Status</span></label>
                             <select v-model="filterStatus" class="select select-bordered select-sm w-full text-xs shadow-sm bg-base-100">
                                 <option value="all">All Items</option>
-                                <option value="scouted">Scouted</option>
                                 <option value="acquired">Acquired</option>
-                                <option value="processing">Processing</option>
-                                <option value="need_to_list">Need to List</option>
-                                <option value="listed">Listed</option>
-                                <option value="at_location">At Location</option>
+                                <option value="placed">Placed</option>
                                 <option value="sold">Sold</option>
                             </select>
                         </div>
@@ -246,7 +204,7 @@
 
                 <div v-else class="text-center py-6">
                     <h3 class="font-bold text-lg text-success mb-4">✅ Purchase Confirmed!</h3>
-                    <p class="text-xs opacity-70 mb-4">Item moved to "Need to List".</p>
+                    <p class="text-xs opacity-70 mb-4">Item moved to "Acquired".</p>
                     <div class="divider">AI Description</div>
                     <div class="p-4 bg-base-200 rounded-lg text-sm text-center">
                         <p>{{ generatedDescription }}</p>
@@ -263,6 +221,13 @@
         <!-- ----------------------------------------------------------- -->
         <ItemDrawer v-if="isEditDrawerOpen" :item="activeItem" @isNew="!activeItem" @close="closeEditDrawer" @save="saveEdit" />
 
+        <!-- FULLSCREEN PREVIEW MODAL -->
+        <ItemPreviewModal 
+            :item="previewItem" 
+            @close="previewItem = null" 
+            @edit="openEdit" 
+        />
+
         <!-- Bulk Import Modal -->
         <BulkImport v-if="showImport" @close="showImport = false" @complete="showImport = false" />
     </div>
@@ -275,6 +240,8 @@ import { updateInventoryItem, deleteInventoryItem, saveItemToInventory } from '.
 import BulkImport from './BulkImport.vue';
 import { useAuth } from '../../composables/useAuth';
 import ItemDrawer from '../common/ItemDrawer.vue';
+import ItemCard from '../common/ItemCard.vue';
+import ItemPreviewModal from './ItemPreviewModal.vue';
 
 // Environment Variables
 const ENDPOINT = import.meta.env.PUBLIC_APPWRITE_ENDPOINT;
@@ -331,7 +298,12 @@ const cartGroups = computed(() => {
 const processingId = ref(null); // deleting/updating ID
 const processing = ref(false); // general loading state
 const processingBulk = ref(false); // bulk action state
-const activeItem = ref(null);
+const activeItem = ref(null); // used for edit drawer
+const previewItem = ref(null); // used for full preview modal
+
+const openPreview = (item) => {
+    previewItem.value = item;
+};
 
 // Bulk Selection State
 const selectedItems = ref([]);
@@ -570,7 +542,7 @@ const submitCheckout = async () => {
     processing.value = true;
     try {
         await updateInventoryItem(activeItem.value.$id, {
-            status: 'need_to_list',
+            status: 'received',
             cost: checkoutPrice.value,
             receiptFile: checkoutReceiptFile.value
         });
@@ -579,7 +551,7 @@ const submitCheckout = async () => {
         checkoutSuccess.value = true;
         
         // Removed AI Gen trigger: The user requested generation be deferred until listing
-        generatedDescription.value = "Item correctly transitioned to 'Need to List'. Description generation has been deferred until the item is placed for sale.";
+        generatedDescription.value = "Item correctly transitioned to 'Acquired'. Description generation has been deferred until the item is placed for sale.";
         
     } catch (e) {
         alert('Checkout failed: ' + e.message);

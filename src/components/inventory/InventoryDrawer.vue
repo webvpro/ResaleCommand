@@ -251,7 +251,7 @@ async function saveItem() {
             resalePrice: form.listPrice, 
             binLocation: form.bin,
             conditionNotes: form.description,
-            status: 'need_to_list', 
+            status: 'acquired', 
             keywords: [],
             redFlags: [],
             galleryImageIds: galleryIds,

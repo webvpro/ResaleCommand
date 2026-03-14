@@ -1,12 +1,6 @@
 import { Client, Databases } from 'node-appwrite';
 import dotenv from 'dotenv';
-import { fileURLToPath } from 'url';
-import { dirname, resolve } from 'path';
-
-// Load env
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-dotenv.config({ path: resolve(__dirname, '../.env') });
+dotenv.config();
 
 const client = new Client()
     .setEndpoint(process.env.PUBLIC_APPWRITE_ENDPOINT)
@@ -15,17 +9,18 @@ const client = new Client()
 
 const databases = new Databases(client);
 
-const DB_ID = process.env.PUBLIC_APPWRITE_DB_ID;
-const COL_ID = process.env.PUBLIC_APPWRITE_COLLECTION_ID;
+const DB_ID = process.env.PUBLIC_APPWRITE_DB_ID || 'resale_db';
+const isAlpha = process.env.PUBLIC_APPWRITE_ENVIRONMENT === 'alpha';
+const COLLECTION_ID = process.env.PUBLIC_APPWRITE_COLLECTION_ID || 'items';
 
-async function doMigration() {
-    console.log(`Adding keywords attribute to db: ${DB_ID}, col: ${COL_ID}`);
+async function addKeywords() {
+    console.log(`Adding keywords attribute to db: ${DB_ID}, collection: ${COLLECTION_ID}...`);
     try {
         await databases.createStringAttribute(
             DB_ID,
-            COL_ID,
+            COLLECTION_ID,
             'keywords',
-            128,
+            64,
             false,
             undefined,
             true // isArray = true
@@ -40,4 +35,4 @@ async function doMigration() {
     }
 }
 
-doMigration();
+addKeywords();

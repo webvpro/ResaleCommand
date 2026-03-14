@@ -308,7 +308,7 @@ export const ALL: APIRoute = async ({ request }) => {
           - 'comparables': An array of 3-5 similar items sold on eBay/etc.
                - 'name': Specific item name/title.
                - 'price': approx sold price.
-               - 'status': "Sold" or "Listed" or "scouted" or "acquired" or "at_location"
+               - 'status': "Sold" or "Listed" or "scouted" or "received" or "placed"
         `;
 
         const contentParts: any[] = [prompt];
