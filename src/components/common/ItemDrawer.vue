@@ -274,44 +274,65 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="form-control w-full">
-                        <label class="label"><span class="label-text">Status</span></label>
-                        <select v-model="editForm.status" class="select select-bordered">
-                            <option value="acquired">Acquired</option>
-                            <option value="placed">Placed</option>
-                            <option value="sold">Sold</option>
-                        </select>
-                    </div>
-                    
-                    <div class="flex flex-col gap-2">
-                        <div class="form-control w-full">
-                            <label class="label"><span class="label-text">Sales Channels</span></label>
-                            <div class="border border-base-300 rounded-lg p-2 bg-base-100 flex flex-wrap gap-2 items-center">
-                                <span v-for="(chan, idx) in editForm.salesChannel" :key="idx" class="badge badge-primary gap-1">
-                                    {{ chan }}
-                                    <button @click="removeTag('salesChannel', idx)" class="hover:text-error hover:font-bold">✕</button>
-                                </span>
-                                <input type="text" placeholder="Add..." class="input input-xs grow border-none focus:outline-none min-w-[80px]" @keydown.enter.prevent="addTag('salesChannel', $event)" />
-                            </div>
-                        </div>
-                        <div class="form-control w-full">
-                            <label class="label"><span class="label-text">Keywords</span></label>
-                            <div class="border border-base-300 rounded-lg p-2 bg-base-100 flex flex-wrap gap-2 items-center">
-                                <span v-for="(kw, idx) in editForm.keywords" :key="idx" class="badge badge-secondary gap-1">
-                                    {{ kw }}
-                                    <button @click="removeTag('keywords', idx)" class="hover:text-error hover:font-bold">✕</button>
-                                </span>
-                                <input type="text" placeholder="Add..." class="input input-xs grow border-none focus:outline-none min-w-[80px]" @keydown.enter.prevent="addTag('keywords', $event)" />
-                            </div>
-                        </div>
-                    </div>
+                <!-- Status Steps -->
+                <div class="w-full mb-6">
+                    <label class="label"><span class="label-text font-bold text-sm">Item Lifecycle Status</span></label>
+                    <ul class="steps w-full text-xs">
+                        <li class="step cursor-pointer" 
+                            :class="{'step-primary font-bold': ['acquired', 'placed', 'sold'].includes(editForm.status)}" 
+                            @click="editForm.status = 'acquired'">
+                            Acquired
+                        </li>
+                        <li class="step cursor-pointer" 
+                            :class="{'step-primary font-bold': ['placed', 'sold'].includes(editForm.status)}" 
+                            @click="editForm.status = 'placed'">
+                            Placed
+                        </li>
+                        <li class="step cursor-pointer" 
+                            :class="{'step-primary font-bold': ['sold'].includes(editForm.status)}" 
+                            @click="editForm.status = 'sold'">
+                            Sold
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="space-y-4">
+                    <TagInput 
+                        v-model="editForm.salesChannel" 
+                        label="Sales Channels" 
+                        type="salesChannel" 
+                        badgeClass="badge-primary" 
+                    />
+                    <TagInput 
+                        v-model="editForm.keywords" 
+                        label="Keywords" 
+                        type="keyword" 
+                        badgeClass="badge-secondary" 
+                        :recommendedTags="Array.isArray(scoutResult) ? Array.from(new Set(scoutResult.flatMap(item => item.keywords || []))) : (scoutResult && scoutResult.keywords ? scoutResult.keywords : [])"
+                    />
                 </div>
 
 
+                <!-- Scout Report -->
+                <div class="divider">Scout Report &amp; Description</div>
+                
+                <div class="form-control w-full mb-4">
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="label pt-0 pb-0"><span class="label-text font-bold">Scout Report</span></label>
+                        <div role="tablist" class="tabs tabs-boxed tabs-sm min-h-0 py-0 h-7">
+                            <a role="tab" class="tab tab-sm" :class="{ 'tab-active': scoutTab === 'edit' }" @click="scoutTab = 'edit'">Edit</a>
+                            <a role="tab" class="tab tab-sm" :class="{ 'tab-active': scoutTab === 'preview' }" @click="scoutTab = 'preview'">Preview</a>
+                        </div>
+                    </div>
+                    <div v-if="scoutTab === 'edit'">
+                        <textarea v-model="editForm.itemCondition" class="textarea textarea-bordered h-32 text-xs w-full block font-mono" placeholder="Any notable damage, testing results..."></textarea>
+                    </div>
+                    <div v-else class="w-full h-32 overflow-y-auto border border-base-300 rounded-lg p-3 bg-base-100 prose prose-sm" v-html="renderMarkdown(editForm.itemCondition)"></div>
+                </div>
+
                 <!-- Description -->
-                <div class="divider">Description</div>
                 <div class="flex justify-between items-center mb-2">
+                    <label class="label pt-0"><span class="label-text font-bold">Product Description</span></label>
                     <div role="tablist" class="tabs tabs-boxed">
                         <a role="tab" class="tab" :class="{ 'tab-active': descTab === 'edit' }" @click="descTab = 'edit'">Edit</a>
                         <a role="tab" class="tab" :class="{ 'tab-active': descTab === 'preview' }" @click="descTab = 'preview'">Preview</a>
@@ -346,6 +367,7 @@
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { marked } from 'marked';
 import ScannerWidget from './ScannerWidget.vue';
+import TagInput from './TagInput.vue';
 import { saveItemToInventory } from '../../lib/inventory';
 import { account } from '../../lib/appwrite';
 
@@ -371,11 +393,12 @@ const props = defineProps({
 const emit = defineEmits(['close', 'save']);
 
 const descTab = ref('edit');
+const scoutTab = ref('edit');
 const processing = ref(false);
 const editForm = ref({
     title: '', cost: '', resalePrice: '', estLow: '', estHigh: '',
     binLocation: '', purchaseLocation: '', orderId: '', status: 'acquired',
-    description: '', existingGalleryIds: [], salesChannel: [], keywords: []
+    description: '', itemCondition: '', existingGalleryIds: [], salesChannel: [], keywords: []
 });
 
 const editGalleryBuffer = ref([]);
@@ -383,9 +406,19 @@ const mainPhotoSelection = ref({ type: 'none', val: null });
 
 const actualMainPhoto = computed(() => {
     if (mainPhotoSelection.value.type === 'new' && editGalleryBuffer.value[mainPhotoSelection.value.val]) {
-        return { file: editGalleryBuffer.value[mainPhotoSelection.value.val], url: getObjectUrl(editGalleryBuffer.value[mainPhotoSelection.value.val]) };
+        return { 
+            file: editGalleryBuffer.value[mainPhotoSelection.value.val], 
+            url: getObjectUrl(editGalleryBuffer.value[mainPhotoSelection.value.val]),
+            type: 'new',
+            idx: mainPhotoSelection.value.val
+        };
     } else if (mainPhotoSelection.value.type === 'existing' && editForm.value.existingGalleryIds.includes(mainPhotoSelection.value.val)) {
-        return { file: null, url: getAssetUrl(mainPhotoSelection.value.val), id: mainPhotoSelection.value.val };
+        return { 
+            file: null, 
+            url: getAssetUrl(mainPhotoSelection.value.val), 
+            id: mainPhotoSelection.value.val,
+            type: 'existing'
+        };
     } else {
         if (editGalleryBuffer.value.length > 0) return { file: editGalleryBuffer.value[0], url: getObjectUrl(editGalleryBuffer.value[0]), type: 'new', idx: 0 };
         if (editForm.value.existingGalleryIds?.length > 0) return { file: null, url: getAssetUrl(editForm.value.existingGalleryIds[0]), id: editForm.value.existingGalleryIds[0], type: 'existing' };
@@ -571,6 +604,7 @@ const initForm = () => {
             orderId: i.orderId || getNoteValue(i.conditionNotes, 'Order #') || getNoteValue(i.conditionNotes, 'Imported from Order #') || '',
             status: i.status || 'acquired',
             description: i.marketDescription || i.description || i.rawAnalysis || '', 
+            itemCondition: getNoteValue(i.conditionNotes, 'Condition') || '',
             existingGalleryIds: i.galleryImageIds || [],
             salesChannel: i.salesChannel || [],
             keywords: i.keywords || []
@@ -603,7 +637,7 @@ const initForm = () => {
             const mdMatch = i.conditionNotes.match(/\[SCOUT_REPORT_MD: ([^\]]+)\]/);
             if (mdMatch) {
                 const downloadUrl = getAssetUrl(mdMatch[1].trim()).replace('/view', '/download');
-                fetch(downloadUrl).then(res => res.text()).then(txt => { scoutMdText.value = txt; }).catch(() => {});
+                fetch(downloadUrl).then(res => res.text()).then(txt => { editForm.value.itemCondition = txt; scoutMdText.value = txt; }).catch(() => {});
             }
 
             const fileMatch = i.conditionNotes.match(/\[SCOUT_REPORT_ID: ([^\]]+)\]/);
@@ -630,7 +664,7 @@ const initForm = () => {
     } else {
         editForm.value = {
             title: '', cost: '', resalePrice: '', estLow: '', estHigh: '',
-            binLocation: '', purchaseLocation: '', orderId: '', status: 'acquired', description: '', existingGalleryIds: [], salesChannel: [], keywords: []
+            binLocation: '', purchaseLocation: '', orderId: '', status: 'acquired', description: '', itemCondition: '', existingGalleryIds: [], salesChannel: [], keywords: []
         };
         mainPhotoSelection.value = { type: 'none', val: null };
         scoutResult.value = null;
@@ -709,23 +743,6 @@ const removeGalleryItem = (idOrIdx, isExisting) => {
         editForm.value.existingGalleryIds = editForm.value.existingGalleryIds.filter(id => id !== idOrIdx);
     } else {
         editGalleryBuffer.value.splice(idOrIdx, 1);
-    }
-};
-
-const addTag = (field, e) => {
-    const val = e.target.value.trim();
-    if (val) {
-        if (!editForm.value[field]) editForm.value[field] = [];
-        if (!editForm.value[field].includes(val)) {
-            editForm.value[field].push(val);
-        }
-        e.target.value = '';
-    }
-};
-
-const removeTag = (field, idx) => {
-    if (editForm.value[field]) {
-        editForm.value[field].splice(idx, 1);
     }
 };
 
@@ -828,9 +845,26 @@ const urlToFile = async (url, filename) => {
     try {
         const res = await fetch('/api/proxy-image?url=' + encodeURIComponent(url));
         if (!res.ok) throw new Error("Image download failed");
-        const blob = await res.blob();
-        return new File([blob], filename, { type: blob.type || 'image/jpeg' });
-    } catch (e) { return null; }
+        
+        const contentType = res.headers.get('content-type') || 'image/jpeg';
+        if (contentType.includes('text/html')) {
+             throw new Error("The image source returned an HTML page. The server might be blocking direct downloads.");
+        }
+        
+        const arrayBuffer = await res.arrayBuffer();
+        if (arrayBuffer.byteLength === 0) throw new Error("The image source returned 0-bytes.");
+        
+        let finalName = filename;
+        if (!finalName.match(/\.(jpg|jpeg|png|webp|gif|avif)$/i)) {
+             const ext = contentType.split('/')[1] || 'jpg';
+             finalName = `${finalName}.${ext}`;
+        }
+        
+        return new File([arrayBuffer], finalName, { type: contentType });
+    } catch (e) {
+        console.error(e);
+        return null; 
+    }
 };
 
 const selectFetchedImage = async (url) => {
@@ -906,7 +940,7 @@ const analyzeExistingItem = async () => {
                 });
                 if (totalLow > 0) editForm.value.estLow = totalLow.toFixed(2);
                 if (totalHigh > 0) editForm.value.estHigh = totalHigh.toFixed(2);
-                if(!editForm.value.description.includes("LOT BREAKDOWN")) editForm.value.description = (editForm.value.description + "\n\n" + desc).trim();
+                if(!(editForm.value.itemCondition || '').includes("LOT BREAKDOWN")) editForm.value.itemCondition = ((editForm.value.itemCondition || '') + "\n\n" + desc).trim();
             } else {
                 scoutResult.value = data.items[0];
                 const item = scoutResult.value;
@@ -927,10 +961,13 @@ const analyzeExistingItem = async () => {
                 if(item.price_breakdown) report += `**Valuation:** Mint: ${item.price_breakdown.mint}, Fair: ${item.price_breakdown.fair}, Poor: ${item.price_breakdown.poor}\n`;
                 if(item.comparables && item.comparables.length > 0) { report += `**Comparables:**\n`; item.comparables.forEach(c => report += `- ${c.name} (${c.price}) [${c.status}]\n`); }
                 if(item.keywords && item.keywords.length > 0) report += `**Keywords:** ${item.keywords.join(', ')}\n`;
-                if(!editForm.value.description.includes("SCOUT REPORT")) editForm.value.description = (editForm.value.description + report).trim();
-                if (item.fetched_image && !editMainPhotoPreview.value) {
+                if(!(editForm.value.itemCondition || '').includes("SCOUT REPORT")) editForm.value.itemCondition = ((editForm.value.itemCondition || '') + report).trim();
+                if (item.fetched_image && actualMainPhoto.value.type === 'none') {
                      const file = await urlToFile(item.fetched_image, `scout_auto_${Date.now()}.jpg`);
-                     if (file) processFile(file, (f, u) => { editMainFile.value = f; editMainPhotoPreview.value = u; });
+                     if (file) {
+                         editGalleryBuffer.value.push(file);
+                         mainPhotoSelection.value = { type: 'new', val: editGalleryBuffer.value.length - 1 };
+                     }
                 }
             }
             descTab.value = 'edit';

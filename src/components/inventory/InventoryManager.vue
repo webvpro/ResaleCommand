@@ -9,7 +9,7 @@
                     📍 {{ location }} ({{ groupItems.length }})
                 </div>
             
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-2">
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-1 pt-2">
                     <div v-for="item in groupItems" :key="item.$id" class="card bg-base-100 shadow-sm border-2 border-primary/20 hover:border-primary transition-colors">
                         <div class="card-body p-4">
                             <div class="flex gap-4">
@@ -99,7 +99,7 @@
                     <span class="text-xs font-bold opacity-70">Select All in View</span>
                 </div>
 
-                <div class="grid grid-cols-2 min-[450px]:grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-1">
                     <ItemCard 
                         v-for="item in filteredInventory" 
                         :key="item.$id" 
@@ -154,6 +154,16 @@
                                 <option value="placed">Placed</option>
                                 <option value="sold">Sold</option>
                             </select>
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pt-0 -mb-2"><span class="label-text font-bold text-[10px] uppercase opacity-70">Keywords</span></label>
+                            <TagInput 
+                                v-model="filterKeywords" 
+                                type="keyword" 
+                                placeholder="Any..." 
+                                badgeClass="badge-secondary" 
+                            />
                         </div>
                     </div>
                 </div>
@@ -242,6 +252,7 @@ import { useAuth } from '../../composables/useAuth';
 import ItemDrawer from '../common/ItemDrawer.vue';
 import ItemCard from '../common/ItemCard.vue';
 import ItemPreviewModal from './ItemPreviewModal.vue';
+import TagInput from '../common/TagInput.vue';
 
 // Environment Variables
 const ENDPOINT = import.meta.env.PUBLIC_APPWRITE_ENDPOINT;
@@ -257,6 +268,7 @@ const currentTeamId = computed(() => currentTeam.value?.$id);
 // State for Filters
 const searchQuery = ref('');
 const filterStatus = ref('all');
+const filterKeywords = ref([]);
 
 // Lifecycle
 const cartItems = computed(() => inventoryItems.value.filter(i => i.status === 'scouted'));
@@ -270,7 +282,15 @@ const filteredInventory = computed(() => {
             return false;
         }
 
-        // Filter by Search
+        // Filter by specific Keywords (must have all selected keywords)
+        if (filterKeywords.value.length > 0) {
+            if (!item.keywords || item.keywords.length === 0) return false;
+            const itemKeywordsLower = item.keywords.map(k => k.toLowerCase());
+            const hasAllKeywords = filterKeywords.value.every(kw => itemKeywordsLower.includes(kw.toLowerCase()));
+            if (!hasAllKeywords) return false;
+        }
+
+        // Filter by Search (Free text)
         if (searchQuery.value) {
             const query = searchQuery.value.toLowerCase();
             const titleMatch = (item.title || item.itemName || '').toLowerCase().includes(query);
@@ -583,19 +603,26 @@ const saveEdit = async (payload) => {
     try {
         if (activeItem.value) {
             // UPDATE EXISTING
-            await updateInventoryItem(activeItem.value.$id, payload);
+            const updatedDoc = await updateInventoryItem(activeItem.value.$id, payload);
+            // Optimistic update to immediately reflect in UI before Appwrite query cache clears
+            const idx = inventoryItems.value.findIndex(i => i.$id === activeItem.value.$id);
+            if (idx !== -1) {
+                inventoryItems.value[idx] = updatedDoc;
+            }
         } else {
             // CREATE NEW
-             await saveItemToInventory(
+             const newDoc = await saveItemToInventory(
                 { title: payload.title || 'Untitled Item', identity: payload.title, condition_notes: '' }, 
                 payload.imageFile,
                 payload,
                 currentTeamId.value // Pass team ID
             );
+            inventoryItems.value.unshift(newDoc);
         }
 
-        await fetchInventory(''); // Refresh list to show updates
         closeEditDrawer();
+        // Fire async refresh in background just in case
+        fetchInventory('').catch(() => {});
     } catch (e) {
         alert('Save failed: ' + e.message);
     } finally {

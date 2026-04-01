@@ -27,6 +27,7 @@ export interface ExtraItemData {
     scoutData?: any;
     description?: string;
     marketDescription?: string;
+    itemCondition?: string;
     imageId?: string; // Pre-uploaded image ID
     estLow?: string;
     estHigh?: string;
@@ -398,20 +399,35 @@ export async function updateInventoryItem(documentId: string, updates: Partial<E
         }
 
         // Main Image
+        let newMainUploadId: string | null = null;
         if (updates.imageFile && BUCKET_ID) {
              const upload = await storage.createFile(BUCKET_ID, ID.unique(), updates.imageFile);
+             data.imageId = upload.$id;
+             newMainUploadId = upload.$id;
              updateTagValue('MAIN IMAGE ID', upload.$id);
+        } else if (updates.imageId !== undefined) {
+             data.imageId = updates.imageId;
+             if (updates.imageId) {
+                 updateTagValue('MAIN IMAGE ID', updates.imageId);
+             } else {
+                 notes = notes.replace(/\[MAIN IMAGE ID: [^\]]+\]\n?\n?/gi, '');
+             }
         }
 
-        // Gallery
-        // Determine existing IDs first
+        // Determine existing IDs to keep
         let currentGalleryIds: string[] = [];
-        // Try to parse from notes
-        const galleryMatch = notes.match(/\[GALLERY IDS: ([^\]]+)\]/i);
-        if (galleryMatch) {
-            currentGalleryIds = galleryMatch[1].split(',').map((s: string) => s.trim()).filter((s: string) => s);
-        } else if (updates.existingGalleryIds) {
-             currentGalleryIds = updates.existingGalleryIds;
+        
+        if (updates.existingGalleryIds !== undefined) {
+            // Frontend is explicitly telling us what gallery IDs to KEEP
+            currentGalleryIds = [...updates.existingGalleryIds];
+        } else {
+            // Fallback for partial updates
+            const galleryMatch = notes.match(/\[GALLERY IDS: ([^\]]+)\]/i);
+            if (galleryMatch) {
+                currentGalleryIds = galleryMatch[1].split(',').map((s: string) => s.trim()).filter((s: string) => s);
+            } else if (currentDoc.galleryImageIds) {
+                currentGalleryIds = [...currentDoc.galleryImageIds];
+            }
         }
 
         // Upload new gallery files
@@ -423,10 +439,45 @@ export async function updateInventoryItem(documentId: string, updates: Partial<E
             currentGalleryIds = [...currentGalleryIds, ...newIds];
         }
 
-        // Update Gallery Tag if changed
-        if ((updates.galleryFiles?.length || 0) > 0 || updates.existingGalleryIds) {
+        // Clean up deleted images from storage
+        const imagesToDelete = new Set<string>();
+        
+        // Check if main image was replaced/removed
+        if (currentDoc.imageId && updates.imageId !== undefined && currentDoc.imageId !== updates.imageId && currentDoc.imageId !== newMainUploadId) {
+            imagesToDelete.add(currentDoc.imageId);
+        }
+        const oldMainMatch = notes.match(/\[MAIN IMAGE ID: ([^\]]+)\]/i);
+        if (oldMainMatch && updates.imageId !== undefined && oldMainMatch[1].trim() !== updates.imageId) {
+            imagesToDelete.add(oldMainMatch[1].trim());
+        }
+
+        // Check if gallery images were removed
+        if (updates.existingGalleryIds !== undefined) {
+             const oldGalleryMatch = notes.match(/\[GALLERY IDS: ([^\]]+)\]/i);
+             const oldGalleryIds = oldGalleryMatch ? oldGalleryMatch[1].split(',').map((s: string) => s.trim()).filter((s: string) => s) : (currentDoc.galleryImageIds || []);
+             
+             oldGalleryIds.forEach((oldId: string) => {
+                 if (!updates.existingGalleryIds!.includes(oldId)) {
+                     imagesToDelete.add(oldId);
+                 }
+             });
+        }
+
+        // Delete the removed images from the bucket
+        if (imagesToDelete.size > 0 && BUCKET_ID) {
+            console.log(`Deleting ${imagesToDelete.size} removed images from bucket...`);
+            await Promise.allSettled(Array.from(imagesToDelete).map(id => 
+                storage.deleteFile(BUCKET_ID, id).catch(e => console.warn(`Failed to delete removed image ${id}:`, e))
+            ));
+        }
+
+        // Update Gallery Tag & Field if changed
+        if ((updates.galleryFiles?.length || 0) > 0 || updates.existingGalleryIds !== undefined) {
+             data.galleryImageIds = currentGalleryIds; // Appwrite requires [] to clear array, not null
              if (currentGalleryIds.length > 0) {
                 updateTagValue('GALLERY IDS', currentGalleryIds.join(', '));
+             } else {
+                notes = notes.replace(/\[GALLERY IDS: [^\]]+\]\n?\n?/g, '');
              }
         }
 
@@ -461,6 +512,24 @@ export async function updateInventoryItem(documentId: string, updates: Partial<E
             updateNoteValue('Location', updates.purchaseLocation);
         }
 
+        if (updates.itemCondition !== undefined) {
+            const mdText = updates.itemCondition;
+            const shortCondition = mdText ? mdText.split('\n')[0].substring(0, 100).trim() : '';
+            updateNoteValue('Condition', shortCondition);
+            
+            if (BUCKET_ID && mdText.trim().length > 0) {
+                 try {
+                     const mdFile = new File([mdText], `scout_${documentId}.md`, { type: 'text/markdown' });
+                     const mdUpload = await storage.createFile(BUCKET_ID, ID.unique(), mdFile);
+                     updateTagValue('SCOUT_REPORT_MD', mdUpload.$id);
+                 } catch(e) {
+                     console.warn("Failed to upload MD report", e);
+                 }
+            } else if (mdText.trim().length === 0) {
+                 notes = notes.replace(/\[SCOUT_REPORT_MD: [^\]]+\]\n?\n?/gi, '');
+            }
+        }
+
         if (updates.binLocation !== undefined) {
             data.binLocation = updates.binLocation === '' ? null : updates.binLocation;
             updateNoteValue('Bin', updates.binLocation);
@@ -468,6 +537,10 @@ export async function updateInventoryItem(documentId: string, updates: Partial<E
         
         if (updates.salesChannel !== undefined) {
             data.salesChannel = updates.salesChannel;
+        }
+
+        if (updates.keywords !== undefined) {
+            data.keywords = Array.isArray(updates.keywords) ? updates.keywords : [];
         }
 
         if (updates.orderId !== undefined) {

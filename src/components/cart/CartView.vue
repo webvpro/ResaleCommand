@@ -42,12 +42,12 @@
           <div class="flex-1 overflow-y-auto p-4 space-y-4 pb-32">
               
               <!-- ITEMS LIST -->
-              <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-1">
                   <ItemCard 
                       v-for="item in cartItems" 
                       :key="item.$id" 
                       :item="item" 
-                      :compact="false"
+                      :compact="true"
                       @click-card="openPreview(item)">
 
                       <template #absolute-top-left>
@@ -79,7 +79,7 @@
               <ItemDrawer v-if="editingItem" :item="editingItem" @close="closeEdit" @save="saveEdit" />
               
               <!-- FULLSCREEN PREVIEW -->
-              <ItemPreviewModal :item="previewItem" @close="previewItem = null" @edit="openEditModal" />
+              <ItemPreviewModal :item="previewItem || undefined" @close="previewItem = null" @edit="openEditModal" />
 
               <!-- EXPENSES SECTION -->
               <div class="divider text-xs opacity-50 uppercase">Expenses</div>

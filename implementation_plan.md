@@ -45,3 +45,12 @@ Automatically generate an eBay-style product description in Markdown format when
 2. Open "Confirm Purchase" modal.
 3. Take/Add receipt photo (optional) and confirm.
 4. Verify in Appwrite Console (or UI if I add a display) that `marketDescription` is populated with a markdown string.
+
+
+## ItemDrawer Input UI Refactor
+The user wants to refine the layout of the bottom portion of the `ItemDrawer` to be more spacious and intuitive.
+
+1.  **DaisyUI Status Steps**: Instead of a standard `<select>` dropdown for the Item Status (Acquired, Placed, Sold), implement a visual stepper using DaisyUI's `steps` component to clearly show progression. This should have clickable steps that update the `editForm.status`.
+2.  **TagInput Full Rows**: The "Sales Channels" and "Keywords" inputs currently share a flex column below the status dropdown. They will be given full width so they stack cleanly.
+3.  **Decoupled Tag Input Field**: In `TagInput.vue`, the text input field `<input>` is currently embedded *inside* the flex container holding the active tag badges. This gives it a constrained look. We will separate the input into its own distinct UI element visually positioned below the badge list.
+4.  **Graceful Degration on Auth Errors**: The console shows Appwrite 401 Unauthorized errors when fetching the tags collection in `TagInput.vue`. We need to handle this by silently catching the exception and proceeding with purely local additions, or fixing the database permissions if possible.

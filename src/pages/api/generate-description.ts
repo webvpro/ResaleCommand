@@ -40,12 +40,24 @@ export const POST: APIRoute = async ({ request }) => {
         const storage = new Storage(client);
 
         const DB_ID = import.meta.env.PUBLIC_APPWRITE_DB_ID;
-        const COLLECTION_ID = import.meta.env.PUBLIC_APPWRITE_COLLECTION_ID;
-        const BUCKET_ID = import.meta.env.PUBLIC_APPWRITE_BUCKET_ID;
+        let COLLECTION_ID = import.meta.env.PUBLIC_APPWRITE_COLLECTION_ID as string;
+        const ALPHA_COLLECTION_ID = import.meta.env.PUBLIC_APPWRITE_ALPHA_COLLECTION_ID as string;
+        const BUCKET_ID = import.meta.env.PUBLIC_APPWRITE_BUCKET_ID as string;
 
         // 1. Fetch Item Data
         console.log('[API] Fetching item document...');
-        const item = await databases.getDocument(DB_ID, COLLECTION_ID, itemId);
+        let item;
+        try {
+            item = await databases.getDocument(DB_ID as string, COLLECTION_ID, itemId);
+        } catch (e: any) {
+            if (e.code === 404 && ALPHA_COLLECTION_ID) {
+                console.log('[API] Not found in standard collection, checking alpha collection...');
+                COLLECTION_ID = ALPHA_COLLECTION_ID;
+                item = await databases.getDocument(DB_ID as string, COLLECTION_ID, itemId);
+            } else {
+                throw e;
+            }
+        }
 
         // 2. Collect Image Ids
         const imageIds: string[] = [];
@@ -94,14 +106,16 @@ export const POST: APIRoute = async ({ request }) => {
         Brand/Keywords: ${item.keywords || 'N/A'}
         Details: ${item.conditionNotes || 'N/A'}
         
-        The description MUST be written in raw HTML markup (eBay compatible) and include:
-        - A catchy headline wrapped in an <h2> or <h3> tag.
-        - Key features bullet points wrapped in <ul> and <li> tags.
-        - Condition assessment ${validImageParts.length > 0 ? 'based on photos and notes' : 'based on provided notes'} (be honest but highlight value) wrapped in paragraph <p> or bold <b> tags.
+        The description MUST be written in plain text (no HTML, no Markdown) and include:
+        - A catchy headline.
+        - Key features bullet points (using simple dashes or bullets).
+        - Condition assessment ${validImageParts.length > 0 ? 'based on photos and notes' : 'based on provided notes'} (be honest but highlight value).
         - Measurements if visible (estimate if possible or state "See photos for measurements").
         - "Why buy this?" section.
         
-        Use modern but simple inline styles or standard tags (<b>, <i>, <br>, <ul>, <li>) to structure the description so it looks good when pasted into an eBay listing. Do NOT use markdown asterisks. Do not include placeholder text like "[Insert size here]". If you don't know, omit it or describe what you see.
+        Format the description so it looks clean and readable when pasted into an eBay listing. Do NOT use HTML tags or markdown formatting like asterisks or hashtags. Do not include placeholder text like "[Insert size here]". If you don't know, omit it or describe what you see.
+        
+        CRITICAL: Return ONLY the plain text string. Do NOT wrap the output in any code blocks.
         `;
 
         const result = await model.generateContent([prompt, ...validImageParts]);
