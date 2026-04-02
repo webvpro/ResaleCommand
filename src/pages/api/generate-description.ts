@@ -68,7 +68,6 @@ export const POST: APIRoute = async ({ request }) => {
 
         if (imageIds.length === 0) {
             console.warn('[API] No images found for item, proceeding with text-only generation.');
-            console.warn('[API] No images found for item, proceeding with text-only generation.');
         }
 
         // 3. Download Images & Prepare for Gemini
@@ -93,8 +92,6 @@ export const POST: APIRoute = async ({ request }) => {
 
         if (imageIds.length > 0 && validImageParts.length === 0) {
             console.warn('[API] Image downloads failed, falling back to text only');
-        if (imageIds.length > 0 && validImageParts.length === 0) {
-            console.warn('[API] Image downloads failed, falling back to text only');
         }
 
         // 4. Call Gemini
@@ -103,7 +100,6 @@ export const POST: APIRoute = async ({ request }) => {
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
         const prompt = `
-        You are an expert eBay reseller. Write a compelling, SEO-friendly product description for this item${validImageParts.length > 0 ? ' based on the provided photos.' : '.'}
         You are an expert eBay reseller. Write a compelling, SEO-friendly product description for this item${validImageParts.length > 0 ? ' based on the provided photos.' : '.'}
         
         Item Title: ${item.title}
@@ -136,7 +132,7 @@ export const POST: APIRoute = async ({ request }) => {
                 marketDescription: text
             });
             saved = true;
-        } catch (dbErr) {
+        } catch (dbErr: any) {
             console.error('[API] Failed to save description to DB:', dbErr);
             saveError = dbErr.message || 'Database update failed';
             // We do NOT throw here, we return the text anyway
@@ -152,7 +148,7 @@ export const POST: APIRoute = async ({ request }) => {
             headers: { 'Content-Type': 'application/json' }
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('[API] Error generating description:', error);
         // Ensure we return JSON even on error
         return new Response(JSON.stringify({ 
