@@ -17,7 +17,7 @@ export default defineConfig({
   site: "https://example.com",
   trailingSlash: "never",
   integrations: [mdx(), sitemap(), icon(), alpinejs(), vue()],
-  adapter: vercel(),
+  adapter: vercel({ entrypointResolution: "auto" }),
   vite: {
     plugins: [tailwindcss()],
   },
