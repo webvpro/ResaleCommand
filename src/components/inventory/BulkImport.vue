@@ -63,6 +63,11 @@ import Papa from 'papaparse';
 import { saveItemToInventory } from '../../lib/inventory';
 import { useAuth } from '../../composables/useAuth';
 import { databases, Query } from '../../lib/appwrite';
+import { isAlphaMode } from '../../stores/env';
+
+const getCollectionId = () => isAlphaMode.get() 
+    ? (import.meta.env.PUBLIC_APPWRITE_ALPHA_COLLECTION_ID || 'alpha_items') 
+    : (import.meta.env.PUBLIC_APPWRITE_COLLECTION_ID || 'items');
 
 const props = defineProps({
     isOpen: Boolean
@@ -175,7 +180,7 @@ const processRows = async (rows) => {
         try {
             const dbCheck = await databases.listDocuments(
                 import.meta.env.PUBLIC_APPWRITE_DB_ID, 
-                import.meta.env.PUBLIC_APPWRITE_COLLECTION_ID,
+                getCollectionId(),
                 [
                     Query.equal('identity', itemId),
                     Query.limit(1)
@@ -274,7 +279,7 @@ const processRows = async (rows) => {
                     const uploadRes = await fetch('/api/upload-remote-image', {
                         method: 'POST',
                         body: JSON.stringify({ 
-                            imageUrl: cleanLink,
+                            url: cleanLink,
                             filename: `img-${itemId}`
                         }),
                         headers: { 'Content-Type': 'application/json' }
@@ -416,23 +421,28 @@ const processRows = async (rows) => {
             }
 
             // Save to DB
-            await saveItemToInventory({
+            const itemToSave = {
                 title: title,
                 identity: itemId,
                 condition_notes: notes,
-            }, null, { // PASS NULL FOR FILE
-                imageId: mainImageId, // PASS ID HERE
-                paidPrice: price,
+            };
+            const extraData = {
+                cost: price,
                 purchaseLocation: isOrderProxy && orderId 
                     ? `https://shopgoodwill.com/shopgoodwill/order/${orderId}` 
                     : `https://shopgoodwill.com/item/${itemId}`,
-                status: 'acquired',
+                status: 'received',
                 title: title,
                 orderId: orderId,
                 scoutData: scoutData, // Pass the AI data
                 marketDescription: scoutData ? scoutData.condition_notes : null,
                 galleryFiles: galleryFiles // Pass the gallery images
-            }, teamId);
+            };
+            if (mainImageId) {
+                extraData.imageId = mainImageId;
+            }
+
+            await saveItemToInventory(itemToSave, null, extraData, teamId);
 
             logs.value.push(`✅ Imported: ${title.substring(0, 30)}... ${orderId ? '(with Order Link)' : ''}`);
 

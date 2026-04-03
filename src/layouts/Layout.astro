@@ -2,6 +2,7 @@
 import Navbar from "@components/nav/Navbar.vue";
 import Footer from "@components/Footer.astro";
 import ToastContainer from "@components/ui/ToastContainer.vue";
+import MarkdownModal from "@components/ui/MarkdownModal.astro";
 import { siteConfig } from "site-config";
 
 import "../styles/global.css";
@@ -27,7 +28,6 @@ const { title = siteConfig.title, description, image } = Astro.props;
     <meta name="generator" content={Astro.generator} />
 
     <SEOmeta title={title} description={description} image={image} />
-  
   </head>
 </html>
 <body>
@@ -35,11 +35,12 @@ const { title = siteConfig.title, description, image } = Astro.props;
   <main>
     <slot />
   </main>
+  <MarkdownModal />
   <ToastContainer client:load />
   <Footer />
   <script>
     import { useAuth } from "../composables/useAuth";
-    
+
     // Initialize auth state on client load
     const { init } = useAuth();
     init();

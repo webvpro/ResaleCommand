@@ -1,4 +1,3 @@
-
 import { Client, Databases } from 'node-appwrite';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
@@ -19,22 +18,26 @@ const databases = new Databases(client);
 const DB_ID = process.env.PUBLIC_APPWRITE_DB_ID;
 const COL_ID = process.env.PUBLIC_APPWRITE_COLLECTION_ID;
 
-async function inspect() {
-    console.log(`🔍 Inspecting Collection: ${COL_ID} in DB: ${DB_ID}`);
-
+async function doMigration() {
+    console.log(`Adding keywords attribute to db: ${DB_ID}, col: ${COL_ID}`);
     try {
-        const collection = await databases.getCollection(DB_ID, COL_ID);
-        console.log(`\n📄 Collection Name: ${collection.name}`);
-        console.log(`✅ Attributes (Columns):`);
-        
-        const attributes = collection.attributes;
-        attributes.forEach(attr => {
-            console.log(` - ${attr.key} (${attr.type}) ${attr.required ? '[REQUIRED]' : ''}`);
-        });
-
+        await databases.createStringAttribute(
+            DB_ID,
+            COL_ID,
+            'keywords',
+            128,
+            false,
+            undefined,
+            true // isArray = true
+        );
+        console.log('✅ Keywords array attribute created successfully!');
     } catch (e) {
-        console.error("❌ Failed to fetch schema:", e.message);
+        if (e.message.includes('already exists')) {
+            console.log('✅ Keywords array attribute already exists!');
+        } else {
+            console.error('❌ Failed to create keywords attribute:', e.message);
+        }
     }
 }
 
-inspect();
+doMigration();

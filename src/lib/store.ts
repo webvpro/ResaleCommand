@@ -1,6 +1,7 @@
 import { map } from 'nanostores';
 import type { Models } from 'appwrite';
 import { auth } from './auth';
+import { isAlphaMode } from '../stores/env';
 
 export interface AuthStoreState {
   user: Models.User<Models.Preferences> | null;
@@ -63,6 +64,8 @@ export async function initAuth() {
           currentTeam: active,
           loading: false
         });
+        
+        isAlphaMode.set(currentUser.labels?.includes("alpha") || false);
         
         // Dispatch
         if (active) {

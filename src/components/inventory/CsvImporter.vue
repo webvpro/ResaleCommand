@@ -196,6 +196,11 @@ import { saveItemToInventory } from '../../lib/inventory';
 import { databases, ID } from '../../lib/appwrite';
 import { addToast, updateToast, removeToast } from '../../stores/toast';
 import Papa from 'papaparse';
+import { isAlphaMode } from '../../stores/env';
+
+const getCollectionId = () => isAlphaMode.get() 
+    ? (import.meta.env.PUBLIC_APPWRITE_ALPHA_COLLECTION_ID || 'alpha_items') 
+    : (import.meta.env.PUBLIC_APPWRITE_COLLECTION_ID || 'items');
 
 const emit = defineEmits(['close', 'imported']);
 
@@ -615,31 +620,40 @@ async function importSelected() {
                         try {
                             const res = await fetch('/api/upload-remote-image', {
                                 method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ url: item.imageUrl })
                             });
                             if (res.ok) {
                                 const data = await res.json();
                                 finalImageId = data.fileId;
                             } else {
-                                notes += `\n\n[EXTERNAL_IMAGE: ${item.imageUrl}]`;
+                                const errorText = await res.text();
+                                notes += `\n\n[EXTERNAL_IMAGE: ${item.imageUrl}] (Error: ${errorText})`;
+                                addToast({ type: 'warning', message: `Image failed for ${item.title}: ${errorText.substring(0,50)}`, duration: 6000 });
                             }
-                        } catch (imgErr) {
+                        } catch (imgErr: any) {
                             console.error('[Import] Image Upload Fail:', imgErr);
-                            notes += `\n\n[EXTERNAL_IMAGE: ${item.imageUrl}]`;
+                            notes += `\n\n[EXTERNAL_IMAGE: ${item.imageUrl}] (Crash: ${imgErr.message})`;
+                            addToast({ type: 'error', message: `Image crash for ${item.title}: ${imgErr.message}`, duration: 6000 });
                         }
                     }
 
                     // 2. CHECK FOR DUPLICATE & UPDATE
                     try {
-                        const existing = await retryOperation(() => databases.listDocuments(DB, 'items', [
+                        const existing = await retryOperation(() => databases.listDocuments(DB, getCollectionId(), [
                             Query.equal('title', item.title),
-                            Query.equal('purchaseLocation', 'ShopGoodwill'),
-                            Query.limit(1)
+                            Query.limit(50) // Search broadly for this title
                         ]));
                         
-                        if (existing.total > 0) {
+                        // Check memory to see if we have a match
+                        const match = existing.documents.find(doc => 
+                            doc.identity === item.itemId || 
+                            doc.purchaseLocation?.includes('ShopGoodwill')
+                        );
+                        
+                        if (match) {
                             // ITEM EXISTS: Update it!
-                            const doc = existing.documents[0];
+                            const doc = match;
                             console.log(`[Import] Updating existing item: ${item.title}`);
                             
                             // Merge Notes
@@ -653,10 +667,14 @@ async function importSelected() {
                             }
                             
                             // Only update if something changed or we are enriching
-                            await retryOperation(() => databases.updateDocument(DB, 'items', doc.$id, {
-                                paidPrice: item.totalCost, 
-                                conditionNotes: newNotes,
-                            }));
+                            const updateData: any = {
+                                cost: item.totalCost, 
+                                conditionNotes: newNotes
+                            };
+                            if (finalImageId) {
+                                updateData.imageId = finalImageId;
+                            }
+                            await retryOperation(() => databases.updateDocument(DB, getCollectionId(), doc.$id, updateData));
                             
                             updated++;
                             item.importStatus = 'updated';
@@ -667,19 +685,22 @@ async function importSelected() {
                     }
 
                     // 3. CREATE NEW ITEM
-                    const teamId = user.prefs?.teamId || null;
+                    const teamId = localStorage.getItem('activeTeamId') || user.prefs?.teamId || null;
                     
                     if (finalImageId) {
                         notes += `\n\n[IMAGE_ID: ${finalImageId}]`;
                     }
 
                     // Use saveItemToInventory for schema safety
-                    const extraData = {
-                         paidPrice: item.totalCost,
+                    const extraData: any = {
+                         cost: item.totalCost,
                          resalePrice: item.estimatedResale ? item.estimatedResale.toString() : undefined,
-                         status: 'acquired' as const,
+                         status: 'received' as const,
                          purchaseLocation: item.sourceLink ? item.sourceLink : 'ShopGoodwill'
                     };
+                    if (finalImageId) {
+                        extraData.imageId = finalImageId;
+                    }
                     
                     // But we will import it at the top component level.
                     

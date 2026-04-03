@@ -1,0 +1,127 @@
+---
+// Global Markdown Viewer Modal
+---
+
+<style is:global>
+  @media print {
+    body * {
+      visibility: hidden;
+    }
+    #md-modal-content,
+    #md-modal-content * {
+      visibility: visible;
+    }
+    #md-modal-content {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: auto;
+      overflow: visible !important;
+      padding: 0;
+      border: none;
+      box-shadow: none;
+      background: white;
+      color: black;
+    }
+    /* Hide the scrollbar in print */
+    .modal-box {
+      overflow: visible !important;
+    }
+    /* Hide buttons and title */
+    .modal-action,
+    #md-modal-title,
+    .modal-box form {
+      display: none !important;
+    }
+  }
+</style>
+
+<dialog id="global-md-modal" class="modal">
+  <div class="modal-box w-11/12 max-w-4xl h-[80vh] flex flex-col p-6">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="font-bold text-lg" id="md-modal-title">Markdown Document</h3>
+      <form method="dialog">
+        <button class="btn btn-sm btn-circle btn-ghost">✕</button>
+      </form>
+    </div>
+
+    <div
+      id="md-modal-content"
+      class="prose prose-sm max-w-none flex-1 overflow-y-auto bg-base-100 p-4 rounded-lg border border-base-200 shadow-inner">
+      <!-- Content injected via JS -->
+    </div>
+
+    <div class="modal-action mt-4">
+      <form method="dialog" class="w-full flex justify-end gap-2">
+        <button
+          id="md-modal-print-btn"
+          type="button"
+          class="btn btn-outline btn-secondary">🖨️ Print Report</button
+        >
+        <button id="md-modal-copy-btn" type="button" class="btn btn-outline"
+          >Copy Raw text</button
+        >
+        <button class="btn btn-primary">Close</button>
+      </form>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>
+
+<script>
+  import { marked } from "marked";
+
+  let currentRawText = "";
+
+  document.addEventListener("show-md-modal", (e: any) => {
+    const { text, title } = e.detail;
+    currentRawText = text || "";
+
+    const modal = document.getElementById(
+      "global-md-modal",
+    ) as HTMLDialogElement;
+    const contentDiv = document.getElementById("md-modal-content");
+    const titleEl = document.getElementById("md-modal-title");
+
+    if (titleEl && title) {
+      titleEl.textContent = title;
+    }
+
+    if (contentDiv) {
+      // Render the markdown to HTML
+      contentDiv.innerHTML = marked(currentRawText);
+    }
+
+    if (modal) {
+      modal.showModal();
+    }
+  });
+
+  // Setup Copy Button
+  const copyBtn = document.getElementById("md-modal-copy-btn");
+  if (copyBtn) {
+    copyBtn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(currentRawText);
+        const originalText = copyBtn.textContent;
+        copyBtn.textContent = "Copied!";
+        setTimeout(() => {
+          copyBtn.textContent = originalText;
+        }, 2000);
+      } catch (err) {
+        console.error("Failed to copy text: ", err);
+      }
+    });
+  }
+
+  // Setup Print Button
+  const printBtn = document.getElementById("md-modal-print-btn");
+  if (printBtn) {
+    printBtn.addEventListener("click", () => {
+      window.print();
+    });
+  }
+</script>

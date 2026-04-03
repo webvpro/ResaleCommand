@@ -13,7 +13,23 @@ export const auth = {
     try {
       await account.createEmailPasswordSession(email, password);
       return await this.getCurrentUser();
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.message?.includes('session is active')) {
+         console.log('Session already active. Attempting to get current user.');
+         const user = await this.getCurrentUser();
+         if (user) return user;
+         
+         // If we can't get the user but a session is active, delete it and retry
+         console.log('Deleting stuck session and retrying...');
+         try {
+             await account.deleteSession('current');
+             await account.createEmailPasswordSession(email, password);
+             return await this.getCurrentUser();
+         } catch (retryError) {
+             console.error('Login retry error:', retryError);
+             throw retryError;
+         }
+      }
       console.error('Login error:', error);
       throw error;
     }
@@ -51,7 +67,13 @@ export const auth = {
   async isPartner(user: Models.User<Models.Preferences> | null): Promise<boolean> {
     if (!user) return false;
     // Check for "partner" label
-    return user.labels.includes('partner');
+    return user.labels?.includes('partner') || false;
+  },
+
+  async isAlpha(user: Models.User<Models.Preferences> | null): Promise<boolean> {
+    if (!user) return false;
+    // Check for "alpha" label
+    return user.labels?.includes('alpha') || false;
   },
 
   async getTeams() {

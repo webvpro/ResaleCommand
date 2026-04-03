@@ -1,126 +1,88 @@
+export const prerender = false;
 
-import type { APIRoute } from 'astro';
 import { Client, Storage, ID } from 'node-appwrite';
 import { InputFile } from 'node-appwrite/file';
-// import { InputFile } from 'node-appwrite/file'; // Try this import if needed, but InputFile from main package might work on server runtime in some setups?
-// Actually, let's use buffer upload which is robust.
+import type { APIRoute } from 'astro';
 
 export const POST: APIRoute = async ({ request }) => {
     try {
         const body = await request.json();
-        const { imageUrl, filename } = body;
+        const url = body.url;
 
-        if (!imageUrl) {
-            return new Response(JSON.stringify({ error: 'Missing imageUrl' }), { status: 400 });
+        if (!url) {
+            return new Response(JSON.stringify({ error: "Missing url" }), { status: 400 });
         }
 
-        console.log(`[UploadRemote] Processing: ${imageUrl}`);
+        // Sanitize the URL (e.g. replace invalid backslashes from ShopGoodwill databases)
+        const cleanUrl = url.replace(/\\/g, '/').trim();
 
-        // 1. Download the Image (Server-Side)
-        const imgRes = await fetch(imageUrl, {
-            redirect: 'follow',
+        // 1. Download image from external URL
+        const imgRes = await fetch(cleanUrl, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0'
+                // ShopGoodwill block standard Node fetch user-agents, so we spoof a standard browser
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
             }
         });
 
         if (!imgRes.ok) {
-            throw new Error(`Failed to fetch remote image: ${imgRes.status} ${imgRes.statusText}`);
+            return new Response(JSON.stringify({ error: `Image fetch failed: ${imgRes.statusText}` }), { status: imgRes.status });
         }
 
         const arrayBuffer = await imgRes.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer); // Convert ArrayBuffer to Buffer
+        const buffer = Buffer.from(arrayBuffer);
         
-        if (buffer.length === 0) {
-             throw new Error("Remote image is empty (0 bytes)");
+        let contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+        
+        // Anti-hotlink check (ShopGoodwill sometimes 200s an HTML login block page instead of the image)
+        if (contentType.includes('text/html')) {
+             return new Response(JSON.stringify({ error: "Remote server blocked direct image download (returned tracking HTML payload)" }), { status: 403 });
         }
 
-        // Determine content-type
-        const contentType = imgRes.headers.get('content-type') || 'application/octet-stream';
-        console.log(`[UploadRemote] Downloaded ${buffer.length} bytes (${contentType})`);
+        let ext = contentType.split('/')[1] || '';
+        if (ext === 'jpeg') ext = 'jpg';
+        if (ext === 'svg+xml') ext = 'svg';
 
-        // 2. Upload to Appwrite (Server-Side)
-        const client = new Client();
-        const endpoint = import.meta.env.PUBLIC_APPWRITE_ENDPOINT;
-        const project = import.meta.env.PUBLIC_APPWRITE_PROJECT_ID;
-        const key = import.meta.env.APPWRITE_API_KEY;
-        const bucketId = import.meta.env.PUBLIC_APPWRITE_BUCKET_ID || 'item_images';
+        const validExts = ['jpg', 'png', 'gif', 'webp', 'avif', 'svg'];
+        if (!validExts.includes(ext)) {
+             ext = 'jpg'; // Fallback to safe known type if server gave weird MIME
+        }
+        
+        const filename = `remote_import_${Date.now()}.${ext}`;
 
-        if (!key) throw new Error("Missing Server API Key");
+        // Create the InputFile wrapper required by Appwrite
+        const fileUpload = InputFile.fromBuffer(buffer, filename);
 
-        client.setEndpoint(endpoint).setProject(project).setKey(key);
+        // 2. Setup Appwrite Admin Client
+        if (!import.meta.env.APPWRITE_API_KEY) {
+            throw new Error("Missing APPWRITE_API_KEY for Server-side upload.");
+        }
+
+        const client = new Client()
+            .setEndpoint(import.meta.env.PUBLIC_APPWRITE_ENDPOINT)
+            .setProject(import.meta.env.PUBLIC_APPWRITE_PROJECT_ID)
+            .setKey(import.meta.env.APPWRITE_API_KEY);
+
         const storage = new Storage(client);
+        const BUCKET_ID = import.meta.env.PUBLIC_APPWRITE_BUCKET_ID || 'item_images';
 
-        // Robust Filename Logic
-        let finalName = filename;
-        const mimeToExt: Record<string, string> = {
-            'image/jpeg': 'jpg',
-            'image/jpg': 'jpg',
-            'image/png': 'png',
-            'image/webp': 'webp',
-            'image/gif': 'gif',
-            'application/json': 'json',
-            'text/plain': 'txt'
-        };
-
-        let ext = mimeToExt[contentType];
-
-        // Fallback or Clean up
-        if (!ext) {
-             const parts = contentType.split('/');
-             if (parts.length > 1) {
-                 ext = parts[1].split(';')[0]; // Handle 'plain; charset=utf-8'
-             }
-        }
-        
-        // Handle generic/unknown types
-        if (!ext || ext === 'octet-stream' || ext === 'unknown') {
-             ext = 'jpg'; // Default to jpg if unknown
-        }
-
-        if (!finalName) {
-             finalName = `upload-${Date.now()}.${ext}`;
-        } else if (!finalName.includes('.')) {
-             // Append extension if missing (Appwrite requires this validation)
-             finalName = `${finalName}.${ext}`;
-        }
-        
-        console.log(`[UploadRemote] Final Filename: ${finalName} (Type: ${contentType})`);
-        
-        // Use InputFile from buffer
-        const filePayload = InputFile.fromBuffer(buffer, finalName);
-        
-        const file = await storage.createFile(
-            bucketId,
+        // 3. Upload to Appwrite Bucket
+        const upload = await storage.createFile(
+            BUCKET_ID,
             ID.unique(),
-            filePayload
+            fileUpload
         );
-
-        console.log(`[UploadRemote] Success! File ID: ${file.$id}`);
-
-        let finalMime = contentType;
-        if (!finalMime || finalMime === 'application/octet-stream' || !finalMime.startsWith('image/')) {
-             finalMime = 'image/jpeg';
-        }
-        
-        // Return Base64 for AI processing
-        const base64 = `data:${finalMime};base64,${buffer.toString('base64')}`;
 
         return new Response(JSON.stringify({
             success: true,
-            fileId: file.$id,
-            mimeType: file.mimeType,
-            base64: base64
+            fileId: upload.$id
         }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' }
         });
 
     } catch (error: any) {
-        console.error('[UploadRemote] Error:', error);
-        return new Response(JSON.stringify({ 
-            success: false, 
-            error: error.message 
-        }), { status: 500 });
+        console.error("Remote Image Upload Error:", error);
+        return new Response(JSON.stringify({ error: error.message }), { status: 500 });
     }
 };

@@ -9,7 +9,7 @@
                     📍 {{ location }} ({{ groupItems.length }})
                 </div>
             
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-2">
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-1 pt-2">
                     <div v-for="item in groupItems" :key="item.$id" class="card bg-base-100 shadow-sm border-2 border-primary/20 hover:border-primary transition-colors">
                         <div class="card-body p-4">
                             <div class="flex gap-4">
@@ -80,12 +80,8 @@
                         <div class="join">
                             <select v-model="bulkStatusTarget" class="select select-sm select-bordered join-item bg-base-100 text-base-content min-w-[120px]">
                                 <option value="" disabled selected>Change Status...</option>
-                                <option value="scouted">Scouted</option>
                                 <option value="acquired">Acquired</option>
-                                <option value="processing">Processing</option>
-                                <option value="need_to_list">Need to List</option>
-                                <option value="listed">Listed</option>
-                                <option value="at_location">At Location</option>
+                                <option value="placed">Placed</option>
                                 <option value="sold">Sold</option>
                             </select>
                             <button class="btn btn-sm btn-primary join-item" @click="applyBulkStatus" :disabled="!bulkStatusTarget || processingBulk">
@@ -103,63 +99,31 @@
                     <span class="text-xs font-bold opacity-70">Select All in View</span>
                 </div>
 
-                <div class="grid grid-cols-2 min-[450px]:grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-3">
-                    <div v-for="item in filteredInventory" :key="item.$id" class="card bg-base-100 shadow-sm border border-base-200 hover:border-primary transition-colors group text-xs relative" :class="{'ring-2 ring-primary': selectedItems.includes(item.$id)}">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-1">
+                    <ItemCard 
+                        v-for="item in filteredInventory" 
+                        :key="item.$id" 
+                        :item="item"
+                        :compact="true"
+                        @click-card="openPreview(item)"
+                        :class="{'ring-2 ring-primary': selectedItems.includes(item.$id)}">
                         
-                        <!-- Item Checkbox -->
-                        <div class="absolute top-1 left-1 z-10">
-                            <input type="checkbox" :value="item.$id" v-model="selectedItems" class="checkbox checkbox-sm checkbox-primary bg-base-100/80 backdrop-blur shadow-sm z-20" />
-                        </div>
-                    <figure class="aspect-square bg-base-200 relative overflow-hidden group-hover:opacity-90 transition-opacity">
-                        <img v-if="getImageUrl(item)" :src="getImageUrl(item)" :alt="item.title" class="w-full h-full object-cover" />
-                        <div v-else class="flex items-center justify-center w-full h-full text-xl grayscale opacity-50">📦</div>
-                        
-                        <div class="absolute top-0 right-0 p-1 badge rounded-none rounded-bl-lg badge-xs gap-1 font-bold" 
-                            :class="{
-                                'badge-warning': item.status === 'scouted',
-                                'badge-info': item.status === 'acquired',
-                                'badge-secondary': item.status === 'processing',
-                                'badge-primary': item.status === 'need_to_list',
-                                'badge-success': item.status === 'listed',
-                                'badge-accent': item.status === 'at_location',
-                                'badge-neutral': item.status === 'sold'
-                            }">
-                            {{ item.status ? item.status.replace(/_/g, ' ') : 'Scouted' }}
-                        </div>
-                    </figure>
-                    <div class="card-body p-2 gap-0.5">
-                        <h2 class="font-bold text-[11px] leading-tight line-clamp-2 h-[2.2em]">
-                            {{ item.title || item.itemName || "Untitled" }}
-                        </h2>
-                        
-                        <div v-if="item.binLocation" class="text-[9px] opacity-60 truncate">📍 {{ item.binLocation }}</div>
-                        
-                        <div class="flex justify-between items-end mt-1">
-                            <div class="flex flex-col">
-                                <span class="text-[9px] uppercase opacity-50 font-bold">Est Range</span>
-                                <span class="text-[10px] font-bold text-success font-mono">
-                                    {{ formatCurrency(item.estLow || getNoteValue(item.conditionNotes, 'Est. Low', true)) }} - 
-                                    {{ formatCurrency(item.estHigh || getNoteValue(item.conditionNotes, 'Est. High', true)) }}
-                                </span>
+                        <template #absolute-top-left>
+                            <div class="absolute top-1 left-1 z-20">
+                                <input type="checkbox" :value="item.$id" v-model="selectedItems" class="checkbox checkbox-sm checkbox-primary bg-base-100/80 backdrop-blur shadow-sm cursor-pointer" @click.stop />
                             </div>
-                            <div class="flex flex-col text-right">
-                                <span class="text-[9px] uppercase opacity-50 font-bold">Paid</span>
-                                <span class="text-[10px] font-mono opacity-80">
-                                    {{ formatCurrency(item.paidPrice || item.purchasePrice || getNoteValue(item.conditionNotes, 'Paid', true)) }}
-                                </span>
-                            </div>
-                        </div>
+                        </template>
 
-                        <div class="flex justify-between items-center mt-1 pt-1 border-t border-base-200">
-                            <button class="btn btn-sm btn-square btn-ghost" @click="openEdit(item)">✏️</button> 
-                            <button class="btn btn-xs btn-ghost text-error btn-square h-6 min-h-0 w-6" @click="confirmDelete(item.$id)" :disabled="processingId === item.$id">
-                                <span v-if="processingId === item.$id" class="loading loading-spinner loading-xs"></span>
-                                <span v-else>🗑️</span>
-                            </button>
-                        </div>
-                    </div>
-                </div> <!-- End item card -->
-            </div>
+                        <template #actions>
+                            <div class="flex justify-end items-center mt-1 pt-1 border-t border-base-200">
+                                <button class="btn btn-xs btn-ghost text-error btn-square h-6 min-h-0 w-6" @click.stop="confirmDelete(item.$id)" :disabled="processingId === item.$id">
+                                    <span v-if="processingId === item.$id" class="loading loading-spinner loading-xs"></span>
+                                    <span v-else>🗑️</span>
+                                </button>
+                            </div>
+                        </template>
+                    </ItemCard>
+            </div> <!-- End grid -->
             </div> <!-- End v-else -->
 
             <!-- ALL ITEMS LOADED (Pagination Removed) -->
@@ -186,14 +150,20 @@
                             <label class="label"><span class="label-text font-bold text-[10px] uppercase opacity-70">Status</span></label>
                             <select v-model="filterStatus" class="select select-bordered select-sm w-full text-xs shadow-sm bg-base-100">
                                 <option value="all">All Items</option>
-                                <option value="scouted">Scouted</option>
                                 <option value="acquired">Acquired</option>
-                                <option value="processing">Processing</option>
-                                <option value="need_to_list">Need to List</option>
-                                <option value="listed">Listed</option>
-                                <option value="at_location">At Location</option>
+                                <option value="placed">Placed</option>
                                 <option value="sold">Sold</option>
                             </select>
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pt-0 -mb-2"><span class="label-text font-bold text-[10px] uppercase opacity-70">Keywords</span></label>
+                            <TagInput 
+                                v-model="filterKeywords" 
+                                type="keyword" 
+                                placeholder="Any..." 
+                                badgeClass="badge-secondary" 
+                            />
                         </div>
                     </div>
                 </div>
@@ -244,9 +214,11 @@
 
                 <div v-else class="text-center py-6">
                     <h3 class="font-bold text-lg text-success mb-4">✅ Purchase Confirmed!</h3>
-                    <p class="text-xs opacity-70 mb-4">Item moved to "Need to List".</p>
+                    <p class="text-xs opacity-70 mb-4">Item moved to "Acquired".</p>
                     <div class="divider">AI Description</div>
-                    <textarea class="textarea textarea-bordered w-full h-48 font-mono text-xs" readonly :value="generatedDescription || 'Generating...'" ></textarea>
+                    <div class="p-4 bg-base-200 rounded-lg text-sm text-center">
+                        <p>{{ generatedDescription }}</p>
+                    </div>
                     <div class="modal-action">
                          <button class="btn btn-primary w-full" @click="closeCheckout">Done</button>
                     </div>
@@ -257,286 +229,14 @@
         <!-- ----------------------------------------------------------- -->
         <!-- EDIT DRAWER -->
         <!-- ----------------------------------------------------------- -->
-        <div v-if="isEditDrawerOpen" class="relative z-50">
-            <div class="fixed inset-0 bg-black/50 transition-opacity" @click="closeEditDrawer"></div>
-            <div class="fixed inset-y-0 right-0 w-full md:w-[480px] bg-base-100 shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out">
-                <!-- Header -->
-                <div class="p-4 border-b border-base-200 flex justify-between items-center bg-base-100 sticky top-0 z-10">
-                    <h3 class="font-bold text-lg">{{ activeItem ? 'Edit Item' : 'Add New Item' }}</h3>
-                    <button class="btn btn-sm btn-circle btn-ghost" @click="closeEditDrawer">✕</button>
-                </div>
+        <ItemDrawer v-if="isEditDrawerOpen" :item="activeItem" @isNew="!activeItem" @close="closeEditDrawer" @save="saveEdit" />
 
-                <!-- Content -->
-                <div class="flex-1 overflow-y-auto p-6 space-y-6">
-                     <div class="form-control w-full">
-                        <label class="label"><span class="label-text font-bold">Item Title</span></label>
-                        <input type="text" v-model="editForm.title" class="input input-bordered w-full font-bold" />
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                         <div class="form-control w-full">
-                            <label class="label"><span class="label-text">Paid Price</span></label>
-                            <label class="input input-bordered flex items-center gap-2">
-                                <span class="opacity-50">$</span>
-                                <input type="number" step="0.01" v-model="editForm.paidPrice" class="grow" placeholder="0.00" />
-                            </label>
-                        </div>
-                         <div class="form-control w-full">
-                            <label class="label"><span class="label-text">List Price</span></label>
-                             <label class="input input-bordered flex items-center gap-2">
-                                <span class="opacity-50">$</span>
-                                <input type="number" step="0.01" v-model="editForm.resalePrice" class="grow" placeholder="0.00" />
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- AI Estimates Row -->
-                    <div class="grid grid-cols-2 gap-4">
-                         <div class="form-control w-full">
-                            <label class="label"><span class="label-text text-xs uppercase font-bold text-success">Est. Low</span></label>
-                            <label class="input input-bordered input-sm flex items-center gap-2">
-                                <span class="opacity-50">$</span>
-                                <input type="number" step="0.01" v-model="editForm.estLow" class="grow font-mono" placeholder="0.00" />
-                            </label>
-                        </div>
-                         <div class="form-control w-full">
-                            <label class="label"><span class="label-text text-xs uppercase font-bold text-success">Est. High</span></label>
-                             <label class="input input-bordered input-sm flex items-center gap-2">
-                                <span class="opacity-50">$</span>
-                                <input type="number" step="0.01" v-model="editForm.estHigh" class="grow font-mono" placeholder="0.00" />
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                         <div class="form-control w-full">
-                            <label class="label"><span class="label-text">Bin Location</span></label>
-                            <input type="text" v-model="editForm.binLocation" class="input input-bordered w-full" />
-                        </div>
-                        
-                        <!-- Order ID (Editable) -->
-                        <div class="form-control w-full">
-                            <label class="label"><span class="label-text">Order #</span></label>
-                             <div class="join w-full">
-                                <input type="text" v-model="editForm.orderId" class="input input-bordered join-item w-full" placeholder="Order ID" />
-                                <a v-if="editForm.orderId && editForm.orderId.length > 5" :href="`https://shopgoodwill.com/shopgoodwill/order/${editForm.orderId}`" target="_blank" class="btn btn-neutral join-item">🔗</a>
-                             </div>
-                        </div>
-                    </div>
-
-                    <!-- Item Link (Source) & AI Analysis -->
-                    <div class="form-control w-full">
-                        <label class="label"><span class="label-text">Item Link (for Image Fetch)</span></label>
-                        <div class="join w-full">
-                            <input type="text" v-model="editForm.purchaseLocation" class="input input-bordered join-item w-full font-mono text-sm" placeholder="https://shopgoodwill.com/item/..." />
-                            <button class="btn btn-primary join-item" @click="fetchImagesFromUrl" :disabled="!editForm.purchaseLocation">
-                                Fetch 🖼️
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- Scout Result Display (Scout View Mirror) -->
-                     <div v-if="scoutResult" class="bg-base-200 rounded-xl p-4 border border-base-300 shadow-inner mt-4">
-                        <div class="flex justify-between items-start mb-2">
-                             <h4 class="font-bold text-sm uppercase opacity-70">Scout Report</h4>
-                             <button class="btn btn-xs btn-ghost" @click="scoutResult = null">✕</button>
-                        </div>
-                        
-                        <!-- New Multi-Item Layout -->
-                        <div v-if="Array.isArray(scoutResult)" class="space-y-4">
-                            <div class="alert alert-info py-2 px-3 text-xs shadow-sm">
-                                <span>📦 AI Identified {{ scoutResult.length }} Items in this Lot</span>
-                            </div>
-                            
-                            <div v-for="(item, idx) in scoutResult" :key="idx" class="collapse collapse-arrow bg-base-100 border border-base-200 rounded-box">
-                                <input type="checkbox" /> 
-                                <div class="collapse-title text-sm font-medium pr-8 flex justify-between items-center py-2 min-h-0">
-                                    <span class="truncate">{{ idx + 1 }}. {{ item.title || item.identity }}</span>
-                                    <span class="badge badge-sm badge-ghost ml-2 whitespace-nowrap" v-if="item.price_breakdown?.fair">
-                                        {{ formatPriceOnly(item.price_breakdown.fair) }}
-                                    </span>
-                                </div>
-                                <div class="collapse-content text-xs space-y-2">
-                                     <div v-if="item.red_flags?.length" class="text-warning">🚩 {{ item.red_flags.join(', ') }}</div>
-                                     <div v-if="item.condition_notes">📝 {{ item.condition_notes }}</div>
-                                     <div class="grid grid-cols-2 gap-2 mt-1 opacity-70">
-                                         <div>Mint: {{ formatPriceRange(item.price_breakdown?.mint) }}</div>
-                                         <div>Poor: {{ formatPriceRange(item.price_breakdown?.poor) }}</div>
-                                     </div>
-                                </div>
-                            </div>
-
-                            <div class="flex justify-between items-center pt-2 border-t border-base-300 font-bold">
-                                <span>Total Estimate (Fair):</span>
-                                <span class="text-success text-lg" v-if="scoutTotalRange">
-                                     {{ scoutTotalRange.formatted }}
-                                </span>
-                            </div>
-                        </div>
-
-                        <!-- Old Single Item Layout (Fallback) -->
-                        <div v-else>
-                            <!-- AI Found Image Thumbnail -->
-                            <div v-if="scoutResult.image" class="mb-3 flex justify-center">
-                                <img :src="`/api/proxy-image?url=${encodeURIComponent(scoutResult.image)}`" class="h-32 object-contain rounded-lg shadow-md border border-base-300" alt="AI Found Item" />
-                            </div>
-
-                            <!-- Red Flags -->
-                            <div v-if="scoutResult.red_flags && scoutResult.red_flags.length > 0" class="alert alert-warning shadow-sm mb-2 p-2 text-xs">
-                                <span class="font-bold">🚩 Flags:</span> {{ scoutResult.red_flags.join(', ') }}
-                            </div>
-                            
-                            <!-- Valuation -->
-                            <div v-if="scoutResult.price_breakdown" class="grid grid-cols-3 gap-2 mb-3">
-                                <div class="flex flex-col items-center bg-base-100 p-2 rounded border border-base-200">
-                                    <span class="text-[10px] uppercase font-bold text-success">Mint</span>
-                                    <span class="font-mono font-bold">{{ formatPriceRange(scoutResult.price_breakdown.mint) }}</span>
-                                </div>
-                                <div class="flex flex-col items-center bg-base-100 p-2 rounded border border-primary">
-                                    <span class="text-[10px] uppercase font-bold text-primary">Fair</span>
-                                    <span class="font-mono font-bold">{{ formatPriceRange(scoutResult.price_breakdown.fair) }}</span>
-                                </div>
-                                <div class="flex flex-col items-center bg-base-100 p-2 rounded border border-base-200">
-                                    <span class="text-[10px] uppercase font-bold text-error">Poor</span>
-                                    <span class="font-mono font-bold">{{ formatPriceRange(scoutResult.price_breakdown.poor) }}</span>
-                                </div>
-                            </div>
-
-                            <!-- Comparables -->
-                            <div v-if="scoutResult.comparables && scoutResult.comparables.length > 0" class="space-y-1">
-                                <div class="text-[10px] font-bold uppercase opacity-50">Comps</div>
-                                <div v-for="(comp, cIdx) in scoutResult.comparables" :key="cIdx" class="flex justify-between items-center text-xs bg-base-100 p-1.5 rounded border border-base-200">
-                                    <span class="truncate pr-2">{{ comp.name }}</span>
-                                    <span class="font-mono font-bold">{{ comp.price }}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- AI Scout Button (Photo OR Link) -->
-                    <div v-if="editMainPhotoPreview || editForm.purchaseLocation" class="form-control w-full mt-4">
-                         <button class="btn btn-secondary w-full gap-2 shadow-sm" @click="analyzeExistingItem" :disabled="analyzing">
-                            <span v-if="analyzing" class="loading loading-spinner loading-xs"></span>
-                            <span v-else>
-                                <span v-if="scoutResult">🔄 Update Scout Report</span>
-                                <span v-else>✨ Analyze {{ editMainPhotoPreview ? 'Main Photo' : 'Item Link' }} with AI</span>
-                            </span>
-                        </button>
-                    </div>
-
-                    <!-- Fetched Images Preview -->
-                    <div v-if="fetchedImages.length > 0" class="border border-base-300 rounded-lg p-4 bg-base-200">
-                        <label class="label pt-0"><span class="label-text font-bold">Detected Images (Click to Add)</span></label>
-                        <div class="flex gap-2 overflow-x-auto pb-2 min-h-[5rem]">
-                            <div v-for="(imgItem, idx) in fetchedImages" :key="idx" 
-                                 class="relative w-20 h-20 shrink-0 group cursor-pointer hover:ring-2 ring-primary rounded-lg overflow-hidden transition-all" 
-                                 @click="selectFetchedImage(imgItem.url || imgItem)">
-                                <img :src="proxify(imgItem.url || imgItem)" class="w-full h-full object-cover" />
-                                <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-bold transition-opacity">
-                                    Add
-                                </div>
-                            </div>
-                        </div>
-                        <div class="flex justify-end mt-1">
-                             <button class="btn btn-xs btn-ghost text-error" @click="fetchedImages = []">Clear</button>
-                        </div>
-                    </div>
-
-                    <div class="form-control w-full">
-                        <label class="label"><span class="label-text">Status</span></label>
-                        <select v-model="editForm.status" class="select select-bordered">
-                            <option value="scouted">Scouted</option>
-                            <option value="acquired">Acquired</option>
-                            <option value="processing">Processing</option>
-                            <option value="need_to_list">Need to List</option>
-                            <option value="listed">Listed</option>
-                            <option value="at_location">At Location</option>
-                            <option value="sold">Sold</option>
-                        </select>
-                    </div>
-
-                    <!-- PHOTOS -->
-                    <div class="divider">Photos</div>
-                    
-                    <!-- Main Photo Field -->
-                    <div class="form-control w-full">
-                        <label class="label"><span class="label-text font-bold">Main Photo</span></label>
-                        <div class="flex gap-4 items-center">
-                            <div class="w-24 h-24 rounded-lg overflow-hidden border border-base-300 bg-base-200 relative shrink-0">
-                                <img v-if="editMainPhotoPreview" :src="proxify(editMainPhotoPreview)" class="w-full h-full object-cover" />
-                                <div v-else class="flex items-center justify-center text-2xl opacity-50 w-full h-full">📦</div>
-                            </div>
-                            <div class="flex flex-col gap-2">
-                                 <input type="file" @change="handleFileSelect($event, 'main')" accept="image/*" class="file-input file-input-sm file-input-bordered w-full max-w-xs" />
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Gallery -->
-                    <div class="form-control w-full">
-                        <label class="label"><span class="label-text font-bold">Gallery</span></label>
-                        
-                         <!-- Gallery Previews (Existing + New) -->
-                        <div class="flex gap-2 overflow-x-auto pb-2 min-h-[5rem]">
-                            <!-- Existing -->
-                            <div v-for="id in editForm.existingGalleryIds" :key="id" class="relative w-16 h-16 shrink-0 group">
-                                <img :src="getAssetUrl(id)" class="w-full h-full object-cover rounded border border-base-300" />
-                                <button @click="removeGalleryItem(id, true)" class="btn btn-xs btn-circle btn-error absolute -top-1 -right-1 w-4 h-4 min-h-0 text-[10px] flex items-center justify-center">✕</button>
-                            </div>
-                            <!-- New -->
-                            <div v-for="(file, idx) in editGalleryBuffer" :key="idx" class="relative w-16 h-16 shrink-0 group">
-                                <img :src="getObjectUrl(file)" class="w-full h-full object-cover rounded border border-base-300" />
-                                <button @click="removeGalleryItem(idx, false)" class="btn btn-xs btn-circle btn-error absolute -top-1 -right-1 w-4 h-4 min-h-0 text-[10px] flex items-center justify-center">✕</button>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-2 mt-2">
-                             <input type="file" ref="galleryInput" multiple accept="image/*" class="hidden" @change="handleFileSelect($event, 'gallery')" />
-                             <button @click="$refs.galleryInput.click()" class="btn btn-outline border-dashed">
-                                📁 Upload Files
-                             </button>
-                             <button @click="startCamera('gallery')" class="btn btn-outline border-dashed">
-                                📸 Camera
-                             </button>
-                        </div>
-                    </div>
-
-                    <!-- Description -->
-                    <div class="divider">Description</div>
-                    <div role="tablist" class="tabs tabs-boxed mb-2">
-                        <a role="tab" class="tab" :class="{ 'tab-active': descTab === 'edit' }" @click="descTab = 'edit'">Edit</a>
-                        <a role="tab" class="tab" :class="{ 'tab-active': descTab === 'preview' }" @click="descTab = 'preview'">Preview</a>
-                    </div>
-
-                    <div v-if="descTab === 'edit'" class="form-control w-full">
-                        <textarea v-model="editForm.description" class="textarea textarea-bordered h-64 font-mono text-xs leading-normal" placeholder="Product description..."></textarea>
-                    </div>
-                    <div v-else class="w-full h-64 overflow-y-auto border border-base-300 rounded-lg p-4 bg-base-100 prose prose-sm" v-html="renderMarkdown(editForm.description)"></div>
-
-                    <div class="h-12"></div>
-                </div>
-
-                <!-- Footer -->
-                <div class="p-4 border-t border-base-200 bg-base-100 flex justify-end gap-2 shrink-0">
-                    <button class="btn btn-ghost" @click="closeEditDrawer">Cancel</button>
-                    <button class="btn btn-primary" @click="saveEdit" :disabled="processing">
-                        <span v-if="processing" class="loading loading-spinner"></span>
-                        Save Changes
-                    </button>
-                </div>
-            </div>
-             <!-- Camera Modal Overlay -->
-             <dialog ref="cameraModal" class="modal">
-                <div class="modal-box p-0 bg-black w-full max-w-2xl h-[500px] flex flex-col">
-                     <video ref="cameraVideoDialog" class="w-full h-full object-cover flex-1" autoplay playsinline></video>
-                     <div class="bg-black/80 p-6 flex justify-center gap-8 items-center shrink-0">
-                         <button @click="stopCamera" class="btn btn-circle btn-ghost text-white bg-white/20">✕</button>
-                         <button @click="capturePhoto(cameraContext)" class="btn btn-circle btn-primary btn-lg border-4 border-white w-20 h-20"></button>
-                         <button @click="flipCamera" class="btn btn-circle btn-ghost text-white bg-white/20">🔄</button>
-                    </div>
-                </div>
-            </dialog>
-        </div>
+        <!-- FULLSCREEN PREVIEW MODAL -->
+        <ItemPreviewModal 
+            :item="previewItem" 
+            @close="previewItem = null" 
+            @edit="openEdit" 
+        />
 
         <!-- Bulk Import Modal -->
         <BulkImport v-if="showImport" @close="showImport = false" @complete="showImport = false" />
@@ -544,12 +244,15 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useInventory } from '../../composables/useInventory';
-import { updateInventoryItem, deleteInventoryItem } from '../../lib/inventory';
-import { marked } from 'marked';
+import { updateInventoryItem, deleteInventoryItem, saveItemToInventory } from '../../lib/inventory';
 import BulkImport from './BulkImport.vue';
 import { useAuth } from '../../composables/useAuth';
+import ItemDrawer from '../common/ItemDrawer.vue';
+import ItemCard from '../common/ItemCard.vue';
+import ItemPreviewModal from './ItemPreviewModal.vue';
+import TagInput from '../common/TagInput.vue';
 
 // Environment Variables
 const ENDPOINT = import.meta.env.PUBLIC_APPWRITE_ENDPOINT;
@@ -559,12 +262,13 @@ const BUCKET = import.meta.env.PUBLIC_APPWRITE_BUCKET_ID;
 // Use Composable
 const { inventoryItems, totalItems, loading, error, fetchInventory, hasMore, loadNextPage } = useInventory();
 const loadMore = loadNextPage; // Alias for template
-const { currentTeam } = useAuth();
+const { currentTeam, loading: authLoading } = useAuth();
 const currentTeamId = computed(() => currentTeam.value?.$id); 
 
 // State for Filters
 const searchQuery = ref('');
 const filterStatus = ref('all');
+const filterKeywords = ref([]);
 
 // Lifecycle
 const cartItems = computed(() => inventoryItems.value.filter(i => i.status === 'scouted'));
@@ -578,13 +282,22 @@ const filteredInventory = computed(() => {
             return false;
         }
 
-        // Filter by Search
+        // Filter by specific Keywords (must have all selected keywords)
+        if (filterKeywords.value.length > 0) {
+            if (!item.keywords || item.keywords.length === 0) return false;
+            const itemKeywordsLower = item.keywords.map(k => k.toLowerCase());
+            const hasAllKeywords = filterKeywords.value.every(kw => itemKeywordsLower.includes(kw.toLowerCase()));
+            if (!hasAllKeywords) return false;
+        }
+
+        // Filter by Search (Free text)
         if (searchQuery.value) {
             const query = searchQuery.value.toLowerCase();
             const titleMatch = (item.title || item.itemName || '').toLowerCase().includes(query);
             const idMatch = (item.identity || item.$id || '').toLowerCase().includes(query);
             const binMatch = (item.binLocation || '').toLowerCase().includes(query);
-            if (!titleMatch && !idMatch && !binMatch) return false;
+            const keywordMatch = Array.isArray(item.keywords) && item.keywords.some(k => k.toLowerCase().includes(query));
+            if (!titleMatch && !idMatch && !binMatch && !keywordMatch) return false;
         }
         
         return true;
@@ -600,64 +313,17 @@ const cartGroups = computed(() => {
     }, {});
 });
 
-// Computed: Dynamic Total Range for Lot
-const scoutTotalRange = computed(() => {
-    if (!scoutResult.value || !Array.isArray(scoutResult.value)) return null;
-    
-    let totalLow = 0;
-    let totalHigh = 0;
-    
-    scoutResult.value.forEach(item => {
-        let raw = item.price_breakdown?.fair || item.price_breakdown?.mint;
-        let low = 0, high = 0;
-        
-        if (typeof raw === 'object') {
-                low = parseFloat((raw.low || raw.min || raw.mint || 0).toString().replace(/,/g, ''));
-                high = parseFloat((raw.high || raw.max || raw.fair || low).toString().replace(/,/g, ''));
-        } else { 
-                const s = String(raw || '0').replace(/[$,]/g, '').trim(); 
-                // Robust regex for hyphens, dashes, 'to', unicode minus
-                const range = s.match(/(\d+(?:\.\d+)?)\s*(?:[-–—−]|to)\s*(\d+(?:\.\d+)?)/i);
-                
-                if (range) {
-                    low = parseFloat(range[1]) || 0;
-                    high = parseFloat(range[2]) || 0;
-                } else {
-                    // Match the FIRST valid number only
-                    const single = s.match(/(\d+(?:\.\d+)?)/);
-                    if(single) { 
-                        low = parseFloat(single[1]) || 0; 
-                        high = low; 
-                    }
-                }
-        }
-        
-        // Sanity Check Logic
-        const mintPrice = parsePrice(item.price_breakdown?.mint);
-        if (mintPrice > 0 && low > mintPrice * 2) {
-            low = mintPrice / 2;
-            high = mintPrice;
-        }
-        if (high < low) high = low;
-
-        totalLow += low;
-        totalHigh += high;
-    });
-    
-    return { 
-        low: totalLow, 
-        high: totalHigh, 
-        formatted: totalLow === totalHigh 
-            ? `$${totalLow.toFixed(2)}` 
-            : `$${totalLow.toFixed(2)} - $${totalHigh.toFixed(2)}`
-    };
-});
 
 // State
 const processingId = ref(null); // deleting/updating ID
 const processing = ref(false); // general loading state
 const processingBulk = ref(false); // bulk action state
-const activeItem = ref(null);
+const activeItem = ref(null); // used for edit drawer
+const previewItem = ref(null); // used for full preview modal
+
+const openPreview = (item) => {
+    previewItem.value = item;
+};
 
 // Bulk Selection State
 const selectedItems = ref([]);
@@ -714,29 +380,26 @@ const generatedDescription = ref('');
 
 // Edit Drawer State
 const isEditDrawerOpen = ref(false);
-const descTab = ref('edit');
-const editForm = ref({
-    title: '', paidPrice: '', resalePrice: '', binLocation: '', purchaseLocation: '', status: 'scouted', description: '', existingGalleryIds: []
-});
-const editMainFile = ref(null);
-const editMainPhotoPreview = ref(null);
-const editGalleryBuffer = ref([]); // Array of File objects
-const scoutResult = ref(null); // Stores the raw AI output for display
 
-// Camera State
+// Camera State (Checkout only)
 const cameraVideo = ref(null);
-const cameraVideoDialog = ref(null);
-const cameraModal = ref(null);
 const isCameraOpen = ref(false);
 const cameraStream = ref(null);
-const cameraFacing = ref('environment');
-const cameraContext = ref('checkout'); // 'checkout' or 'gallery'
 
 // Lifecycle
 onMounted(async () => {
     console.log("InventoryManager Mounted - Version with Image Fetcher");
-    // Determine Team ID if relevant (defaults to user/tenant scope)
-    await fetchInventory(''); 
+    // ONLY fetch if auth is already loaded.
+    if (!authLoading.value) {
+        await fetchInventory(''); 
+    }
+});
+
+// Watch for Auth to finish loading so we know if the user is in Alpha mode
+watch(authLoading, async (newVal) => {
+    if (!newVal) {
+        await fetchInventory(''); 
+    }
 });
 
 // Helpers
@@ -763,7 +426,10 @@ const getImageUrl = (item) => {
          const match = item.conditionNotes.match(/\[MAIN IMAGE ID: ([^\]]+)\]/);
          if (match) id = match[1].split(',')[0].trim();
     }
-    return id ? getAssetUrl(id) : null;
+    
+    if (!id) return null;
+    if (id.startsWith('http')) return proxify(id);
+    return getAssetUrl(id);
 };
 
 const getAssetUrl = (id) => `${ENDPOINT}/storage/buckets/${BUCKET}/files/${id}/view?project=${PROJECT}`;
@@ -896,27 +562,17 @@ const submitCheckout = async () => {
     processing.value = true;
     try {
         await updateInventoryItem(activeItem.value.$id, {
-            status: 'need_to_list',
-            paidPrice: checkoutPrice.value,
+            status: 'received',
+            cost: checkoutPrice.value,
             receiptFile: checkoutReceiptFile.value
         });
         
         // Success UI
         checkoutSuccess.value = true;
-
-        // Trigger AI Gen
-        const res = await fetch('/api/generate-description', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ itemId: activeItem.value.$id })
-        });
-        const data = await res.json();
-        if(data.success && data.description) {
-            generatedDescription.value = data.description;
-            if(data.warning) generatedDescription.value += `\n\n⚠️ ${data.warning}`;
-        } else {
-            generatedDescription.value = "Failed to generate: " + (data.error || "Unknown");
-        }
+        
+        // Removed AI Gen trigger: The user requested generation be deferred until listing
+        generatedDescription.value = "Item correctly transitioned to 'Acquired'. Description generation has been deferred until the item is placed for sale.";
+        
     } catch (e) {
         alert('Checkout failed: ' + e.message);
     } finally {
@@ -928,152 +584,45 @@ const submitCheckout = async () => {
 // EDIT DRAWER LOGIC
 //---------------------------------------------------------
 
-/* ADD NEW ITEM LOGIC */
 const openAdd = () => {
-    activeItem.value = null; // null = Create Mode
-    editForm.value = {
-        title: '', 
-        paidPrice: '', 
-        resalePrice: '', 
-        estLow: '',
-        estHigh: '',
-        binLocation: '', 
-        purchaseLocation: '', 
-        orderId: '',
-        status: 'scouted', 
-        description: '', 
-        existingGalleryIds: []
-    };
-    
-    // Reset buffers
-    editMainFile.value = null;
-    editMainPhotoPreview.value = null;
-    editGalleryBuffer.value = [];
-    fetchedImages.value = [];
-    fetchingImages.value = false;
-    scoutResult.value = null;
-    
+    activeItem.value = null; // Create Mode
     isEditDrawerOpen.value = true;
 };
 
 const openEdit = (item) => {
     activeItem.value = item;
-    editForm.value = {
-        title: item.title,
-        paidPrice: item.paidPrice || item.purchasePrice || getNoteValue(item.conditionNotes, 'Paid', true) || '',
-        resalePrice: item.resalePrice || item.priceFair || getNoteValue(item.conditionNotes, 'Resale', true) || '',
-        estLow: item.estLow || getNoteValue(item.conditionNotes, 'Est. Low', true) || '',
-        estHigh: item.estHigh || getNoteValue(item.conditionNotes, 'Est. High', true) || '',
-        binLocation: item.binLocation || getNoteValue(item.conditionNotes, 'Bin') || '',
-        purchaseLocation: item.purchaseLocation || getNoteValue(item.conditionNotes, 'Location') || '',
-        orderId: item.orderId || getNoteValue(item.conditionNotes, 'Order #') || getNoteValue(item.conditionNotes, 'Imported from Order #') || '',
-        status: item.status || 'scouted',
-        description: item.marketDescription || item.description || '', // Fallback
-        existingGalleryIds: item.galleryImageIds || []
-    };
-    
-    // Main Photo
-    const existingUrl = getImageUrl(item);
-    if (existingUrl) {
-        editMainPhotoPreview.value = existingUrl;
-    } else {
-        editMainPhotoPreview.value = null;
-    }
-    
-    // Reset buffers
-    editMainFile.value = null;
-    editGalleryBuffer.value = [];
-    fetchedImages.value = []; // Clear previous fetches
-    fetchingImages.value = false;
-    scoutResult.value = null; // Reset Scout Data
-    
-    // Parse Scout Data if exists
-    // Parse Scout Data if exists
-    if (item.conditionNotes) {
-        // Try file-based first (New System)
-        const fileMatch = item.conditionNotes.match(/\[SCOUT_REPORT_ID: ([^\]]+)\]/);
-        if (fileMatch) {
-            const fileId = fileMatch[1].trim();
-            // Fetch the JSON file content
-            // Assuming getAssetUrl returns .../view?... we want .../download?... for raw file
-            const downloadUrl = getAssetUrl(fileId).replace('/view', '/download');
-            fetch(downloadUrl)
-                .then(res => {
-                    if(!res.ok) throw new Error("Failed to fetch report");
-                    return res.json();
-                })
-                .then(data => { scoutResult.value = data; })
-                .catch(e => console.warn("Failed to load Scout Report file", e));
-        } else {
-            // Check Lite Fallback (Plan B)
-            const liteMatch = item.conditionNotes.match(/\[SCOUT_DATA_LITE: ([^\]]+)\]/);
-            if (liteMatch) {
-                try {
-                     const jsonStr = atob(liteMatch[1]);
-                     scoutResult.value = JSON.parse(jsonStr);
-                } catch(e) {
-                     console.warn("Failed to parse Lite Scout Data", e);
-                }
-            } else {
-                // Check Legacy Base64 (Plan C)
-                const match = item.conditionNotes.match(/\[SCOUT_DATA: ([^\]]+)\]/);
-                if (match) {
-                    try {
-                    // Determine if we need to use atob or buffer (client side atob is safe)
-                    const jsonStr = atob(match[1]);
-                    scoutResult.value = JSON.parse(jsonStr);
-                    } catch (e) {
-                        console.warn("Failed to parse saved Scout Data", e);
-                    }
-                }
-            }
-        }
-    }
-    
     isEditDrawerOpen.value = true;
 };
 
 const closeEditDrawer = () => {
     isEditDrawerOpen.value = false;
-    stopCamera();
 };
 
-const removeGalleryItem = (idOrIdx, isExisting) => {
-    if (isExisting) {
-        editForm.value.existingGalleryIds = editForm.value.existingGalleryIds.filter(id => id !== idOrIdx);
-    } else {
-        editGalleryBuffer.value.splice(idOrIdx, 1);
-    }
-};
-
-const saveEdit = async () => {
-    // if (!activeItem.value) return; // Removed check to allow creation
+const saveEdit = async (payload) => {
     processing.value = true;
     try {
         if (activeItem.value) {
             // UPDATE EXISTING
-            await updateInventoryItem(activeItem.value.$id, {
-                ...editForm.value,
-                imageFile: editMainFile.value,
-                galleryFiles: editGalleryBuffer.value,
-                scoutData: scoutResult.value // Save AI Data
-            });
+            const updatedDoc = await updateInventoryItem(activeItem.value.$id, payload);
+            // Optimistic update to immediately reflect in UI before Appwrite query cache clears
+            const idx = inventoryItems.value.findIndex(i => i.$id === activeItem.value.$id);
+            if (idx !== -1) {
+                inventoryItems.value[idx] = updatedDoc;
+            }
         } else {
             // CREATE NEW
-             await saveItemToInventory(
-                { title: editForm.value.title || 'Untitled Item', identity: editForm.value.title, condition_notes: '' }, 
-                editMainFile.value,
-                {
-                    ...editForm.value,
-                    galleryFiles: editGalleryBuffer.value,
-                    scoutData: scoutResult.value
-                },
+             const newDoc = await saveItemToInventory(
+                { title: payload.title || 'Untitled Item', identity: payload.title, condition_notes: '' }, 
+                payload.imageFile,
+                payload,
                 currentTeamId.value // Pass team ID
             );
+            inventoryItems.value.unshift(newDoc);
         }
 
-        await fetchInventory(''); // Refresh list to show updates
         closeEditDrawer();
+        // Fire async refresh in background just in case
+        fetchInventory('').catch(() => {});
     } catch (e) {
         alert('Save failed: ' + e.message);
     } finally {
@@ -1082,7 +631,7 @@ const saveEdit = async () => {
 };
 
 //---------------------------------------------------------
-// CAMERA & FILE LOGIC (Shared)
+// CAMERA & FILE LOGIC (Checkout)
 //---------------------------------------------------------
 const handleFileSelect = (e, type) => {
     const files = e.target.files;
@@ -1093,292 +642,6 @@ const handleFileSelect = (e, type) => {
             checkoutReceiptFile.value = file;
             checkoutReceiptPreview.value = url;
         });
-    } else if (type === 'main') {
-        processFile(files[0], (file, url) => {
-            editMainFile.value = file;
-            editMainPhotoPreview.value = url;
-        });
-    } else if (type === 'gallery') {
-        Array.from(files).forEach(f => {
-             // Just push to buffer, preview handled by v-for on buffer
-             editGalleryBuffer.value.push(f);
-        });
-    }
-};
-
-const analyzing = ref(false);
-
-const analyzeExistingItem = async () => {
-    if (!editMainPhotoPreview.value && !editForm.value.purchaseLocation) {
-        alert("Please add a Main Photo or Item Link to analyze.");
-        return;
-    }
-    analyzing.value = true;
-    try {
-        let base64Image = null;
-        
-        // Helper: Resize Image to max 1024px
-        const resize = (blob) => {
-            return new Promise((resolve) => {
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    let w = img.width;
-                    let h = img.height;
-                    const max = 1024;
-                    if (w > max || h > max) {
-                        if (w > h) { h = Math.round(h * (max/w)); w = max; }
-                        else { w = Math.round(w * (max/h)); h = max; }
-                    }
-                    canvas.width = w;
-                    canvas.height = h;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, w, h);
-                    resolve(canvas.toDataURL('image/jpeg', 0.85));
-                };
-                const reader = new FileReader();
-                reader.onload = (e) => img.src = e.target.result;
-                reader.readAsDataURL(blob);
-            });
-        };
-
-        // 1. Get Image Data (if available)
-        if (editMainFile.value) {
-            base64Image = await resize(editMainFile.value);
-        } else if (editMainPhotoPreview.value && editMainPhotoPreview.value.startsWith('data:')) {
-            // Convert dataURL to blob to resize, or just accept if small? 
-            // Better to resize to be safe.
-            const res = await fetch(editMainPhotoPreview.value);
-            const blob = await res.blob();
-            base64Image = await resize(blob);
-        } else if (editMainPhotoPreview.value) {
-            // URL Fetch
-            const url = editMainPhotoPreview.value;
-            // Always try proxy for Appwrite if we suspect CORS issues, or try direct then fallback
-            let fetchUrl = url;
-            // Force proxy for Appwrite if we are in this block (meaning we need the blob)
-            if (url.includes('/storage/buckets/')) {
-                 fetchUrl = `/api/proxy-image?url=${encodeURIComponent(url)}`;
-            } else if (!url.includes('/api/proxy-image')) {
-                 fetchUrl = `/api/proxy-image?url=${encodeURIComponent(url)}`;
-            }
-
-            try {
-                const res = await fetch(fetchUrl);
-                if (res.ok) {
-                    const blob = await res.blob();
-                    base64Image = await resize(blob);
-                }
-            } catch (e) {
-                console.warn("Image fetch failed, proceeding with just URL context if available", e);
-            }
-        }
-
-        // 2. Prepare Payload
-        // Include URL in notes for context
-        // Include Title & URL in notes for context (User requested Title as Prompt)
-        let contextNotes = editForm.value.description || '';
-        if (editForm.value.title) {
-            contextNotes = `Item Title: ${editForm.value.title}\n\n` + contextNotes;
-        }
-        if (editForm.value.purchaseLocation) {
-            contextNotes += `\n\nItem URL: ${editForm.value.purchaseLocation}`;
-        }
-
-        const payload = JSON.stringify({ 
-            image: base64Image, 
-            imageUrl: editMainPhotoPreview.value, // EXPLICITLY SEND URL for Server-Side Fallback
-            notes: contextNotes
-        });
-        
-        if(!base64Image) {
-             // If no main image, try to fetch from URL automatically?
-             // For now, warn user (as per my check above)
-             // But user said "if i have a url... scout should use that".
-             // Assuming they clicked 'Fetch' first is safer.
-        }
-
-        const response = await fetch(`/api/identify-item`, {
-            method: 'PUT', 
-            headers: { 'Content-Type': 'application/json' },
-            body: payload
-        });
-
-        if (!response.ok) throw new Error("Analysis API failed");
-        
-        const data = await response.json();
-        
-        // 3. Update Form & Save Result
-        // 3. Update Form & Save Result
-        if (data.items && data.items.length > 0) {
-            
-            // MULTI-ITEM HANDLING OR SINGLE
-            if (data.items.length > 1) {
-                // IT IS A LOT / BUNDLE
-                scoutResult.value = data.items;
-                
-                // Calculate Total Value (Range)
-                let totalLow = 0;
-                let totalHigh = 0;
-                let desc = `**LOT BREAKDOWN (${data.items.length} Items):**\n`;
-                
-                data.items.forEach((item, idx) => {
-                    // Smart Parse Range of FAIR price using robust logic
-                    let raw = item.price_breakdown?.fair || item.price_breakdown?.mint;
-                    let low = 0, high = 0;
-                    
-                    if (typeof raw === 'object') {
-                         low = parseFloat((raw.low || raw.min || raw.mint || 0).toString().replace(/,/g, ''));
-                         high = parseFloat((raw.high || raw.max || raw.fair || low).toString().replace(/,/g, ''));
-                    } else { 
-                         const s = String(raw || '0').replace(/[$,]/g, '').trim(); 
-                         // Robust regex for hyphens, dashes, 'to', unicode minus
-                         const range = s.match(/(\d+(?:\.\d+)?)\s*(?:[-–—−]|to)\s*(\d+(?:\.\d+)?)/i);
-                         if (range) {
-                             low = parseFloat(range[1]) || 0;
-                             high = parseFloat(range[2]) || 0;
-                         } else {
-                             const single = s.match(/(\d+(?:\.\d+)?)/);
-                             if(single) { 
-                                 low = parseFloat(single[1]) || 0; 
-                                 high = low; 
-                             }
-                         }
-                    }
-                    
-                    // Sanity Check
-                    const mintPrice = parsePrice(item.price_breakdown?.mint);
-                    if (mintPrice > 0 && low > mintPrice * 2) {
-                        low = mintPrice / 2;
-                        high = mintPrice;
-                    }
-                    if (high < low) high = low;
-
-                    totalLow += low;
-                    totalHigh += high;
-                    
-                    const pStr = low === high ? `$${low.toFixed(2)}` : `$${low.toFixed(2)} - $${high.toFixed(2)}`;
-                    desc += `\n**${idx+1}. ${item.title || item.identity}** - Est: ${pStr}\n`;
-                    if(item.condition_notes) desc += `- Condition: ${item.condition_notes}\n`;
-                });
-                
-                // Store calculated totals on the array object itself for template access
-                // scoutResult.value.totalLow = totalLow;  <-- REMOVED (Use Computed)
-                // scoutResult.value.totalHigh = totalHigh;
-                
-                // POPULATE EST FIELDS (User Control)
-                if (totalLow > 0) editForm.value.estLow = totalLow.toFixed(2);
-                if (totalHigh > 0) editForm.value.estHigh = totalHigh.toFixed(2);
-                
-                // Update Form Price (if empty) -- DISABLED PER USER REQUEST
-                /* 
-                if((!editForm.value.resalePrice || parseFloat(editForm.value.resalePrice) === 0)) {
-                    editForm.value.resalePrice = totalFair.toFixed(2);
-                }
-                */
-
-                // Append Breakdown to Description
-                if(!editForm.value.description.includes("LOT BREAKDOWN")) {
-                     editForm.value.description = (editForm.value.description + "\n\n" + desc).trim();
-                }
-
-
-
-            } else {
-                // SINGLE ITEM
-                scoutResult.value = data.items[0];
-                const item = scoutResult.value;
-
-                // A. Identity / Title (Only update if empty/untitled, per user request)
-                if (!editForm.value.title || editForm.value.title === 'Untitled' || editForm.value.title === 'Untitled Item') {
-                    editForm.value.title = item.title || item.identity;
-                }
-
-                // B. Populate EST FIELDS (User Control) for Single Item
-                if (item.price_breakdown) {
-                     const f = item.price_breakdown.fair || item.price_breakdown.mint;
-                     // Try to parse range from string "10-20"
-                     const s = (f || '').toString().replace(/,/g, '');
-                     const parts = s.match(/(\d+\.?\d*)/g);
-                     
-                     if(parts && parts.length >= 2) {
-                         editForm.value.estLow = parseFloat(parts[0]).toFixed(2);
-                         editForm.value.estHigh = parseFloat(parts[1]).toFixed(2);
-                     } else if(parts && parts.length === 1) {
-                         const val = parseFloat(parts[0]);
-                         editForm.value.estLow = val.toFixed(2);
-                         editForm.value.estHigh = val.toFixed(2);
-                     } else {
-                         // Fallback to rational price logic
-                         const price = getRationalPrice(item);
-                         if (price > 0) {
-                            editForm.value.estLow = price.toFixed(2);
-                            editForm.value.estHigh = price.toFixed(2);
-                         }
-                     }
-                }
-    
-                // C. Construct Scout Report (Description)
-                let report = `\n\n--- 🕵️ SCOUT REPORT ---\n`;
-                if(item.condition_notes) report += `**Condition:** ${item.condition_notes}\n`;
-                if(item.red_flags && item.red_flags.length > 0) report += `**🚩 Red Flags:** ${item.red_flags.join(', ')}\n`;
-                
-                if(item.price_breakdown) {
-                    report += `**Valuation:** Mint: ${item.price_breakdown.mint}, Fair: ${item.price_breakdown.fair}, Poor: ${item.price_breakdown.poor}\n`;
-                }
-    
-                if(item.comparables && item.comparables.length > 0) {
-                     report += `**Comparables:**\n`;
-                     item.comparables.forEach(comp => {
-                         report += `- ${comp.name} (${comp.price}) [${comp.status}]\n`;
-                     });
-                }
-                
-                if(item.keywords && item.keywords.length > 0) {
-                    report += `**Keywords:** ${item.keywords.join(', ')}\n`;
-                }
-    
-                // Append to existing description if not already present
-                if(!editForm.value.description.includes("SCOUT REPORT")) {
-                     editForm.value.description = (editForm.value.description + report).trim();
-                }
-
-                // D. Title Mismatch Warning
-                const knownTitle = editForm.value.title;
-                if (knownTitle && (item.title || item.identity)) {
-                     const t1 = knownTitle.toLowerCase();
-                     const t2 = (item.title || item.identity).toLowerCase();
-                     const kWords = t1.split(/\W+/).filter(w => w.length > 3);
-                     const iWords = t2.split(/\W+/).filter(w => w.toLowerCase());
-                     
-                     const common = kWords.filter(w => iWords.some(iw => iw.includes(w) || w.includes(iw)));
-                     
-                     if (kWords.length > 0 && common.length === 0) {
-                          if(!item.red_flags) item.red_flags = [];
-                          item.red_flags.push(`⚠️ Title Mismatch: AI identified "${item.title || item.identity}" vs Known "${knownTitle}"`);
-                     }
-                }
-                
-                // E. Handle Fetched Image
-                if (item.fetched_image && !editMainPhotoPreview.value) {
-                     const fname = `scout_auto_${Date.now()}.jpg`; 
-                     const file = await urlToFile(item.fetched_image, fname);
-                     if (file) {
-                         processFile(file, (f, u) => {
-                              editMainFile.value = f;
-                              editMainPhotoPreview.value = u;
-                         });
-                    }
-                }
-            }
-            
-            descTab.value = 'edit';
-        }
-
-    } catch (e) {
-        alert("Analysis Error: " + e.message);
-    } finally {
-        analyzing.value = false;
     }
 };
 
@@ -1387,22 +650,15 @@ const processFile = (file, cb) => {
 };
 
 const startCamera = async (context) => {
-    cameraContext.value = context;
     try {
         cameraStream.value = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: cameraFacing.value }
+            video: { facingMode: 'environment' }
         });
         
         if (context === 'checkout') {
             isCameraOpen.value = true;
-            // Wait for next tick/render
             setTimeout(() => {
                 if (cameraVideo.value) cameraVideo.value.srcObject = cameraStream.value;
-            }, 100);
-        } else {
-            cameraModal.value.showModal();
-            setTimeout(() => {
-                if (cameraVideoDialog.value) cameraVideoDialog.value.srcObject = cameraStream.value;
             }, 100);
         }
     } catch (e) {
@@ -1416,17 +672,10 @@ const stopCamera = () => {
         cameraStream.value = null;
     }
     isCameraOpen.value = false;
-    if(cameraModal.value) cameraModal.value.close();
-};
-
-const flipCamera = () => {
-    cameraFacing.value = cameraFacing.value === 'environment' ? 'user' : 'environment';
-    stopCamera();
-    startCamera(cameraContext.value);
 };
 
 const capturePhoto = (context) => {
-    const videoEl = context === 'checkout' ? cameraVideo.value : cameraVideoDialog.value;
+    const videoEl = cameraVideo.value;
     if (!videoEl) return;
 
     const canvas = document.createElement('canvas');
@@ -1440,13 +689,6 @@ const capturePhoto = (context) => {
             checkoutReceiptFile.value = file;
             checkoutReceiptPreview.value = URL.createObjectURL(blob);
             stopCamera();
-        } else {
-            editGalleryBuffer.value.push(file);
-            // Don't stop camera for gallery, might want multiple
-            // Visual feedback
-            const btn = document.activeElement;
-            if(btn) btn.classList.add('scale-90');
-            setTimeout(() => btn && btn.classList.remove('scale-90'), 100);
         }
     }, 'image/jpeg', 0.8);
 };
@@ -1469,97 +711,6 @@ const confirmDelete = async (id) => {
 
 const showImport = ref(false); // CSV Modal
 
-//---------------------------------------------------------
-// IMAGE FETCHING LOGIC
-//---------------------------------------------------------
-const fetchingImages = ref(false);
-const fetchedImages = ref([]);
 
-const fetchImagesFromUrl = async () => {
-    const url = editForm.value.purchaseLocation;
-    // Check: Valid URL OR valid ID (number)
-    const isId = url && url.match(/^\d+$/);
-    if (!url || (!url.startsWith('http') && !isId)) {
-        alert("Please enter a valid ShopGoodwill URL or Item ID.");
-        return;
-    }
-
-    fetchingImages.value = true;
-    fetchedImages.value = [];
-    
-    // Extract ID first if it's a URL
-    let finalUrl = url;
-    const idMatch = url.match(/item\/(\d+)/i) || url.match(/^(\d+)$/);
-    if(idMatch) {
-         finalUrl = idMatch[1]; // Send just the ID to be safe
-    }
-
-    try {
-        const res = await fetch('/api/extract-images', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url: finalUrl }) // Send ID if possible
-        });
-        
-        const data = await res.json();
-        if (data.success && data.images.length > 0) {
-            fetchedImages.value = data.images;
-        } else if (data.success && data.images.length === 0) {
-            alert("No images found on that page.");
-        } else {
-             // Fallback or error
-        }
-        
-        // Auto-populate Details if available
-        if (data.success) {
-            // Price
-            if (data.price && (!editForm.value.paidPrice || parseFloat(editForm.value.paidPrice) === 0)) {
-                // Remove $ and ,
-                editForm.value.paidPrice = data.price.toString().replace(/[$,]/g, '');
-            }
-            // Title
-            if (data.title && (!editForm.value.title || editForm.value.title.trim().length < 4)) {
-                editForm.value.title = data.title;
-            }
-        }
-
-    } catch (e) {
-        console.error(e);
-        alert("Failed to fetch images: " + e.message);
-    } finally {
-        fetchingImages.value = false;
-    }
-};
-
-const urlToFile = async (url, filename) => {
-    try {
-        const res = await fetch('/api/proxy-image?url=' + encodeURIComponent(url));
-        if (!res.ok) throw new Error("Image download failed");
-        const blob = await res.blob();
-        return new File([blob], filename, { type: blob.type || 'image/jpeg' });
-    } catch (e) {
-        console.error("Failed to convert URL to file", e);
-        return null;
-    }
-};
-
-const selectFetchedImage = async (url) => {
-    const filename = url.split('/').pop().split('?')[0] || "downloaded.jpg";
-    const file = await urlToFile(url, filename);
-    
-    if (file) {
-        // Logic: if no main image, set main. Else, add to gallery.
-        if (!editMainFile.value && !editForm.value.imageId && !editMainPhotoPreview.value) {
-            processFile(file, (f, u) => {
-                editMainFile.value = f;
-                editMainPhotoPreview.value = u;
-            });
-        } else {
-            editGalleryBuffer.value.push(file);
-        }
-    } else {
-        alert("Could not download image.");
-    }
-};
 
 </script>

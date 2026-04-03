@@ -1,7 +1,8 @@
 <template>
   <nav class="navbar max-w-screen-lx mx-auto">
-    <div class="navbar-start md:pl-2 lg:pl-8">
+    <div class="navbar-start md:pl-2 lg:pl-8 items-center flex">
       <a href="/" class="btn btn-ghost text-xl font-bold text-primary">Resale Command</a>
+      <div v-if="alphaMode" class="badge badge-warning badge-sm font-bold uppercase ml-2 shadow border border-warning">Alpha Mode</div>
     </div>
     <div class="navbar-center"></div>
     <div class="navbar-end md:pr-2 lg:pr-8">
@@ -131,12 +132,16 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
+import { useStore } from '@nanostores/vue';
+import { isAlphaMode } from '../../stores/env';
 import { useAuth } from '../../composables/useAuth';
 
 const { 
   user, isAuthenticated, currentTeam, teams, ownedTeam, isPartner, loading,
   switchTeam, createTeam, inviteMember, logout: authLogout 
 } = useAuth();
+
+const alphaMode = useStore(isAlphaMode);
 
 // Dynamic Nav Links
 const navLinks = computed(() => {

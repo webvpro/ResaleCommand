@@ -186,8 +186,6 @@ export const ALL: APIRoute = async ({ request }) => {
                      return null;
                 };
 
-
-
                 // Check for 'images' array
                 if (Array.isArray(json.images)) {
                     json.images.forEach((img: string) => {
@@ -210,9 +208,6 @@ export const ALL: APIRoute = async ({ request }) => {
                 console.error("JSON parse failed", e);
             }
         } 
-
-
-
 
         // 3. Smart URL Handling (The "Scout Link" Feature)
         if (imageParts.length === 0 && userNotes) {
@@ -320,7 +315,7 @@ export const ALL: APIRoute = async ({ request }) => {
         const response = await result.response;
         const taskResponse = response.text();
         
-        // Clean up potential markdown code blocks ```json ... ```
+        // Clean up potential markdown code blocks \`\`\`json ... \`\`\`
         let cleanedResponse = taskResponse.replace(/```json|```/g, '').trim();
 
         // Inject fetched image URL into response if available

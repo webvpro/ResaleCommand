@@ -56,7 +56,8 @@ async function setup() {
         { key: 'keywords', type: 'string', size: 255, required: false, array: true },
         { key: 'conditionNotes', type: 'string', size: 5000, required: false },
         { key: 'imageId', type: 'string', size: 255, required: false },
-        { key: 'status', type: 'string', size: 50, required: false, default: 'draft' },
+        { key: 'status', type: 'string', size: 50, required: false, default: 'received' },
+        { key: 'salesChannel', type: 'string', size: 50, required: false, array: true },
         { key: 'createdAt', type: 'datetime', required: false },
     ];
 
