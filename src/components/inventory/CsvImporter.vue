@@ -620,17 +620,21 @@ async function importSelected() {
                         try {
                             const res = await fetch('/api/upload-remote-image', {
                                 method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ url: item.imageUrl })
                             });
                             if (res.ok) {
                                 const data = await res.json();
                                 finalImageId = data.fileId;
                             } else {
-                                notes += `\n\n[EXTERNAL_IMAGE: ${item.imageUrl}]`;
+                                const errorText = await res.text();
+                                notes += `\n\n[EXTERNAL_IMAGE: ${item.imageUrl}] (Error: ${errorText})`;
+                                addToast({ type: 'warning', message: `Image failed for ${item.title}: ${errorText.substring(0,50)}`, duration: 6000 });
                             }
-                        } catch (imgErr) {
+                        } catch (imgErr: any) {
                             console.error('[Import] Image Upload Fail:', imgErr);
-                            notes += `\n\n[EXTERNAL_IMAGE: ${item.imageUrl}]`;
+                            notes += `\n\n[EXTERNAL_IMAGE: ${item.imageUrl}] (Crash: ${imgErr.message})`;
+                            addToast({ type: 'error', message: `Image crash for ${item.title}: ${imgErr.message}`, duration: 6000 });
                         }
                     }
 
@@ -668,9 +672,7 @@ async function importSelected() {
                                 conditionNotes: newNotes
                             };
                             if (finalImageId) {
-                                // Add to gallery (assuming existing galleryImageIds is array or we just overwrite with this new one if none)
-                                // Standard approach here: just override with the new gallery image if provided during import
-                                updateData.galleryImageIds = [finalImageId];
+                                updateData.imageId = finalImageId;
                             }
                             await retryOperation(() => databases.updateDocument(DB, getCollectionId(), doc.$id, updateData));
                             
@@ -683,7 +685,7 @@ async function importSelected() {
                     }
 
                     // 3. CREATE NEW ITEM
-                    const teamId = user.prefs?.teamId || null;
+                    const teamId = localStorage.getItem('activeTeamId') || user.prefs?.teamId || null;
                     
                     if (finalImageId) {
                         notes += `\n\n[IMAGE_ID: ${finalImageId}]`;
@@ -697,7 +699,7 @@ async function importSelected() {
                          purchaseLocation: item.sourceLink ? item.sourceLink : 'ShopGoodwill'
                     };
                     if (finalImageId) {
-                        extraData.galleryImageIds = [finalImageId];
+                        extraData.imageId = finalImageId;
                     }
                     
                     // But we will import it at the top component level.

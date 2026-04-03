@@ -279,7 +279,7 @@ const processRows = async (rows) => {
                     const uploadRes = await fetch('/api/upload-remote-image', {
                         method: 'POST',
                         body: JSON.stringify({ 
-                            imageUrl: cleanLink,
+                            url: cleanLink,
                             filename: `img-${itemId}`
                         }),
                         headers: { 'Content-Type': 'application/json' }
@@ -439,7 +439,7 @@ const processRows = async (rows) => {
                 galleryFiles: galleryFiles // Pass the gallery images
             };
             if (mainImageId) {
-                extraData.galleryImageIds = [mainImageId];
+                extraData.imageId = mainImageId;
             }
 
             await saveItemToInventory(itemToSave, null, extraData, teamId);

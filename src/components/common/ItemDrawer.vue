@@ -985,7 +985,7 @@ const extractLotItems = async () => {
     try {
         let successCount = 0;
         const user = await account.get();
-        const teamId = user.prefs?.teamId || null;
+        const teamId = localStorage.getItem('activeTeamId') || user.prefs?.teamId || null;
         
         // Loop over each item found by AI
         for (const [index, lotItem] of scoutResult.value.entries()) {

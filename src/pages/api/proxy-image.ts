@@ -8,8 +8,11 @@ export const GET: APIRoute = async ({ request, url }) => {
         return new Response('Missing URL', { status: 400 });
     }
 
+    // Sanitize any broken shopgoodwill backslashes
+    const cleanUrl = imageUrl.replace(/\\/g, '/').trim();
+
     try {
-        const response = await fetch(imageUrl, {
+        const response = await fetch(cleanUrl, {
             redirect: 'follow', // Follow redirects!
             headers: {
                 // Mimic browser to avoid getting blocked
