@@ -154,7 +154,7 @@ const navLinks = computed(() => {
   if (isAuthenticated.value) {
     links.push(
       { text: 'Dashboard', url: '/dashboard' },
-      { text: 'Cart', url: '/cart' },
+      { text: 'Tracker', url: '/cart' },
       { text: 'Inventory', url: '/inventory' },
       { text: 'Organization', url: '/org/settings' }
     );

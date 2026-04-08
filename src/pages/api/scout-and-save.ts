@@ -153,15 +153,19 @@ export const ALL: APIRoute = async ({ request }) => {
         // 7. Save to Appwrite Inventory (Items Collection)
         console.log("[Headless] Saving Document to Database...");
         
+        // Safely extract boutique price
+        const btqNum = parseFloat(aiData.price_breakdown?.boutique_premium);
+        const btqStr = !isNaN(btqNum) && btqNum > 0 ? `\nBoutique: $${btqNum.toFixed(2)}` : '';
+
         // Define data per schema with 'scouted' default
         const itemDocument = {
             identity: aiData.identity || givenTitle || "Unidentified Item",
             title: givenTitle || aiData.title || "New Item",
             keywords: aiData.keywords || [],
-            conditionNotes: (notes ? `Import notes: ${notes}\n` : "") + (aiData.conditionNotes || ""),
+            conditionNotes: (notes ? `Import notes: ${notes}\n` : "") + (aiData.conditionNotes || "") + btqStr,
             redFlags: [],
             paidPrice: 0.0,
-            resalePrice: parseFloat(aiData.resalePrice) || 0.0,
+            resalePrice: parseFloat(aiData.resalePrice) || parseFloat(aiData.price_breakdown?.fair) || 0.0,
             maxBuyPrice: 0.0,
             purchaseLocation: "Headless Import",
             binLocation: "To Be Processed",

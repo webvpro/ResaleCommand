@@ -37,7 +37,7 @@ export const ALL: APIRoute = async ({ request }) => {
         console.log(`Debug - URL Received: ${request.url}`);
         console.log(`Debug - Using Model: gemini-2.5-flash`); // Confirm model update
 
-
+        let imageParts: Array<{ inlineData: { data: string; mimeType: string } }> = [];
         let successfulImageUrl: string | null = null;
         
         // Helper 3b: Fetch Image from URL and add to parts
@@ -141,7 +141,7 @@ export const ALL: APIRoute = async ({ request }) => {
             });
         }
         
-        let imageParts: Array<{ inlineData: { data: string; mimeType: string } }> = [];
+        // imageParts already declared at top of file
 
         if (rawBody.trim().startsWith("data:")) {
             // Option 1: Raw Data URL string (text/plain) - Single Image
@@ -210,53 +210,132 @@ export const ALL: APIRoute = async ({ request }) => {
         } 
 
         // 3. Smart URL Handling (The "Scout Link" Feature)
-        if (imageParts.length === 0 && userNotes) {
+        // 3. Smart URL Handling (Deep Listing Analysis)
+        if (userNotes) {
             const urlMatch = userNotes.match(/https?:\/\/[^\s]+/);
             if (urlMatch) {
                 const targetUrl = urlMatch[0];
-                console.log(`Debug - Found URL in notes: ${targetUrl}`);
+                console.log(`Debug - Found URL for Deep Parse: ${targetUrl}`);
                 
-                // A. ShopGoodwill API Strategy
+                // A. ShopGoodwill API Strategy (High Fidelity)
                 const sgwMatch = targetUrl.match(/shopgoodwill\.com\/item\/(\d+)/i);
                 if (sgwMatch) {
                     const itemId = sgwMatch[1];
                     try {
-                         const apiRes = await fetch(`https://buyerapi.shopgoodwill.com/api/ItemDetail/GetItemDetailByItemId/${itemId}`);
+                         const apiRes = await fetch(`https://buyerapi.shopgoodwill.com/api/ItemDetail/GetItemDetailByItemId/${itemId}`, {
+                             headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+                         });
                          if (apiRes.ok) {
                              const itemData = await apiRes.json();
                              if (itemData) {
-                                  // Found it!
-                                  const fetchedTitle = itemData.title || itemData.itemName;
-                                  const fetchedDesc = itemData.description || "";
+                                  let contextText = `[Deep Parse - ShopGoodwill]\n`;
+                                  contextText += `Title: ${itemData.title || itemData.itemName}\n`;
+                                  contextText += `Current Bid: $${itemData.currentPrice} | Bids: ${itemData.bidCount} | Ends: ${itemData.endTime}\n`;
                                   
-                                  // Enhance Context
-                                  userNotes = `[SYSTEM FETCHED DATA]\nTitle: ${fetchedTitle}\nDescription Snippet: ${fetchedDesc.substring(0, 500)}...\n\n${userNotes}`;
+                                  const rawDesc = itemData.description || "";
+                                  const cleanDesc = rawDesc.replace(/<[^>]*>?/gm, '').substring(0, 3000); // Strip HTML, keep 3000 chars
+                                  contextText += `Description: ${cleanDesc}\n\n`;
                                   
-                                  // Fetch Images (Try Main, then Additional)
-                                  if (itemData.imageURL) {
-                                      await fetchAndAddImage(itemData.imageURL);
-                                  } else if (itemData.additionalImages && itemData.additionalImages.length > 0) {
-                                      await fetchAndAddImage(itemData.additionalImages[0].imageURL);
+                                  // Prepend to user notes
+                                  userNotes = contextText + userNotes;
+                                  
+                                  // Fetch Multiple Images (Max 5 for Gemini context)
+                                  const imgUrls: string[] = [];
+                                  
+                                  const fixUrl = (u: string) => u ? (u.startsWith('//') ? 'https:' + u : u) : '';
+                                  
+                                  if (itemData.imageURL) imgUrls.push(fixUrl(itemData.imageURL));
+                                  if (itemData.additionalImages) {
+                                      itemData.additionalImages.forEach((img: any) => imgUrls.push(fixUrl(img.imageURL)));
+                                  }
+                                  
+                                  if (imgUrls.length > 0) successfulImageUrl = imgUrls[0];
+                                  
+                                  for (let i = 0; i < Math.min(imgUrls.length, 5); i++) {
+                                      await fetchAndAddImage(imgUrls[i]);
                                   }
                              }
                          }
                     } catch (err) {
-                        console.error("Failed to fetch ShopGoodwill API details:", err);
+                        console.error("Failed Deep SGW Parse", err);
                     }
-                }
+                } // <--- Added missing closing brace for if (sgwMatch)
 
-                // B. Generic Fallback (OpenGraph) if still no image
-                if (imageParts.length === 0) {
+                // B. Generic Full-Page Scrape (For eBay, FB Marketplace, etc)
+                else {
                      try {
-                        const pageRes = await fetch(targetUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+                        const pageRes = await fetch(targetUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' } });
                         if(pageRes.ok) {
                             const html = await pageRes.text();
+                            
+                            // Extract Meta Context
+                            const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+                            const descMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i) || 
+                                              html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i);
+                            
+                            let contextText = `[Deep Parse - Generic URL]\n`;
+                            if (titleMatch) contextText += `Title: ${titleMatch[1]}\n`;
+                            if (descMatch) contextText += `Description: ${descMatch[1].substring(0, 1000)}\n`;
+                            
+                            // Extract Structured JSON-LD Data (Critical for Pricing/Bids on obscure platforms)
+                            const ldRegex = /<script type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+                            let ldMatch;
+                            let structuredData = '';
+                            while ((ldMatch = ldRegex.exec(html)) !== null) {
+                                structuredData += ldMatch[1] + '\n';
+                            }
+                            if (structuredData) {
+                                // Keep the first 1500 characters of structured data to prevent prompt bloat while grabbing price metadata
+                                contextText += `Structured Data: ${structuredData.substring(0, 1500)}\n`;
+                            }
+                            
+                            userNotes = contextText + "\n" + userNotes;
+
+                            // Extract Images (Max 5)
+                            const imageUrls = new Set<string>();
+                            
+                            // 1. Get OpenGraph Image
                             const ogMatch = html.match(/<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i);
-                            if(ogMatch && ogMatch[1]) {
-                                 await fetchAndAddImage(ogMatch[1]);
+                            const fixUrl = (u: string) => u ? (u.startsWith('//') ? 'https:' + u : u) : '';
+                            
+                            if(ogMatch) imageUrls.add(fixUrl(ogMatch[1]));
+                            
+                            // 1.5. Extract SGW app-image-gallery (High Quality Gallery fallback for Angular)
+                            const galleryRegex = /<app-image-gallery[^>]*\[itemImages\]=["']([^"']*)["']/i; 
+                            const galleryMatch = html.match(galleryRegex);
+                            if (galleryMatch) {
+                                try {
+                                    const jsonStr = galleryMatch[1].replace(/&quot;/g, '"');
+                                    const parsed = JSON.parse(jsonStr);
+                                    if (Array.isArray(parsed)) {
+                                        parsed.forEach((img: any) => {
+                                             const u = img.imageURL || img.url || img;
+                                             if (u && typeof u === 'string') imageUrls.add(fixUrl(u));
+                                        });
+                                    }
+                                } catch (e) {}
+                            }
+
+                            const imgRegex = /<img[^>]+src=["'](https:\/\/[^"'\s]+|\/\/[^"'\s]+)["'][^>]*>/gi;
+                            let match;
+                            let count = 0;
+                            while ((match = imgRegex.exec(html)) !== null && count < 20) {
+                                const src = fixUrl(match[1]);
+                                if (src.match(/\.(jpg|jpeg|png|webp)(\?|&|$)/i) && !src.includes('logo') && !src.includes('icon')) {
+                                     imageUrls.add(src);
+                                }
+                                count++;
+                            }
+
+                            // Fetch up to available slots
+                            const availableSlots = 5 - imageParts.length;
+                            const topImages = Array.from(imageUrls).slice(0, availableSlots);
+                            if (topImages.length > 0 && !successfulImageUrl) successfulImageUrl = topImages[0];
+                            for (const imgUrl of topImages) {
+                                await fetchAndAddImage(imgUrl);
                             }
                         }
-                     } catch(e) { console.warn("Fallback scrape failed", e); }
+                     } catch(e) { console.warn("Deep Scrape failed", e); }
                 }
             }
         }
@@ -280,11 +359,13 @@ export const ALL: APIRoute = async ({ request }) => {
           2. If multiple items are found, create a SEPARATE item entry for EACH one in the 'items' array.
           3. Identify each item specifically.
 
-          CRITICAL PRICING RULES:
-          - BE CONSERVATIVE. Do not assume high-end designer brands (e.g. Gucci, Vivienne Westwood) unless the LOGO is clearly visible or explicitly mentioned in notes.
-          - For "Style" items (e.g. "Goth Style", "Victorian Style"), price them as UNBRANDED/COSTUME jewelry ($10-$30 range usually), NOT as authentic antiques or designer pieces unless proven otherwise.
-          - If the item is a "Lot" of small items, estimate the value of the ENTIRE LOT as a single entry if they are small/similar, OR itemize them but keep individual values realistic (e.g. $2-$5 per costume ring).
-          - AVOID HALLUCINATIONS. If you are unsure, provide a low "Generic" estimate.
+          CRITICAL PRICING & IDENTIFICATION RULES:
+          - ACTIVELY READ TAGS: Pay very close attention to any tags, labels, or boxes in the images. If you see a brand tag or "New With Tags" (NWT) label, you MUST use that exact brand for identification and reflect its true higher value.
+          - CURATED RETAIL PREMIUM: Remember that items sold in "Curated Physical Locations" (vintage boutiques, antique booths) often sell for 30-50% MORE than raw eBay prices due to curation and zero shipping friction. Reflect this in the 'boutique_premium' output.
+          - BE CONSERVATIVE BUT ACCURATE: Do not randomly guess high-end designer names if there's no tag/logo, but DO trust clear branding when it is visible. 
+          - For "Style" items (e.g. "Goth Style", "Victorian Style"), if no authentic brand/hallmark exists, price them as UNBRANDED/COSTUME ($10-$30 range). 
+          - NWT (NEW WITH TAGS): If tags are attached, heavily weight the 'mint' price and specify "NWT" in condition_notes.
+          - AVOID HALLUCINATIONS. If you are truly unsure and no tags exist, provide a low "Generic" estimate.
           
           OUTPUT FORMAT:
           Return strictly a JSON object with property "items": [ ... ].
@@ -293,17 +374,22 @@ export const ALL: APIRoute = async ({ request }) => {
           - 'identity': A single string describing the item.
           - 'title': A short SEO-friendly title string.
           - 'keywords': An array of strings.
-          - 'condition_notes': A string describing the visible condition (or noted condition).
+          - 'condition_notes': A thorough visual condition assessment based on scanning all provided images. Detail any visible wear, scuffs, damage, or verify if it looks 'Mint/NWT'. If no images are provided or visual assessment is impossible, explicitly state: "Could not assess condition from images."
           - 'red_flags': An array of strings highlighting potential issues. Return empty if none.
           - 'price_breakdown': An object with estimated values:
               - 'mint': Price range if New/Mint.
               - 'fair': Price range if Used/Good.
               - 'poor': Price range if Poor/Damaged.
+              - 'boutique_premium': Price range if sold in a curated physical boutique or antique shop (usually higher than eBay 'fair').
               - 'confidence': (Low/Medium/High) - How sure are you about this ID?
           - 'comparables': An array of 3-5 similar items sold on eBay/etc.
                - 'name': Specific item name/title.
                - 'price': approx sold price.
                - 'status': "Sold" or "Listed" or "scouted" or "acquired" or "at_location"
+          - 'purchase_strategy': An object containing strategic advice for sourcing this item:
+               - 'verdict': ONE of these strict enums: "PASS", "WATCH", "BUY_NOW", "NEGOTIATE", "CHASE_AUCTION". (Choose PASS if unprofitable/risky, BUY_NOW if heavily underpriced, CHASE_AUCTION if worth bidding up to the fair value, etc. You can return other words if those don't fit perfectly).
+               - 'current_asking_price': State the current bid or asking price extracted from context, if any (e.g. "$45.00" or "No Asking Price Found").
+               - 'advice': A brief paragraph detailing the sourcing strategy (e.g., maximum bid amount, negotiation tactics for FB Marketplace, shipping cost considerations, or why it's a hard pass). IF YOU DETECT THIS IS AN AUCTION (e.g. context mentions "Current Bid" or "Ends:"), explicitly prioritize formulating a MAX BID STRATEGY and remind the user to evaluate SHIPPING COSTS before bidding!
         `;
 
         const contentParts: any[] = [prompt];

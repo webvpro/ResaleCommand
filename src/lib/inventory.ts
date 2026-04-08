@@ -31,6 +31,7 @@ export interface ExtraItemData {
     imageId?: string; // Pre-uploaded image ID
     estLow?: string;
     estHigh?: string;
+    boutiquePrice?: string | number;
     keywords?: string[];
     salesChannel?: string;
 }
@@ -112,6 +113,7 @@ export async function saveItemToInventory(itemData: any, imageFile: File | null,
         // Save Estimates
         if (extraData.estLow) extraInfo.push(`Est. Low: $${extraData.estLow}`);
         if (extraData.estHigh) extraInfo.push(`Est. High: $${extraData.estHigh}`);
+        if (extraData.boutiquePrice) extraInfo.push(`Boutique: $${extraData.boutiquePrice}`);
 
         if (extraData.scoutData) {
             try {
@@ -511,6 +513,10 @@ export async function updateInventoryItem(documentId: string, updates: Partial<E
             data.purchaseLocation = updates.purchaseLocation === '' ? null : updates.purchaseLocation;
             updateNoteValue('Location', updates.purchaseLocation);
         }
+
+        if (updates.estLow !== undefined) updateNoteValue('Est. Low', updates.estLow === '' ? '' : `$${parseFloat(updates.estLow.toString()).toFixed(2)}`);
+        if (updates.estHigh !== undefined) updateNoteValue('Est. High', updates.estHigh === '' ? '' : `$${parseFloat(updates.estHigh.toString()).toFixed(2)}`);
+        if (updates.boutiquePrice !== undefined) updateNoteValue('Boutique', updates.boutiquePrice === '' ? '' : `$${parseFloat(updates.boutiquePrice.toString()).toFixed(2)}`);
 
         if (updates.itemCondition !== undefined) {
             const mdText = updates.itemCondition;
