@@ -16,8 +16,8 @@
       <div v-else-if="!activeCart" class="hero bg-base-200 flex-1">
           <div class="hero-content text-center">
               <div class="max-w-md">
-                  <h1 class="text-5xl font-bold">🛒 Resale Cart</h1>
-                  <p class="py-6">No active shopping trip found. Start scouting to build your cart!</p>
+                  <h1 class="text-5xl font-bold">🛒 Sourcing Tracker</h1>
+                  <p class="py-6">No active sourcing session found. Start scouting to build your tracker!</p>
                   <a href="/scout" class="btn btn-primary">Start Scouting</a>
               </div>
           </div>
@@ -27,7 +27,7 @@
           <!-- HEADER -->
           <div class="navbar bg-base-100 shadow-md z-10 px-4">
               <div class="flex-1">
-                  <h2 class="text-xl font-bold truncate">Current Trip: {{ activeCart.source }}</h2>
+                  <h2 class="text-xl font-bold truncate">Active Sourcing: {{ activeCart.source }}</h2>
                   <div class="badge badge-accent ml-2">{{ cartItems.length }} Items</div>
               </div>
               <div class="flex-none">
@@ -280,7 +280,7 @@ async function handleFinishCart() {
 }
 
 function startNew() {
-     if(confirm("Start new cart? Current one will be abandoned.")) {
+     if(confirm("Start new tracker? Current one will be abandoned.")) {
          leaveCart();
          window.location.href = '/scout';
      }

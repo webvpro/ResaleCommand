@@ -66,7 +66,7 @@
                     </div>
                     
                     <!-- Pricing Summary Box under images on Desktop -->
-                    <div class="p-6 bg-base-200 flex-1 flex flex-col justify-end hidden lg:flex border-t border-base-300">
+                    <div class="p-6 bg-base-200 flex-1 flex-col justify-end hidden lg:flex border-t border-base-300">
                          <div class="bg-base-100 rounded-xl p-4 shadow-sm border border-base-300">
                              <div class="flex justify-between items-end mb-2">
                                 <span class="text-xs uppercase font-bold opacity-60">Estimated Resale Value</span>
@@ -141,7 +141,7 @@
                             </div>
                             
                             <!-- Pricing Grid -->
-                            <div class="grid grid-cols-3 gap-2 mt-4" v-if="parsedScoutData.price_breakdown">
+                            <div class="grid grid-cols-4 gap-2 mt-4" v-if="parsedScoutData.price_breakdown">
                                 <div class="flex flex-col items-center bg-base-100 p-3 rounded-lg border border-base-200 shadow-sm">
                                     <span class="text-[10px] uppercase font-bold text-info mb-1 tracking-wider">Mint</span>
                                     <span class="font-mono font-bold text-sm">{{ parsedScoutData.price_breakdown.mint || '-' }}</span>
@@ -153,6 +153,10 @@
                                 <div class="flex flex-col items-center bg-base-100 p-3 rounded-lg border border-base-200 shadow-sm">
                                     <span class="text-[10px] uppercase font-bold text-error opacity-70 mb-1 tracking-wider">Poor</span>
                                     <span class="font-mono font-bold text-sm opacity-80">{{ parsedScoutData.price_breakdown.poor || '-' }}</span>
+                                </div>
+                                <div class="flex flex-col items-center bg-secondary/10 p-3 rounded-lg border border-secondary/30 shadow-sm">
+                                    <span class="text-[10px] uppercase font-bold text-secondary mb-1 tracking-wider">Boutique</span>
+                                    <span class="font-mono font-bold text-sm opacity-90">{{ parsedScoutData.price_breakdown.boutique_premium || '-' }}</span>
                                 </div>
                             </div>
                             

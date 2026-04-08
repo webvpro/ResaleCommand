@@ -127,19 +127,26 @@
                 </div>
 
                 <!-- AI Estimates Row -->
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-3 gap-2">
                      <div class="form-control w-full">
-                        <label class="label"><span class="label-text text-xs uppercase font-bold text-success">Est. Low</span></label>
-                        <label class="input input-bordered input-sm flex items-center gap-2">
+                        <label class="label"><span class="label-text text-xs uppercase font-bold text-success truncate">Est. Low</span></label>
+                        <label class="input input-bordered input-sm flex items-center gap-1 px-2">
                             <span class="opacity-50">$</span>
-                            <input type="number" step="0.01" v-model="editForm.estLow" class="grow font-mono" placeholder="0.00" />
+                            <input type="number" step="0.01" v-model="editForm.estLow" class="grow font-mono min-w-0" placeholder="0.00" />
                         </label>
                     </div>
                      <div class="form-control w-full">
-                        <label class="label"><span class="label-text text-xs uppercase font-bold text-success">Est. High</span></label>
-                         <label class="input input-bordered input-sm flex items-center gap-2">
+                        <label class="label"><span class="label-text text-xs uppercase font-bold text-success truncate">Est. High</span></label>
+                         <label class="input input-bordered input-sm flex items-center gap-1 px-2">
                             <span class="opacity-50">$</span>
-                            <input type="number" step="0.01" v-model="editForm.estHigh" class="grow font-mono" placeholder="0.00" />
+                            <input type="number" step="0.01" v-model="editForm.estHigh" class="grow font-mono min-w-0" placeholder="0.00" />
+                        </label>
+                    </div>
+                     <div class="form-control w-full">
+                        <label class="label"><span class="label-text text-xs uppercase font-bold text-secondary truncate">Boutique</span></label>
+                         <label class="input input-bordered input-sm flex items-center gap-1 px-2 bg-secondary/5">
+                            <span class="opacity-50 text-secondary">$</span>
+                            <input type="number" step="0.01" v-model="editForm.boutiquePrice" class="grow font-mono min-w-0 text-secondary font-bold" placeholder="0.00" />
                         </label>
                     </div>
                 </div>
@@ -279,6 +286,11 @@
                     <label class="label"><span class="label-text font-bold text-sm">Item Lifecycle Status</span></label>
                     <ul class="steps w-full text-xs">
                         <li class="step cursor-pointer" 
+                            :class="{'step-primary font-bold': ['tracked', 'acquired', 'placed', 'sold'].includes(editForm.status)}" 
+                            @click="editForm.status = 'tracked'">
+                            Tracked
+                        </li>
+                        <li class="step cursor-pointer" 
                             :class="{'step-primary font-bold': ['acquired', 'placed', 'sold'].includes(editForm.status)}" 
                             @click="editForm.status = 'acquired'">
                             Acquired
@@ -395,10 +407,22 @@ const emit = defineEmits(['close', 'save']);
 const descTab = ref('edit');
 const scoutTab = ref('edit');
 const processing = ref(false);
-const editForm = ref({
-    title: '', cost: '', resalePrice: '', estLow: '', estHigh: '',
-    binLocation: '', purchaseLocation: '', orderId: '', status: 'acquired',
-    description: '', itemCondition: '', existingGalleryIds: [], salesChannel: [], keywords: []
+const editForm = reactive({
+    title: '',
+    cost: '',
+    resalePrice: '',
+    estLow: '',
+    estHigh: '',
+    boutiquePrice: '',
+    binLocation: '',
+    purchaseLocation: '',
+    orderId: '',
+    status: 'acquired',
+    description: '',
+    itemCondition: '',
+    existingGalleryIds: [],
+    salesChannel: [],
+    keywords: []
 });
 
 const editGalleryBuffer = ref([]);
@@ -412,7 +436,7 @@ const actualMainPhoto = computed(() => {
             type: 'new',
             idx: mainPhotoSelection.value.val
         };
-    } else if (mainPhotoSelection.value.type === 'existing' && editForm.value.existingGalleryIds.includes(mainPhotoSelection.value.val)) {
+    } else if (mainPhotoSelection.value.type === 'existing' && editForm.existingGalleryIds.includes(mainPhotoSelection.value.val)) {
         return { 
             file: null, 
             url: getAssetUrl(mainPhotoSelection.value.val), 
@@ -421,7 +445,7 @@ const actualMainPhoto = computed(() => {
         };
     } else {
         if (editGalleryBuffer.value.length > 0) return { file: editGalleryBuffer.value[0], url: getObjectUrl(editGalleryBuffer.value[0]), type: 'new', idx: 0 };
-        if (editForm.value.existingGalleryIds?.length > 0) return { file: null, url: getAssetUrl(editForm.value.existingGalleryIds[0]), id: editForm.value.existingGalleryIds[0], type: 'existing' };
+        if (editForm.existingGalleryIds?.length > 0) return { file: null, url: getAssetUrl(editForm.existingGalleryIds[0]), id: editForm.existingGalleryIds[0], type: 'existing' };
         return { file: null, url: null, type: 'none' };
     }
 });
@@ -453,7 +477,7 @@ const openMdModal = () => {
         document.dispatchEvent(new CustomEvent('show-md-modal', {
             detail: {
                 text: scoutMdText.value,
-                title: `${editForm.value.title || 'Scout Report'}`
+                title: `${editForm.title || 'Scout Report'}`
             }
         }));
     }
@@ -500,6 +524,20 @@ const parsePrice = (p) => {
     if (range) return (parseFloat(range[1]) + parseFloat(range[2])) / 2;
     const single = s.match(/(\d+(?:\.\d+)?)/);
     return single ? parseFloat(single[1]) : 0;
+};
+
+const parsePriceRange = (p) => {
+    if (!p) return { low: 0, high: 0, mid: 0 };
+    const s = String(p).replace(/[$,]/g, '').trim();
+    const range = s.match(/(\d+(?:\.\d+)?)\s*(?:[-–—−]|to)\s*(\d+(?:\.\d+)?)/i);
+    if (range) {
+        const l = parseFloat(range[1]);
+        const h = parseFloat(range[2]);
+        return { low: l, high: h, mid: (l + h) / 2 };
+    }
+    const single = s.match(/(\d+(?:\.\d+)?)/);
+    const val = single ? parseFloat(single[1]) : 0;
+    return { low: val, high: val, mid: val };
 };
 
 const getRationalPrice = (itemData) => {
@@ -593,22 +631,22 @@ const getImageUrl = (itemData) => {
 const initForm = () => {
     if (props.item) {
         const i = props.item;
-        editForm.value = {
-            title: i.title,
-            cost: i.cost || i.purchasePrice || getNoteValue(i.conditionNotes, 'Paid', true) || '',
-            resalePrice: i.resalePrice || i.priceFair || getNoteValue(i.conditionNotes, 'Resale', true) || '',
-            estLow: i.estLow || getNoteValue(i.conditionNotes, 'Est. Low', true) || '',
-            estHigh: i.estHigh || getNoteValue(i.conditionNotes, 'Est. High', true) || '',
-            binLocation: i.binLocation || getNoteValue(i.conditionNotes, 'Bin') || '',
-            purchaseLocation: i.purchaseLocation || getNoteValue(i.conditionNotes, 'Location') || '',
-            orderId: i.orderId || getNoteValue(i.conditionNotes, 'Order #') || getNoteValue(i.conditionNotes, 'Imported from Order #') || '',
-            status: i.status || 'acquired',
-            description: i.marketDescription || i.description || i.rawAnalysis || '', 
-            itemCondition: getNoteValue(i.conditionNotes, 'Condition') || '',
-            existingGalleryIds: i.galleryImageIds || [],
-            salesChannel: i.salesChannel || [],
-            keywords: i.keywords || []
-        };
+        editForm.title = i.title || '';
+        editForm.cost = i.cost || i.purchasePrice || getNoteValue(i.conditionNotes, 'Paid', true) || '';
+        editForm.resalePrice = i.resalePrice || i.priceFair || getNoteValue(i.conditionNotes, 'Resale', true) || '';
+        editForm.estLow = i.estLow || getNoteValue(i.conditionNotes, 'Est. Low', true) || '';
+        editForm.estHigh = i.estHigh || getNoteValue(i.conditionNotes, 'Est. High', true) || '';
+        editForm.boutiquePrice = i.boutiquePrice || getNoteValue(i.conditionNotes, 'Boutique', true) || '';
+        editForm.binLocation = i.binLocation || getNoteValue(i.conditionNotes, 'Bin') || '';
+        editForm.purchaseLocation = i.purchaseLocation || getNoteValue(i.conditionNotes, 'Location') || '';
+        editForm.orderId = i.orderId || getNoteValue(i.conditionNotes, 'Order #') || getNoteValue(i.conditionNotes, 'Imported from Order #') || '';
+        editForm.status = i.status || 'acquired';
+        editForm.description = i.marketDescription || i.description || i.rawAnalysis || ''; 
+        editForm.itemCondition = getNoteValue(i.conditionNotes, 'Condition') || '';
+        editForm.existingGalleryIds = i.galleryImageIds || [];
+        editForm.salesChannel = i.salesChannel || [];
+        editForm.keywords = i.keywords || [];
+
         const existingUrl = getImageUrl(i);
         let activeImageId = null;
 
@@ -622,8 +660,8 @@ const initForm = () => {
         }
 
         if (existingUrl && activeImageId) {
-            if (!editForm.value.existingGalleryIds.includes(activeImageId)) {
-                editForm.value.existingGalleryIds.unshift(activeImageId);
+            if (!editForm.existingGalleryIds.includes(activeImageId)) {
+                editForm.existingGalleryIds.unshift(activeImageId);
             }
             mainPhotoSelection.value = { type: 'existing', val: activeImageId };
         } else {
@@ -637,7 +675,7 @@ const initForm = () => {
             const mdMatch = i.conditionNotes.match(/\[SCOUT_REPORT_MD: ([^\]]+)\]/);
             if (mdMatch) {
                 const downloadUrl = getAssetUrl(mdMatch[1].trim()).replace('/view', '/download');
-                fetch(downloadUrl).then(res => res.text()).then(txt => { editForm.value.itemCondition = txt; scoutMdText.value = txt; }).catch(() => {});
+                fetch(downloadUrl).then(res => res.text()).then(txt => { editForm.itemCondition = txt; scoutMdText.value = txt; }).catch(() => {});
             }
 
             const fileMatch = i.conditionNotes.match(/\[SCOUT_REPORT_ID: ([^\]]+)\]/);
@@ -662,10 +700,21 @@ const initForm = () => {
             } catch (e) {}
         }
     } else {
-        editForm.value = {
-            title: '', cost: '', resalePrice: '', estLow: '', estHigh: '',
-            binLocation: '', purchaseLocation: '', orderId: '', status: 'acquired', description: '', itemCondition: '', existingGalleryIds: [], salesChannel: [], keywords: []
-        };
+        editForm.title = '';
+        editForm.cost = '';
+        editForm.resalePrice = '';
+        editForm.estLow = '';
+        editForm.estHigh = '';
+        editForm.boutiquePrice = '';
+        editForm.binLocation = '';
+        editForm.purchaseLocation = '';
+        editForm.orderId = '';
+        editForm.status = 'acquired';
+        editForm.description = '';
+        editForm.itemCondition = '';
+        editForm.existingGalleryIds = [];
+        editForm.salesChannel = [];
+        editForm.keywords = [];
         mainPhotoSelection.value = { type: 'none', val: null };
         scoutResult.value = null;
         scoutMdText.value = null;
@@ -696,7 +745,7 @@ const generateDescription = async () => {
             });
             const data = await res.json();
             if(data.success && data.description) {
-                editForm.value.description = data.description;
+                editForm.description = data.description;
                 if(data.warning) alert(`Warning: ${data.warning}`);
             } else {
                 alert("Failed to generate: " + (data.error || "Unknown"));
@@ -724,7 +773,7 @@ const saveEdit = async () => {
         }
 
         const payload = {
-            ...editForm.value,
+            ...editForm,
             imageId: actualMainPhoto.value.id || null, // Existing main photo
             imageFile: finalImageFile, // New main photo
             galleryFiles: finalGallery,
@@ -740,7 +789,7 @@ const saveEdit = async () => {
 
 const removeGalleryItem = (idOrIdx, isExisting) => {
     if (isExisting) {
-        editForm.value.existingGalleryIds = editForm.value.existingGalleryIds.filter(id => id !== idOrIdx);
+        editForm.existingGalleryIds = editForm.existingGalleryIds.filter(id => id !== idOrIdx);
     } else {
         editGalleryBuffer.value.splice(idOrIdx, 1);
     }
@@ -801,7 +850,7 @@ const handleCapturedPhotos = (files) => {
     Array.from(files).forEach(file => {
         editGalleryBuffer.value.push(file);
         // Auto-select first photo as main if none is set yet
-        if (!actualMainPhoto.value.file && !editForm.value.imageId && !actualMainPhoto.value.url) {
+        if (!actualMainPhoto.value.file && !editForm.imageId && !actualMainPhoto.value.url) {
             mainPhotoSelection.value = { type: 'new', val: editGalleryBuffer.value.length - 1 };
         }
     });
@@ -810,7 +859,7 @@ const handleCapturedPhotos = (files) => {
 
 
 const fetchImagesFromUrl = async () => {
-    const url = editForm.value.purchaseLocation;
+    const url = editForm.purchaseLocation;
     const isId = url && url.match(/^\d+$/);
     if (!url || (!url.startsWith('http') && !isId)) return alert("Please enter a valid URL or Item ID.");
     fetchingImages.value = true;
@@ -831,8 +880,8 @@ const fetchImagesFromUrl = async () => {
             alert("No images found on that page.");
         }
         if (data.success) {
-            if (data.price && (!editForm.value.cost || parseFloat(editForm.value.cost) === 0)) editForm.value.cost = data.price.toString().replace(/[$,]/g, '');
-            if (data.title && (!editForm.value.title || editForm.value.title.trim().length < 4)) editForm.value.title = data.title;
+            if (data.price && (!editForm.cost || parseFloat(editForm.cost) === 0)) editForm.cost = data.price.toString().replace(/[$,]/g, '');
+            if (data.title && (!editForm.title || editForm.title.trim().length < 4)) editForm.title = data.title;
         }
     } catch (e) {
         alert("Failed to fetch images: " + e.message);
@@ -872,14 +921,14 @@ const selectFetchedImage = async (url) => {
     const file = await urlToFile(url, filename);
     if (file) {
         editGalleryBuffer.value.push(file);
-        if (!actualMainPhoto.value.file && !editForm.value.imageId && !actualMainPhoto.value.url) {
+        if (!actualMainPhoto.value.file && !editForm.imageId && !actualMainPhoto.value.url) {
             mainPhotoSelection.value = { type: 'new', val: editGalleryBuffer.value.length - 1 };
         }
     } else alert("Could not download image.");
 };
 
 const analyzeExistingItem = async () => {
-    if (!actualMainPhoto.value.url && !editForm.value.purchaseLocation && !scoutQuery.value) return alert("Please provide text, a photo, or a link to analyze.");
+    if (!actualMainPhoto.value.url && !editForm.purchaseLocation && !scoutQuery.value) return alert("Please provide text, a photo, or a link to analyze.");
     analyzing.value = true;
     try {
         let base64Image = null;
@@ -907,10 +956,10 @@ const analyzeExistingItem = async () => {
             try { const res = await fetch(url); if (res.ok) base64Image = await resize(await res.blob()); } catch (e) { }
         }
 
-        let contextNotes = editForm.value.description || '';
+        let contextNotes = editForm.description || '';
         if (scoutQuery.value) contextNotes = `User Query/Description: ${scoutQuery.value}\n\n` + contextNotes;
-        if (editForm.value.title) contextNotes = `Item Title: ${editForm.value.title}\n\n` + contextNotes;
-        if (editForm.value.purchaseLocation) contextNotes += `\n\nItem URL: ${editForm.value.purchaseLocation}`;
+        if (editForm.title) contextNotes = `Item Title: ${editForm.title}\n\n` + contextNotes;
+        if (editForm.purchaseLocation) contextNotes += `\n\nItem URL: ${editForm.purchaseLocation}`;
 
         const response = await fetch(`/api/identify-item`, {
             method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -938,23 +987,28 @@ const analyzeExistingItem = async () => {
                     desc += `\n**${idx+1}. ${item.title || item.identity}** - Est: ${low === high ? `$${low.toFixed(2)}` : `$${low.toFixed(2)} - $${high.toFixed(2)}`}\n`;
                     if(item.condition_notes) desc += `- Condition: ${item.condition_notes}\n`;
                 });
-                if (totalLow > 0) editForm.value.estLow = totalLow.toFixed(2);
-                if (totalHigh > 0) editForm.value.estHigh = totalHigh.toFixed(2);
-                if(!(editForm.value.itemCondition || '').includes("LOT BREAKDOWN")) editForm.value.itemCondition = ((editForm.value.itemCondition || '') + "\n\n" + desc).trim();
+                if (totalLow > 0) editForm.estLow = totalLow.toFixed(2);
+                if (totalHigh > 0) editForm.estHigh = totalHigh.toFixed(2);
+                if(!(editForm.itemCondition || '').includes("LOT BREAKDOWN")) editForm.itemCondition = ((editForm.itemCondition || '') + "\n\n" + desc).trim();
             } else {
                 scoutResult.value = data.items[0];
                 const item = scoutResult.value;
-                if (!editForm.value.title || editForm.value.title === 'Untitled' || editForm.value.title === 'Untitled Item') editForm.value.title = item.title || item.identity;
-                if (item.price_breakdown) {
-                     const f = item.price_breakdown.fair || item.price_breakdown.mint;
-                     const parts = (f || '').toString().replace(/,/g, '').match(/(\d+\.?\d*)/g);
-                     if(parts && parts.length >= 2) { editForm.value.estLow = parseFloat(parts[0]).toFixed(2); editForm.value.estHigh = parseFloat(parts[1]).toFixed(2); }
-                     else if(parts && parts.length === 1) { const val = parseFloat(parts[0]); editForm.value.estLow = val.toFixed(2); editForm.value.estHigh = val.toFixed(2); }
-                     else {
-                         const price = getRationalPrice(item);
-                         if (price > 0) { editForm.value.estLow = price.toFixed(2); editForm.value.estHigh = price.toFixed(2); }
+                if (!editForm.title || editForm.title === 'Untitled' || editForm.title === 'Untitled Item') editForm.title = item.title || item.identity;
+                
+                if (data.items[0].price_breakdown) {
+                     const fairPrice = String(data.items[0].price_breakdown.fair);
+                     const parsedFair = parsePriceRange(fairPrice);
+                     editForm.resalePrice = parseFloat(parsedFair.mid).toFixed(2);
+                     editForm.estLow = parseFloat(parsedFair.low).toFixed(2);
+                     editForm.estHigh = parseFloat(parsedFair.high).toFixed(2);
+                     
+                     const btqPrice = String(data.items[0].price_breakdown.boutique_premium);
+                     if (btqPrice && btqPrice !== 'undefined' && btqPrice !== 'null') {
+                         const parsedBtq = parsePriceRange(btqPrice);
+                         editForm.boutiquePrice = parseFloat(parsedBtq.mid).toFixed(2);
                      }
                 }
+                
                 let report = `\n\n--- 🕵️ SCOUT REPORT ---\n`;
                 if(item.condition_notes) report += `**Condition:** ${item.condition_notes}\n`;
                 if(item.red_flags && item.red_flags.length > 0) report += `**🚩 Red Flags:** ${item.red_flags.join(', ')}\n`;

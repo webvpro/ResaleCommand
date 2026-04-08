@@ -81,6 +81,25 @@
                     <button @click="startCamera" class="btn btn-outline btn-primary w-full gap-2">
                         📷 Add Photo with Camera
                     </button>
+                    
+                    <div class="divider my-2 opacity-50 text-xs uppercase">Power Features</div>
+                    
+                    <div v-if="isAuthenticated" class="form-control w-full">
+                        <label class="label py-1"><span class="label-text opacity-70 text-sm">Paste Web URL</span></label>
+                        <div class="join w-full flex">
+                            <input type="text" v-model="scoutUrl" class="input input-bordered join-item grow font-mono" placeholder="http://..." />
+                            <button class="btn btn-primary join-item shrink-0" @click="analyzeListing" :disabled="!scoutUrl || loading">
+                                <span v-if="loading" class="loading loading-spinner loading-xs"></span>
+                                <span v-else>Analyze Listing</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div v-else class="text-center bg-base-200 border border-base-300 rounded-lg p-4 mt-2 text-sm">
+                        <div class="font-bold text-primary mb-1">Web Link Import is restricted during Early Alpha.</div>
+                        <span class="opacity-70">We're currently gathering feedback and accepting waitlist members for the collective. </span>
+                        <a href="/login" class="link text-secondary font-bold">Log in to unlock access.</a>
+                    </div>
                 </div>
 
                 <!-- ADDITIONAL DETAILS -->
@@ -137,24 +156,41 @@
                 <div class="card-body p-4 md:p-6">
                     
                     <!-- Header -->
-                    <div class="flex justify-between items-start gap-4">
-                        <h2 class="text-xl font-bold text-primary">{{ item.identity || 'Unidentified Item' }}</h2>
-                        <div class="badge badge-neutral">#{{ Number(index) + 1 }}</div>
+                    <div class="flex flex-col sm:flex-row justify-between items-start gap-4">
+                        <div class="flex items-start gap-4">
+                            <img v-if="item.fetched_image" 
+                                 :src="proxify(item.fetched_image)" 
+                                 @error="handleImageError" 
+                                 referrerpolicy="no-referrer"
+                                 class="w-24 h-24 object-cover rounded-lg shadow-sm border border-base-200" 
+                                 alt="Item Thumbnail" />
+                            <div>
+                                <h2 class="text-xl font-bold text-primary">{{ item.identity || 'Unidentified Item' }}</h2>
+                                <a v-if="purchaseLocation && purchaseLocation.startsWith('http')" :href="purchaseLocation" target="_blank" class="btn btn-xs mt-1 btn-outline btn-secondary">
+                                    🔗 View Source Listing
+                                </a>
+                            </div>
+                        </div>
+                        <div class="badge badge-neutral hidden sm:inline-flex">#{{ Number(index) + 1 }}</div>
                     </div>
 
                     <!-- Pricing Grid -->
-    <div class="grid grid-cols-3 gap-2 text-center mt-2">
+                    <div class="grid grid-cols-4 gap-2 text-center mt-2">
                         <div class="bg-base-200 rounded p-2 flex flex-col">
                             <span class="text-[10px] uppercase font-bold opacity-50">NEW/MINT</span>
                             <span class="text-success font-bold text-sm md:text-base">{{ item.price_breakdown?.mint || '-' }}</span>
                         </div>
                         <div class="bg-primary/10 rounded p-2 flex flex-col border border-primary/20">
                             <span class="text-[10px] uppercase font-bold opacity-50 text-primary">USED/FAIR</span>
-                            <span class="text-primary font-bold text-lg md:text-xl">{{ item.price_breakdown?.fair || '-' }}</span>
+                            <span class="text-primary font-bold text-sm md:text-base">{{ item.price_breakdown?.fair || '-' }}</span>
                         </div>
                         <div class="bg-base-200 rounded p-2 flex flex-col">
                             <span class="text-[10px] uppercase font-bold opacity-50">POOR</span>
-                            <span class="text-warning font-bold text-sm md:text-base">{{ item.price_breakdown?.poor || '-' }}</span>
+                            <span class="text-warning font-bold text-xs md:text-sm">{{ item.price_breakdown?.poor || '-' }}</span>
+                        </div>
+                        <div class="bg-secondary/10 rounded p-2 flex flex-col border border-secondary/20">
+                            <span class="text-[10px] uppercase font-bold opacity-70 text-secondary">BOUTIQUE</span>
+                            <span class="text-secondary font-bold text-sm md:text-base">{{ item.price_breakdown?.boutique_premium || '-' }}</span>
                         </div>
                     </div>
 
@@ -162,6 +198,39 @@
                     <div class="bg-black text-white p-3 rounded-lg flex justify-between items-center mt-2 shadow-md">
                         <span class="font-bold text-sm">Quick Max Buy (Est)</span>
                         <span class="font-bold text-success text-lg">~${{ calculateMaxBuy(item.price_breakdown?.fair) }}</span>
+                    </div>
+
+                    <!-- Sourcing Strategy Verdict -->
+                    <div v-if="item.purchase_strategy" class="mt-4 border-2 rounded-xl p-4 shadow-sm" :class="{
+                        'border-success bg-success/10': ['BUY_NOW', 'CHASE_AUCTION'].includes(item.purchase_strategy.verdict),
+                        'border-error bg-error/10': item.purchase_strategy.verdict === 'PASS',
+                        'border-warning bg-warning/10': ['WATCH', 'NEGOTIATE'].includes(item.purchase_strategy.verdict),
+                        'border-primary bg-primary/10': !['PASS', 'WATCH', 'BUY_NOW', 'NEGOTIATE', 'CHASE_AUCTION'].includes(item.purchase_strategy.verdict)
+                    }">
+                        <div class="flex items-center gap-2 mb-2">
+                           <span class="text-2xl" v-if="['BUY_NOW', 'CHASE_AUCTION'].includes(item.purchase_strategy.verdict)">✨</span>
+                           <span class="text-2xl" v-if="item.purchase_strategy.verdict === 'PASS'">🛑</span>
+                           <span class="text-2xl" v-if="['WATCH', 'NEGOTIATE'].includes(item.purchase_strategy.verdict)">🧐</span>
+                           <h3 class="font-black text-lg uppercase tracking-wider" :class="{
+                                'text-success': ['BUY_NOW', 'CHASE_AUCTION'].includes(item.purchase_strategy.verdict),
+                                'text-error': item.purchase_strategy.verdict === 'PASS',
+                                'text-warning': ['WATCH', 'NEGOTIATE'].includes(item.purchase_strategy.verdict)
+                           }">{{ item.purchase_strategy.verdict.replace('_', ' ') }}</h3>
+                        </div>
+                        
+                        <div v-if="item.purchase_strategy.current_asking_price && !item.purchase_strategy.current_asking_price.includes('No Asking Price')" class="mb-2 inline-flex badge badge-neutral shadow-sm font-bold p-3">
+                            Asking/Bid: {{ item.purchase_strategy.current_asking_price }}
+                        </div>
+
+                        <p class="text-sm font-medium leading-relaxed opacity-90">{{ item.purchase_strategy.advice }}</p>
+                    </div>
+
+                    <!-- Condition Assessment -->
+                    <div v-if="item.condition_notes" class="mt-4 bg-base-200 p-4 border border-base-300 rounded-lg">
+                        <div class="font-bold text-sm mb-1 opacity-70 uppercase tracking-wide flex gap-2 items-center">
+                            <span>🔍</span> Visual Condition Assessment
+                        </div>
+                        <p class="text-sm font-medium">{{ item.condition_notes }}</p>
                     </div>
 
                     <!-- Comparables Dropdown -->
@@ -343,6 +412,9 @@ const userNotes = ref('');
 const dragOver = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
 const receiptInput = ref<HTMLInputElement | null>(null);
+
+// URL Scraping
+const scoutUrl = ref('');
 
 // Shared Inputs
 const cost = ref('');
@@ -570,6 +642,83 @@ async function processFile(file: File) {
     });
 }
 
+// -- URL SCRAPING --
+const proxify = (url: string | null): string | undefined => {
+    if (!url) return undefined;
+    if (url.startsWith('blob:') || url.startsWith('data:') || url.includes('/api/proxy-image')) return url;
+    if (url.includes('/storage/buckets/')) return url;
+    if (url.startsWith('http')) {
+        return `/api/proxy-image?url=${encodeURIComponent(url)}`;
+    }
+    return url;
+};
+
+const handleImageError = (e: Event) => {
+    const target = e.target as HTMLImageElement;
+    if (target.src.includes('/api/proxy-image')) {
+        try {
+            const urlObj = new URL(target.src);
+            const rawUrl = urlObj.searchParams.get('url');
+            if (rawUrl && !target.dataset.triedFallback) {
+                target.dataset.triedFallback = 'true';
+                target.src = decodeURIComponent(rawUrl);
+                return;
+            }
+        } catch (err) {}
+    }
+    // Set to a placeholder or hide if all fails
+    target.style.display = 'none';
+};
+
+async function analyzeListing() {
+    const url = scoutUrl.value;
+    const isId = url && url.match(/^\d+$/);
+    if (!url || (!url.startsWith('http') && !isId)) return alert("Please enter a valid URL or Item ID.");
+    
+    loading.value = true;
+    error.value = null;
+    
+    const targetUrl = isId ? `https://shopgoodwill.com/item/${url}` : url;
+    
+    // Auto-fill the purchase location field so it's ready when saving
+    purchaseLocation.value = targetUrl;
+    
+    try {
+        const payload = JSON.stringify({ 
+            images: [], 
+            notes: targetUrl + '\n\n' + userNotes.value 
+        });
+
+        const response = await fetch(`/api/identify-item`, {
+            method: 'PUT', 
+            headers: { 'Content-Type': 'application/json' },
+            body: payload
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.details || err.error || 'Server Error');
+        }
+
+        const data = await response.json();
+        
+        if (data && !data.items && (data.identity || data.title)) {
+            result.value = { items: [{ ...data }] };
+        } else {
+            result.value = data;
+        }
+
+    } catch (e: any) {
+        console.error(e);
+        error.value = `Listing Analysis Failed: ${e.message}`;
+    } finally {
+        loading.value = false;
+        scoutUrl.value = ''; // Prep for next
+    }
+}
+
+
+
 // -- ANALYSIS --
 async function analyzeImage() {
     if (!images.value.length) return;
@@ -700,7 +849,7 @@ async function handleSaveItem(item: any, index: number) {
             purchaseLocation: purchaseLocation.value || '',
             binLocation: binLocation.value || '',
             
-            status: 'acquired',
+            status: cost.value ? 'acquired' : 'tracked',
             keywords: item.keywords || [],
             
             // Temporary storage for images/receipts until schema is perfect
