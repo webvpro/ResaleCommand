@@ -141,7 +141,7 @@
                             </div>
                             
                             <!-- Pricing Grid -->
-                            <div class="grid grid-cols-4 gap-2 mt-4" v-if="parsedScoutData.price_breakdown">
+                            <div class="grid grid-cols-2 gap-2 mt-4" v-if="parsedScoutData.price_breakdown">
                                 <div class="flex flex-col items-center bg-base-100 p-3 rounded-lg border border-base-200 shadow-sm">
                                     <span class="text-[10px] uppercase font-bold text-info mb-1 tracking-wider">Mint</span>
                                     <span class="font-mono font-bold text-sm">{{ parsedScoutData.price_breakdown.mint || '-' }}</span>
@@ -154,7 +154,7 @@
                                     <span class="text-[10px] uppercase font-bold text-error opacity-70 mb-1 tracking-wider">Poor</span>
                                     <span class="font-mono font-bold text-sm opacity-80">{{ parsedScoutData.price_breakdown.poor || '-' }}</span>
                                 </div>
-                                <div class="flex flex-col items-center bg-secondary/10 p-3 rounded-lg border border-secondary/30 shadow-sm">
+                                <div v-if="parsedScoutData.price_breakdown.boutique_premium" class="flex flex-col items-center bg-secondary/10 p-3 rounded-lg border border-secondary/30 shadow-sm">
                                     <span class="text-[10px] uppercase font-bold text-secondary mb-1 tracking-wider">Boutique</span>
                                     <span class="font-mono font-bold text-sm opacity-90">{{ parsedScoutData.price_breakdown.boutique_premium || '-' }}</span>
                                 </div>
@@ -272,8 +272,9 @@ const close = () => {
 };
 
 const editItem = () => {
+    const itemToEdit = { ...props.item };
     close();
-    emit('edit', props.item);
+    emit('edit', itemToEdit);
 };
 
 // --- COMPUTED CONTENT ---

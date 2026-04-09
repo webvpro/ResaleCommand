@@ -20,5 +20,17 @@ export default defineConfig({
   adapter: vercel(),
   vite: {
     plugins: [tailwindcss()],
+    cacheDir: '/tmp/.vite',
+    server: {
+      watch: {
+        usePolling: true,
+        interval: 1000,
+        ignored: ['**/node_modules/**', '**/.git/**']
+      },
+      hmr: {
+        host: 'localhost',
+        protocol: 'ws'
+      }
+    },
   },
 });

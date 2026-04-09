@@ -127,7 +127,7 @@
                 </div>
 
                 <!-- AI Estimates Row -->
-                <div class="grid grid-cols-3 gap-2">
+                <div class="grid grid-cols-2 gap-2">
                      <div class="form-control w-full">
                         <label class="label"><span class="label-text text-xs uppercase font-bold text-success truncate">Est. Low</span></label>
                         <label class="input input-bordered input-sm flex items-center gap-1 px-2">
@@ -140,13 +140,6 @@
                          <label class="input input-bordered input-sm flex items-center gap-1 px-2">
                             <span class="opacity-50">$</span>
                             <input type="number" step="0.01" v-model="editForm.estHigh" class="grow font-mono min-w-0" placeholder="0.00" />
-                        </label>
-                    </div>
-                     <div class="form-control w-full">
-                        <label class="label"><span class="label-text text-xs uppercase font-bold text-secondary truncate">Boutique</span></label>
-                         <label class="input input-bordered input-sm flex items-center gap-1 px-2 bg-secondary/5">
-                            <span class="opacity-50 text-secondary">$</span>
-                            <input type="number" step="0.01" v-model="editForm.boutiquePrice" class="grow font-mono min-w-0 text-secondary font-bold" placeholder="0.00" />
                         </label>
                     </div>
                 </div>
@@ -236,7 +229,7 @@
                         </div>
                         
                         <!-- Valuation -->
-                        <div v-if="scoutResult.price_breakdown" class="grid grid-cols-3 gap-2 mb-3">
+                        <div v-if="scoutResult.price_breakdown" class="grid grid-cols-2 gap-2 mb-3">
                             <div class="flex flex-col items-center bg-base-100 p-2 rounded border border-base-200">
                                 <span class="text-[10px] uppercase font-bold text-success">Mint</span>
                                 <span class="font-mono font-bold">{{ formatPriceRange(scoutResult.price_breakdown.mint) }}</span>
@@ -248,6 +241,10 @@
                             <div class="flex flex-col items-center bg-base-100 p-2 rounded border border-base-200">
                                 <span class="text-[10px] uppercase font-bold text-error">Poor</span>
                                 <span class="font-mono font-bold">{{ formatPriceRange(scoutResult.price_breakdown.poor) }}</span>
+                            </div>
+                            <div v-if="scoutResult.price_breakdown.boutique_premium" class="flex flex-col items-center bg-secondary/10 p-2 rounded border border-secondary/30">
+                                <span class="text-[10px] uppercase font-bold text-secondary">Boutique</span>
+                                <span class="font-mono font-bold">{{ formatPriceRange(scoutResult.price_breakdown.boutique_premium) }}</span>
                             </div>
                         </div>
 
@@ -376,7 +373,7 @@
 </template>
 
 <script setup>
-import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
+import { ref, reactive, watch, computed, onMounted, onUnmounted } from 'vue';
 import { marked } from 'marked';
 import ScannerWidget from './ScannerWidget.vue';
 import TagInput from './TagInput.vue';
@@ -413,7 +410,6 @@ const editForm = reactive({
     resalePrice: '',
     estLow: '',
     estHigh: '',
-    boutiquePrice: '',
     binLocation: '',
     purchaseLocation: '',
     orderId: '',
@@ -636,7 +632,6 @@ const initForm = () => {
         editForm.resalePrice = i.resalePrice || i.priceFair || getNoteValue(i.conditionNotes, 'Resale', true) || '';
         editForm.estLow = i.estLow || getNoteValue(i.conditionNotes, 'Est. Low', true) || '';
         editForm.estHigh = i.estHigh || getNoteValue(i.conditionNotes, 'Est. High', true) || '';
-        editForm.boutiquePrice = i.boutiquePrice || getNoteValue(i.conditionNotes, 'Boutique', true) || '';
         editForm.binLocation = i.binLocation || getNoteValue(i.conditionNotes, 'Bin') || '';
         editForm.purchaseLocation = i.purchaseLocation || getNoteValue(i.conditionNotes, 'Location') || '';
         editForm.orderId = i.orderId || getNoteValue(i.conditionNotes, 'Order #') || getNoteValue(i.conditionNotes, 'Imported from Order #') || '';
@@ -674,14 +669,26 @@ const initForm = () => {
         if (i.conditionNotes) {
             const mdMatch = i.conditionNotes.match(/\[SCOUT_REPORT_MD: ([^\]]+)\]/);
             if (mdMatch) {
-                const downloadUrl = getAssetUrl(mdMatch[1].trim()).replace('/view', '/download');
-                fetch(downloadUrl).then(res => res.text()).then(txt => { editForm.itemCondition = txt; scoutMdText.value = txt; }).catch(() => {});
+                const id = mdMatch[1].trim();
+                const urlPrimary = `${ENDPOINT}/storage/buckets/reports/files/${id}/download?project=${PROJECT}`;
+                const urlFallback = getAssetUrl(id).replace('/view', '/download');
+                fetch(urlPrimary).then(res => {
+                    if (!res.ok) throw new Error('Not in reports bucket');
+                    return res.text();
+                }).catch(() => fetch(urlFallback).then(res => res.text()))
+                .then(txt => { editForm.itemCondition = txt; scoutMdText.value = txt; }).catch(() => {});
             }
 
             const fileMatch = i.conditionNotes.match(/\[SCOUT_REPORT_ID: ([^\]]+)\]/);
             if (fileMatch) {
-                const downloadUrl = getAssetUrl(fileMatch[1].trim()).replace('/view', '/download');
-                fetch(downloadUrl).then(res => res.json()).then(data => { scoutResult.value = data; }).catch(() => {});
+                const id = fileMatch[1].trim();
+                const urlPrimary = `${ENDPOINT}/storage/buckets/reports/files/${id}/download?project=${PROJECT}`;
+                const urlFallback = getAssetUrl(id).replace('/view', '/download');
+                fetch(urlPrimary).then(res => {
+                    if (!res.ok) throw new Error('Not in reports bucket');
+                    return res.json();
+                }).catch(() => fetch(urlFallback).then(res => res.json()))
+                .then(data => { scoutResult.value = data; }).catch(() => {});
             } else {
                 const liteMatch = i.conditionNotes.match(/\[SCOUT_DATA_LITE: ([^\]]+)\]/);
                 if (liteMatch) {
@@ -705,7 +712,6 @@ const initForm = () => {
         editForm.resalePrice = '';
         editForm.estLow = '';
         editForm.estHigh = '';
-        editForm.boutiquePrice = '';
         editForm.binLocation = '';
         editForm.purchaseLocation = '';
         editForm.orderId = '';
@@ -1001,21 +1007,18 @@ const analyzeExistingItem = async () => {
                      editForm.resalePrice = parseFloat(parsedFair.mid).toFixed(2);
                      editForm.estLow = parseFloat(parsedFair.low).toFixed(2);
                      editForm.estHigh = parseFloat(parsedFair.high).toFixed(2);
-                     
-                     const btqPrice = String(data.items[0].price_breakdown.boutique_premium);
-                     if (btqPrice && btqPrice !== 'undefined' && btqPrice !== 'null') {
-                         const parsedBtq = parsePriceRange(btqPrice);
-                         editForm.boutiquePrice = parseFloat(parsedBtq.mid).toFixed(2);
-                     }
                 }
                 
                 let report = `\n\n--- 🕵️ SCOUT REPORT ---\n`;
                 if(item.condition_notes) report += `**Condition:** ${item.condition_notes}\n`;
                 if(item.red_flags && item.red_flags.length > 0) report += `**🚩 Red Flags:** ${item.red_flags.join(', ')}\n`;
-                if(item.price_breakdown) report += `**Valuation:** Mint: ${item.price_breakdown.mint}, Fair: ${item.price_breakdown.fair}, Poor: ${item.price_breakdown.poor}\n`;
+                if(item.price_breakdown) {
+                    report += `**Valuation:** Mint: ${item.price_breakdown.mint}, Fair: ${item.price_breakdown.fair}, Poor: ${item.price_breakdown.poor}\n`;
+                    if(item.price_breakdown.boutique_premium) report += `**Boutique Premium:** ${item.price_breakdown.boutique_premium}\n`;
+                }
                 if(item.comparables && item.comparables.length > 0) { report += `**Comparables:**\n`; item.comparables.forEach(c => report += `- ${c.name} (${c.price}) [${c.status}]\n`); }
                 if(item.keywords && item.keywords.length > 0) report += `**Keywords:** ${item.keywords.join(', ')}\n`;
-                if(!(editForm.value.itemCondition || '').includes("SCOUT REPORT")) editForm.value.itemCondition = ((editForm.value.itemCondition || '') + report).trim();
+                if(!(editForm.itemCondition || '').includes("SCOUT REPORT")) editForm.itemCondition = ((editForm.itemCondition || '') + report).trim();
                 if (item.fetched_image && actualMainPhoto.value.type === 'none') {
                      const file = await urlToFile(item.fetched_image, `scout_auto_${Date.now()}.jpg`);
                      if (file) {
