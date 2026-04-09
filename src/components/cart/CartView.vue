@@ -200,15 +200,15 @@ watch(user, async (newUser) => {
 
 // -- COMPUTED --
 const cartTotalResale = computed(() => {
-    return cartItems.value.reduce((sum, item) => sum + (item.resalePrice || 0), 0);
+    return cartItems.value.reduce((sum, item) => sum + (parseFloat(item.resalePrice as any) || 0), 0);
 });
 
 const itemsCost = computed(() => {
-    return cartItems.value.reduce((sum, item) => sum + (item.cost || 0), 0);
+    return cartItems.value.reduce((sum, item) => sum + (parseFloat(item.cost as any) || 0), 0);
 });
 
 const expensesCost = computed(() => {
-    return cartExpenses.value.reduce((sum, exp) => sum + (exp.amount || 0), 0);
+    return cartExpenses.value.reduce((sum, exp) => sum + (parseFloat(exp.amount as any) || 0), 0);
 });
 
 const totalSpend = computed(() => itemsCost.value + expensesCost.value);

@@ -145,14 +145,14 @@ export async function saveItemToInventory(itemData: any, imageFile: File | null,
                 try {
                     const dateStr = new Date().toISOString().split('T')[0];
                     const mdFile = new File([md], `scout_${dateStr}.md`, { type: 'text/markdown' });
-                    const mdUpload = await storage.createFile(BUCKET_ID, ID.unique(), mdFile);
+                    const mdUpload = await storage.createFile('reports', ID.unique(), mdFile);
                     mdFileId = mdUpload.$id;
                 } catch(e) { console.warn("MD upload failed", e); }
                 
                 // Strategy 1: Try .json
                 try {
                     const file = new File([jsonStr], 'scout.json', { type: 'application/json' });
-                    const upload = await storage.createFile(BUCKET_ID, ID.unique(), file);
+                    const upload = await storage.createFile('reports', ID.unique(), file);
                     fileId = upload.$id;
                 } catch(err1: any) {
                     
@@ -164,13 +164,13 @@ export async function saveItemToInventory(itemData: any, imageFile: File | null,
                             
                             // Retry JSON
                             const file = new File([jsonStr], 'scout.json', { type: 'application/json' });
-                            const upload = await storage.createFile(BUCKET_ID, ID.unique(), file);
+                            const upload = await storage.createFile('reports', ID.unique(), file);
                             fileId = upload.$id;
                         } catch (retryErr) {
                              // Fallback to TXT
                              try {
                                 const file = new File([jsonStr], 'scout.txt', { type: 'text/plain' });
-                                const upload = await storage.createFile(BUCKET_ID, ID.unique(), file);
+                                const upload = await storage.createFile('reports', ID.unique(), file);
                                 fileId = upload.$id;
                              } catch(e3) {
                                  throw retryErr; 
@@ -180,7 +180,7 @@ export async function saveItemToInventory(itemData: any, imageFile: File | null,
                         // Fallback to TXT
                         try {
                             const file = new File([jsonStr], 'scout.txt', { type: 'text/plain' });
-                            const upload = await storage.createFile(BUCKET_ID, ID.unique(), file);
+                            const upload = await storage.createFile('reports', ID.unique(), file);
                             fileId = upload.$id;
                         } catch (e4) {
                             throw err1;
@@ -526,7 +526,7 @@ export async function updateInventoryItem(documentId: string, updates: Partial<E
             if (BUCKET_ID && mdText.trim().length > 0) {
                  try {
                      const mdFile = new File([mdText], `scout_${documentId}.md`, { type: 'text/markdown' });
-                     const mdUpload = await storage.createFile(BUCKET_ID, ID.unique(), mdFile);
+                     const mdUpload = await storage.createFile('reports', ID.unique(), mdFile);
                      updateTagValue('SCOUT_REPORT_MD', mdUpload.$id);
                  } catch(e) {
                      console.warn("Failed to upload MD report", e);
@@ -570,7 +570,7 @@ export async function updateInventoryItem(documentId: string, updates: Partial<E
                 try {
                     // Strategy 1: Try .json
                     const file = new File([jsonStr], 'scout.json', { type: 'application/json' });
-                    const upload = await storage.createFile(BUCKET_ID, ID.unique(), file);
+                    const upload = await storage.createFile('reports', ID.unique(), file);
                     fileId = upload.$id;
                 } catch(err1: any) {
                     // SELF-REPAIR: If extension not allowed, try to call fix-bucket endpoint
@@ -580,16 +580,14 @@ export async function updateInventoryItem(documentId: string, updates: Partial<E
                             await fetch('/api/dev/fix-bucket');
                             // Retry once
                             const file = new File([jsonStr], 'scout.json', { type: 'application/json' });
-                            const upload = await storage.createFile(BUCKET_ID, ID.unique(), file);
+                            const upload = await storage.createFile('reports', ID.unique(), file);
                             fileId = upload.$id;
-                        } catch(retryErr) {
-                             console.warn("Auto-fix retry failed", retryErr);
-                             // Fallback to Strategy 2
-                             try {
+                        } catch (retryErr) {
+                            try {
                                 const file = new File([jsonStr], 'scout.txt', { type: 'text/plain' });
-                                const upload = await storage.createFile(BUCKET_ID, ID.unique(), file);
+                                const upload = await storage.createFile('reports', ID.unique(), file);
                                 fileId = upload.$id;
-                             } catch(e3) {
+                            } catch(e3) {
                                  // Check 'fileId' to see if we succeeded in inner blocks? No, just throw to outer catch for Lite
                                  throw retryErr; 
                              }
@@ -597,9 +595,9 @@ export async function updateInventoryItem(documentId: string, updates: Partial<E
                     } else {
                         // Fallback to Strategy 2
                         try {
-                           const file = new File([jsonStr], 'scout.txt', { type: 'text/plain' });
-                           const upload = await storage.createFile(BUCKET_ID, ID.unique(), file);
-                           fileId = upload.$id;
+                            const file = new File([jsonStr], 'scout.txt', { type: 'text/plain' });
+                            const upload = await storage.createFile('reports', ID.unique(), file);
+                            fileId = upload.$id;
                         } catch(e4) {
                              throw err1;
                         }

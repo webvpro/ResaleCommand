@@ -12,13 +12,13 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-1 pt-2">
                     <div v-for="item in groupItems" :key="item.$id" class="card bg-base-100 shadow-sm border-2 border-primary/20 hover:border-primary transition-colors">
                         <div class="card-body p-4">
-                            <div class="flex gap-4">
+                            <div class="flex gap-4 cursor-pointer hover:opacity-80 transition-opacity" @click="openEdit(item)">
                                 <div class="w-16 h-16 bg-base-300 rounded-lg shrink-0 overflow-hidden relative">
                                     <img v-if="getImageUrl(item)" :src="getImageUrl(item)" class="w-full h-full object-cover" />
                                     <div v-else class="flex items-center justify-center w-full h-full text-2xl">📦</div>
                                 </div>
                                 <div class="flex-1 min-w-0">
-                                    <h3 class="font-bold truncate">{{ item.title }}</h3>
+                                    <h3 class="font-bold truncate group-hover:text-primary transition-colors">{{ item.title }}</h3>
                                     <div class="text-xs opacity-70 mt-1">
                                         Max Buy: <span class="font-bold text-success">${{ item.maxBuyPrice }}</span>
                                     </div>
