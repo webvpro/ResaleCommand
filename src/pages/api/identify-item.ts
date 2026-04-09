@@ -360,7 +360,10 @@ export const ALL: APIRoute = async ({ request }) => {
           3. Identify each item specifically.
 
           CRITICAL PRICING & IDENTIFICATION RULES:
-          - ACTIVELY READ TAGS: Pay very close attention to any tags, labels, or boxes in the images. If you see a brand tag or "New With Tags" (NWT) label, you MUST use that exact brand for identification and reflect its true higher value.
+          - ACTIVELY READ TEXT & COVERS: Extract the EXACT title directly from the item. If it is a book, game, or media, read the cover text precisely (e.g., "Monster Manual", "Spell Compendium"). Pay close attention to small sub-text like "v.3.5".
+          - SPECIFY EDITIONS: For tabletop games, RPGs (like Dungeons & Dragons), and textbooks, you MUST use the cover art style and layout to identify the EXACT EDITION (e.g., 1st Edition, v3.5, 4th Edition, 5e) and put it in the title.
+          - 3.5 PREMIUM REPRINTS: D&D 3.5e Premium Reprints feature embossed faux-leather tomes with a central crest (an eye, a lock, or a globe). You are STRICTLY FORBIDDEN from calling these "5e", "Alternate Art", or "Hydro74". If you see that artwork, it is unequivocally the "D&D 3.5 Premium Reprint". This is an absolute rule constraint.
+          - ACTIVELY READ TAGS: Pay very close attention to any tags or labels. If you see a brand tag or "New With Tags" (NWT) label, you MUST use that exact brand for identification and reflect its true higher value.
           - CURATED RETAIL PREMIUM: Remember that items sold in "Curated Physical Locations" (vintage boutiques, antique booths) often sell for 30-50% MORE than raw eBay prices due to curation and zero shipping friction. Reflect this in the 'boutique_premium' output.
           - BE CONSERVATIVE BUT ACCURATE: Do not randomly guess high-end designer names if there's no tag/logo, but DO trust clear branding when it is visible. 
           - For "Style" items (e.g. "Goth Style", "Victorian Style"), if no authentic brand/hallmark exists, price them as UNBRANDED/COSTUME ($10-$30 range). 

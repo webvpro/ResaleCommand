@@ -937,7 +937,7 @@ const analyzeExistingItem = async () => {
     if (!actualMainPhoto.value.url && !editForm.purchaseLocation && !scoutQuery.value) return alert("Please provide text, a photo, or a link to analyze.");
     analyzing.value = true;
     try {
-        let base64Image = null;
+        let base64Images = [];
         const resize = (blob) => new Promise((resolve) => {
             const img = new Image();
             img.onload = () => {
@@ -952,24 +952,38 @@ const analyzeExistingItem = async () => {
             const reader = new FileReader(); reader.onload = (e) => img.src = e.target.result; reader.readAsDataURL(blob);
         });
 
-        if (actualMainPhoto.value.file) base64Image = await resize(actualMainPhoto.value.file);
-        else if (actualMainPhoto.value.url && actualMainPhoto.value.url.startsWith('data:')) {
-            const res = await fetch(actualMainPhoto.value.url);
-            base64Image = await resize(await res.blob());
-        } else if (actualMainPhoto.value.url) {
+        // 1. Process local/new camera buffer files
+        for (const file of editGalleryBuffer.value.slice(0, 3)) {
+            try { base64Images.push(await resize(file)); } catch (e) {}
+        }
+        
+        // 2. Process existing Appwrite URLs
+        if (editForm.existingGalleryIds) {
+            for (const id of editForm.existingGalleryIds.slice(0, 3 - base64Images.length)) {
+                let url = getAssetUrl(id);
+                if (url.includes('/storage/buckets/') || !url.includes('/api/proxy-image')) url = `/api/proxy-image?url=${encodeURIComponent(url)}`;
+                try { const res = await fetch(url); if (res.ok) base64Images.push(await resize(await res.blob())); } catch (e) {}
+            }
+        }
+        
+        // 3. Fallback to just main photo URL if somehow nothing was caught
+        if (base64Images.length === 0 && actualMainPhoto.value.url) {
             let url = actualMainPhoto.value.url;
-            if (url.includes('/storage/buckets/') || !url.includes('/api/proxy-image')) url = `/api/proxy-image?url=${encodeURIComponent(url)}`;
-            try { const res = await fetch(url); if (res.ok) base64Image = await resize(await res.blob()); } catch (e) { }
+            if (url.startsWith('data:')) {
+                try { const res = await fetch(url); base64Images.push(await resize(await res.blob())); } catch (e) {}
+            } else {
+                if (url.includes('/storage/buckets/') || !url.includes('/api/proxy-image')) url = `/api/proxy-image?url=${encodeURIComponent(url)}`;
+                try { const res = await fetch(url); if (res.ok) base64Images.push(await resize(await res.blob())); } catch (e) { }
+            }
         }
 
         let contextNotes = editForm.description || '';
         if (scoutQuery.value) contextNotes = `User Query/Description: ${scoutQuery.value}\n\n` + contextNotes;
-        if (editForm.title) contextNotes = `Item Title: ${editForm.title}\n\n` + contextNotes;
         if (editForm.purchaseLocation) contextNotes += `\n\nItem URL: ${editForm.purchaseLocation}`;
 
         const response = await fetch(`/api/identify-item`, {
             method: 'PUT', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image: base64Image, imageUrl: actualMainPhoto.value.url, notes: contextNotes })
+            body: JSON.stringify({ images: base64Images, imageUrl: actualMainPhoto.value.url, notes: contextNotes })
         });
         if (!response.ok) throw new Error("Analysis API failed");
         
