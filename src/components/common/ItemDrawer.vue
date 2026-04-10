@@ -510,6 +510,11 @@ const proxify = (url) => {
 const parsePrice = (p) => {
     if (!p) return 0;
     if (typeof p === 'number') return p;
+    if (Array.isArray(p)) {
+        if (p.length >= 2) return (parseFloat(String(p[0])) + parseFloat(String(p[1]))) / 2;
+        if (p.length === 1) return parseFloat(String(p[0]));
+        return 0;
+    }
     if (typeof p === 'object') {
         const l = parseFloat((p.low || p.min || p.mint || 0).toString().replace(/,/g, ''));
         const h = parseFloat((p.high || p.max || p.fair || l).toString().replace(/,/g, ''));
@@ -524,6 +529,18 @@ const parsePrice = (p) => {
 
 const parsePriceRange = (p) => {
     if (!p) return { low: 0, high: 0, mid: 0 };
+    if (Array.isArray(p)) {
+        if (p.length >= 2) {
+            const l = parseFloat(String(p[0])) || 0;
+            const h = parseFloat(String(p[1])) || l;
+            return { low: l, high: h, mid: (l + h) / 2 };
+        }
+        if (p.length === 1) {
+            const val = parseFloat(String(p[0])) || 0;
+            return { low: val, high: val, mid: val };
+        }
+        return { low: 0, high: 0, mid: 0 };
+    }
     const s = String(p).replace(/[$,]/g, '').trim();
     const range = s.match(/(\d+(?:\.\d+)?)\s*(?:[-–—−]|to)\s*(\d+(?:\.\d+)?)/i);
     if (range) {
@@ -551,6 +568,14 @@ function formatPriceRange(val) {
     if (typeof val === 'string' && val.trim().startsWith('{')) {
         try { val = JSON.parse(val); } catch (e) { }
     }
+    if (typeof val === 'string' && val.trim().startsWith('[')) {
+        try { val = JSON.parse(val); } catch (e) { }
+    }
+    if (Array.isArray(val)) {
+        if (val.length >= 2) return `$${parseFloat(String(val[0])).toFixed(0)} - $${parseFloat(String(val[1])).toFixed(0)}`;
+        if (val.length === 1) return `$${parseFloat(String(val[0])).toFixed(0)}`;
+        return '-';
+    }
     if (typeof val === 'object' && val !== null) {
         const low = val.low ?? val.Low ?? val.min ?? val.Min ?? val.low_price ?? val.start;
         const high = val.high ?? val.High ?? val.max ?? val.Max ?? val.high_price ?? val.end;
@@ -573,7 +598,10 @@ const scoutTotalRange = computed(() => {
     scoutResult.value.forEach(resItem => {
         let raw = resItem.price_breakdown?.fair || resItem.price_breakdown?.mint;
         let low = 0, high = 0;
-        if (typeof raw === 'object') {
+        if (Array.isArray(raw)) {
+            low = parseFloat(String(raw[0])) || 0;
+            high = parseFloat(String(raw[1])) || low;
+        } else if (typeof raw === 'object' && raw !== null) {
                 low = parseFloat((raw.low || raw.min || raw.mint || 0).toString().replace(/,/g, ''));
                 high = parseFloat((raw.high || raw.max || raw.fair || low).toString().replace(/,/g, ''));
         } else { 
