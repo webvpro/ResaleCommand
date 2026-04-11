@@ -1044,7 +1044,7 @@ const analyzeExistingItem = async () => {
                 if (!editForm.title || editForm.title === 'Untitled' || editForm.title === 'Untitled Item') editForm.title = item.title || item.identity;
                 
                 if (data.items[0].price_breakdown) {
-                     const fairPrice = String(data.items[0].price_breakdown.fair);
+                     const fairPrice = data.items[0].price_breakdown.fair;
                      const parsedFair = parsePriceRange(fairPrice);
                      editForm.resalePrice = parseFloat(parsedFair.mid).toFixed(2);
                      editForm.estLow = parseFloat(parsedFair.low).toFixed(2);
@@ -1060,7 +1060,12 @@ const analyzeExistingItem = async () => {
                 }
                 if(item.comparables && item.comparables.length > 0) { report += `**Comparables:**\n`; item.comparables.forEach(c => report += `- ${c.name} (${c.price}) [${c.status}]\n`); }
                 if(item.keywords && item.keywords.length > 0) report += `**Keywords:** ${item.keywords.join(', ')}\n`;
-                if(!(editForm.itemCondition || '').includes("SCOUT REPORT")) editForm.itemCondition = ((editForm.itemCondition || '') + report).trim();
+                
+                let oldCond = editForm.itemCondition || '';
+                if(oldCond.includes("--- 🕵️ SCOUT REPORT ---")) {
+                    oldCond = oldCond.substring(0, oldCond.indexOf("--- 🕵️ SCOUT REPORT ---")).trim();
+                }
+                editForm.itemCondition = (oldCond + report).trim();
                 if (item.fetched_image && actualMainPhoto.value.type === 'none') {
                      const file = await urlToFile(item.fetched_image, `scout_auto_${Date.now()}.jpg`);
                      if (file) {
