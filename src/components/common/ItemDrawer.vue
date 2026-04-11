@@ -1060,7 +1060,6 @@ const analyzeExistingItem = async () => {
                 }
                 if(item.comparables && item.comparables.length > 0) { report += `**Comparables:**\n`; item.comparables.forEach(c => report += `- ${c.name} (${c.price}) [${c.status}]\n`); }
                 if(item.keywords && item.keywords.length > 0) report += `**Keywords:** ${item.keywords.join(', ')}\n`;
-                
                 let oldCond = editForm.itemCondition || '';
                 if(oldCond.includes("--- 🕵️ SCOUT REPORT ---")) {
                     oldCond = oldCond.substring(0, oldCond.indexOf("--- 🕵️ SCOUT REPORT ---")).trim();
