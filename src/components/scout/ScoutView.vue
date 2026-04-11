@@ -20,9 +20,10 @@
         
         <!-- HEADER -->
         <div v-if="activeCart" class="navbar bg-base-200 min-h-12 border-b border-base-300 px-4 sticky top-0 z-30">
-            <div class="flex-1 text-sm">
-                <span class="opacity-70 mr-2">🛒 Active Cart:</span>
-                <span class="font-bold">{{ activeCart.source }}</span>
+            <div class="flex-1 min-w-0 text-sm flex items-center pr-2">
+                <span class="opacity-70 mr-2 whitespace-nowrap hidden sm:inline">🛒 Active Cart:</span>
+                <span class="opacity-70 mr-1 whitespace-nowrap sm:hidden">🛒</span>
+                <span class="font-bold truncate">{{ activeCart.source }}</span>
             </div>
             <div class="flex-none text-sm">
                 <span class="badge badge-neutral mr-2">{{ cartItems ? cartItems.length : 0 }} Items</span>
@@ -771,9 +772,10 @@ function addKeyword(item: any, event: Event) {
 }
 
 // -- PRICE HELPERS --
-function parsePrice(priceStr: string) {
+function parsePrice(priceStr: any) {
     if (!priceStr) return 0;
-    const matches = priceStr.match(/[0-9.]+/g);
+    const s = String(priceStr);
+    const matches = s.match(/[0-9.]+/g);
     if (!matches || !matches.length) return 0;
     if (matches.length >= 2) {
          return (parseFloat(matches[0]) + parseFloat(matches[1])) / 2; 
@@ -781,7 +783,7 @@ function parsePrice(priceStr: string) {
     return parseFloat(matches[0]);
 }
 
-function calculateMaxBuy(fairPriceStr: string) {
+function calculateMaxBuy(fairPriceStr: any) {
     const fair = parsePrice(fairPriceStr);
     return Math.floor(fair * 0.4); // 40% rule placeholder
 }
