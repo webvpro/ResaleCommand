@@ -8,8 +8,16 @@
                 <button class="btn btn-sm btn-circle btn-ghost" @click="closeDrawer">✕</button>
             </div>
 
+            <!-- Main Tabs -->
+            <div class="px-4 pt-2 bg-base-100 border-b border-base-200 flex-none">
+                <div role="tablist" class="tabs tabs-bordered font-bold">
+                    <a role="tab" class="tab" :class="{'tab-active': mainTab === 'details'}" @click="mainTab = 'details'">Item Details</a>
+                    <a role="tab" class="tab" :class="{'tab-active text-primary': mainTab === 'verify'}" @click="mainTab = 'verify'">Verify Contents</a>
+                </div>
+            </div>
+
             <!-- Content -->
-            <div class="flex-1 overflow-y-auto p-6 space-y-6">
+            <div class="flex-1 overflow-y-auto p-6 space-y-6" v-show="mainTab === 'details'">
                 <!-- SCOUT CONTEXT (Universal) -->
                 <div class="bg-base-200 border border-secondary/30 rounded-xl p-4 shadow-sm mb-6 relative overflow-hidden">
                     <div class="absolute top-0 right-0 bg-secondary text-secondary-content text-[10px] font-bold px-2 py-1 rounded-bl-lg uppercase tracking-wider">
@@ -363,6 +371,67 @@
                 <div class="h-12"></div>
             </div>
 
+            <!-- Verify Content Tab -->
+            <div class="flex-1 overflow-y-auto p-6 space-y-6" v-show="mainTab === 'verify'">
+                <div class="alert alert-info py-2 shadow-sm text-sm border-info/30">
+                     <span class="text-xl">🤖</span> Take a photo of the "Contents List" on the back of the box and the AI will build a checklist for you!
+                </div>
+                <div class="form-control w-full space-y-3">
+                    <label class="label pb-0"><span class="label-text font-bold">1. Select or Capture Contents List</span></label>
+                    
+                    <ScannerWidget @photos-captured="handleVerifyPhotosCaptured" :hide-upload="false" />
+
+                    <div v-if="(editForm.existingGalleryIds && editForm.existingGalleryIds.length > 0) || (editGalleryBuffer && editGalleryBuffer.length > 0)">
+                        <label class="label py-0"><span class="label-text text-xs font-bold opacity-70">Or analyze existing gallery photo:</span></label>
+                        <div class="flex gap-2 overflow-x-auto pb-2">
+                             <div v-for="id in editForm.existingGalleryIds" :key="id" class="relative w-16 h-16 shrink-0 cursor-pointer hover:ring-2 ring-primary rounded transition-all" @click="extractComponentsFromId(id)">
+                                  <img :src="getAssetUrl(id)" class="w-full h-full object-cover rounded shadow-sm border border-base-300" />
+                                  <div class="absolute inset-0 bg-base-100/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity rounded">
+                                      <span class="text-xs font-bold text-base-content">Analyze</span>
+                                  </div>
+                             </div>
+                             <div v-for="(file, idx) in editGalleryBuffer" :key="'buf-'+idx" class="relative w-16 h-16 shrink-0 cursor-pointer hover:ring-2 ring-primary rounded transition-all" @click="extractComponentsFromFile(file)">
+                                  <img :src="getObjectUrl(file)" class="w-full h-full object-cover rounded shadow-sm border border-base-300" />
+                                  <div class="absolute inset-0 bg-base-100/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity rounded">
+                                      <span class="text-xs font-bold text-base-content">Analyze</span>
+                                  </div>
+                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="extracting" class="flex flex-col items-center py-12">
+                    <span class="loading loading-spinner text-primary mb-4 w-12 h-12"></span>
+                    <p class="font-bold opacity-70">AI is analyzing and inventorying...</p>
+                </div>
+
+                <div v-if="componentsList && componentsList.length > 0" class="animate-fade-in">
+                    <div class="flex justify-between items-end mb-2">
+                        <label class="label pb-0"><span class="label-text font-bold">2. Verification Checklist</span></label>
+                        <button class="btn btn-xs btn-outline btn-error" @click="componentsList = []">Clear List</button>
+                    </div>
+                    
+                    <div class="bg-base-200/50 rounded-xl p-3 space-y-2 border border-base-300">
+                        <div v-for="(comp, idx) in componentsList" :key="idx" class="flex items-center gap-3 bg-base-100 p-3 rounded-lg shadow-sm border" :class="comp.found >= comp.expected ? 'border-success bg-success/5' : 'border-base-300'">
+                            <input type="checkbox" v-model="comp.verified" class="checkbox checkbox-primary checkbox-sm" @change="handleVerifiedToggle(comp)" />
+                            
+                            <div class="flex-1 min-w-0">
+                                <p class="font-bold text-sm truncate" :class="{'line-through opacity-50': comp.verified && comp.found >= comp.expected}">{{ comp.name }}</p>
+                            </div>
+                            
+                            <div class="flex items-center gap-2 bg-base-200 rounded p-1">
+                                <button class="btn btn-xs btn-circle btn-ghost" @click="comp.found = Math.max(0, comp.found - 1)">-</button>
+                                <span class="font-mono text-sm w-10 text-center font-bold" :class="comp.found >= comp.expected ? 'text-success' : ''">{{ comp.found }} / {{ comp.expected }}</span>
+                                <button class="btn btn-xs btn-circle btn-ghost" @click="comp.found++">+</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div v-else-if="!extracting" class="text-center opacity-50 py-12 border-2 border-dashed rounded-xl mt-4 border-base-300">
+                     <p>No checklist yet.</p>
+                </div>
+            </div>
+
             <!-- Footer -->
             <div class="p-4 border-t border-base-200 flex justify-end bg-base-100 z-10 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] gap-2 shrink-0">
                 <button class="btn btn-ghost" @click="closeDrawer">Cancel</button>
@@ -424,9 +493,87 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'save']);
 
+const mainTab = ref('details');
 const descTab = ref('edit');
 const scoutTab = ref('edit');
 const processing = ref(false);
+
+const extracting = ref(false);
+const componentsList = ref([]);
+
+const performExtraction = async (base64) => {
+    extracting.value = true;
+    try {
+        const res = await fetch('/api/extract-components', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: base64 })
+        });
+        const data = await res.json();
+        if (data.components) {
+            componentsList.value = data.components;
+        } else {
+            alert("Failed to parse list from image. " + (data.error || ""));
+        }
+    } catch(err) {
+        alert("Extraction error: " + err.message);
+    } finally {
+        extracting.value = false;
+    }
+};
+
+const extractComponentsFromFile = async (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => performExtraction(reader.result);
+};
+
+const handleVerifyPhotosCaptured = (files) => {
+    if (files && files.length > 0) {
+        extractComponentsFromFile(files[0]);
+    }
+};
+
+const extractComponentsFromId = async (id) => {
+    extracting.value = true;
+    try {
+        let url = getAssetUrl(id);
+        if (url.includes('/storage/buckets/') || !url.includes('/api/proxy-image')) {
+             url = `/api/proxy-image?url=${encodeURIComponent(url)}`;
+        }
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("Could not download existing photo");
+        const blob = await res.blob();
+        
+        const canvas = document.createElement('canvas');
+        const img = new Image();
+        img.onload = () => {
+             let w = img.width, h = img.height, max = 1600;
+             if (w > max || h > max) { 
+                 if (w > h) { h = Math.round(h * (max/w)); w = max; } 
+                 else { w = Math.round(w * (max/h)); h = max; } 
+             }
+             canvas.width = w; canvas.height = h;
+             const ctx = canvas.getContext('2d');
+             ctx.drawImage(img, 0, 0, w, h);
+             performExtraction(canvas.toDataURL('image/jpeg', 0.85));
+        };
+        const reader = new FileReader();
+        reader.onload = (e) => img.src = e.target.result;
+        reader.readAsDataURL(blob);
+    } catch (e) {
+        alert("Error mapping photo: " + e.message);
+        extracting.value = false;
+    }
+};
+
+const handleVerifiedToggle = (comp) => {
+     if (comp.verified && comp.found < comp.expected) {
+          comp.found = comp.expected; // Auto-fill found if user checks it
+     }
+};
+
 const editForm = reactive({
     title: '',
     cost: '',
@@ -781,6 +928,13 @@ const initForm = () => {
     editGalleryBuffer.value = [];
     fetchedImages.value = [];
     fetchingImages.value = false;
+    mainTab.value = 'details';
+    
+    let parsedComps = [];
+    if (props.item && props.item.components) {
+        try { parsedComps = JSON.parse(props.item.components); } catch (e) {}
+    }
+    componentsList.value = parsedComps;
 };
 
 watch(() => props.item, initForm, { immediate: true });
@@ -834,7 +988,8 @@ const saveEdit = async () => {
             imageId: actualMainPhoto.value.id || null, // Existing main photo
             imageFile: finalImageFile, // New main photo
             galleryFiles: finalGallery,
-            scoutData: scoutResult.value
+            scoutData: scoutResult.value,
+            components: componentsList.value.length > 0 ? JSON.stringify(componentsList.value) : null
         };
         emit('save', payload);
     } catch (e) {
