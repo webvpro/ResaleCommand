@@ -34,6 +34,7 @@ export interface ExtraItemData {
     boutiquePrice?: string | number;
     keywords?: string[];
     salesChannel?: string;
+    components?: string;
 }
 
 export async function saveItemToInventory(itemData: any, imageFile: File | null, extraData: ExtraItemData = {}, teamId?: string, ownerType: 'team' | 'user' = 'team') {
@@ -244,7 +245,8 @@ export async function saveItemToInventory(itemData: any, imageFile: File | null,
             binLocation: extraData.binLocation || undefined,
             cartId: extraData.cartId || undefined,
             marketDescription: extraData.marketDescription || undefined,
-            keywords: Array.isArray(extraData.keywords) ? extraData.keywords : (extraData.scoutData && Array.isArray(extraData.scoutData.keywords) ? extraData.scoutData.keywords : undefined)
+            keywords: Array.isArray(extraData.keywords) ? extraData.keywords : (extraData.scoutData && Array.isArray(extraData.scoutData.keywords) ? extraData.scoutData.keywords : undefined),
+            components: extraData.components || undefined
         };
 
         // Remove undefined keys to satisfy Appwrite's strict document validation
@@ -391,6 +393,7 @@ export async function updateInventoryItem(documentId: string, updates: Partial<E
         if (updates.status) data.status = updates.status;
         if (updates.title) data.title = updates.title;
         if (updates.description) data.marketDescription = updates.description;
+        if (updates.components !== undefined) data.components = updates.components;
 
         // --- Handle File Uploads & Update Notes ---
 

@@ -395,12 +395,15 @@ export const ALL: APIRoute = async ({ request }) => {
                - 'advice': A brief paragraph detailing the sourcing strategy (e.g., maximum bid amount, negotiation tactics for FB Marketplace, shipping cost considerations, or why it's a hard pass). IF YOU DETECT THIS IS AN AUCTION (e.g. context mentions "Current Bid" or "Ends:"), explicitly prioritize formulating a MAX BID STRATEGY and remind the user to evaluate SHIPPING COSTS before bidding!
         `;
 
-        const contentParts: any[] = [prompt];
+        const contentParts: any[] = [{ text: prompt }];
         if (imageParts.length > 0) {
             contentParts.push(...imageParts);
         }
 
-        const result = await model.generateContent(contentParts);
+        const result = await model.generateContent({
+            contents: [{ role: 'user', parts: contentParts }],
+            generationConfig: { responseMimeType: "application/json" }
+        });
         const response = await result.response;
         const taskResponse = response.text();
         
