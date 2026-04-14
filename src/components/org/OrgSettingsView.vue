@@ -87,6 +87,67 @@
         <span>Only organization owners can manage settings.</span>
     </div>
 
+    <!-- API Security Settings (Owner Only) -->
+    <div v-if="isOwner" class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+            <h3 class="font-bold text-xl mb-2">API Security</h3>
+            
+            <div class="form-control w-full max-w-md">
+                <label class="label">
+                    <span class="label-text font-bold">Allowed API Domains</span>
+                    <span class="label-text-alt">Limit 3</span>
+                </label>
+                
+                <div class="flex gap-2">
+                    <input type="url" v-model="newDomain" placeholder="https://example.com" class="input input-bordered w-full" @keydown.enter.prevent="addDomain" :disabled="orgSettings.allowedDomains && orgSettings.allowedDomains.length >= 3" />
+                    <button class="btn btn-primary" @click="addDomain" :disabled="!newDomain || savingSettings || (orgSettings.allowedDomains && orgSettings.allowedDomains.length >= 3)">Add</button>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-2 mt-4" v-if="orgSettings.allowedDomains && orgSettings.allowedDomains.length > 0">
+                <div v-for="(dom, idx) in orgSettings.allowedDomains" :key="idx" class="flex justify-between items-center bg-base-200 p-2 rounded">
+                    <span class="font-mono text-sm">{{ dom }}</span>
+                    <button class="btn btn-xs btn-error btn-ghost" @click="removeDomain(idx)">Remove</button>
+                </div>
+            </div>
+            <div v-else class="text-sm opacity-50 mt-4">
+                No custom domains added. Your API key will accept requests from any origin.
+            </div>
+        </div>
+    </div>
+
+    <!-- Operations Settings (Owner Only) -->
+    <div v-if="isOwner" class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+            <h3 class="font-bold text-xl mb-2">Operations Settings</h3>
+            
+            <div class="form-control w-full max-w-md">
+                <label class="label">
+                    <span class="label-text font-bold">Standard Placed Locations</span>
+                    <span class="label-text-alt">e.g., Bin A, Shelf 1</span>
+                </label>
+                
+                <div class="flex gap-2">
+                    <input type="text" v-model="newLocation" placeholder="Add a new location..." class="input input-bordered w-full" @keydown.enter.prevent="addLocation" />
+                    <button class="btn btn-primary" @click="addLocation" :disabled="!newLocation || savingSettings">Add</button>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap gap-2 mt-4" v-if="orgSettings.placedLocations && orgSettings.placedLocations.length > 0">
+                <div v-for="(loc, idx) in orgSettings.placedLocations" :key="idx" class="badge badge-secondary badge-lg gap-2 cursor-pointer hover:badge-error transition-colors" @click="removeLocation(idx)">
+                    {{ loc }}
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-4 h-4 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </div>
+            </div>
+            <div v-else class="text-sm opacity-50 mt-4">
+                No custom locations added yet.
+            </div>
+            <div class="mt-4 text-xs opacity-70">
+                Click a location to remove it. Changes are saved automatically.
+            </div>
+        </div>
+    </div>
+
     <!-- Invite Modal -->
     <dialog class="modal" :class="{ 'modal-open': showInviteModal }">
        <div class="modal-box">
@@ -111,7 +172,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import { useAuth } from '../../composables/useAuth';
-import { teams, ID } from '../../lib/appwrite';
+import { teams, ID, databases, Query } from '../../lib/appwrite';
 import type { Models } from 'appwrite';
 
 const { user, isAuthenticated, currentTeam, loading } = useAuth();
@@ -120,6 +181,12 @@ const members = ref<Models.Membership[]>([]);
 const inviteEmail = ref('');
 const showInviteModal = ref(false);
 const inviting = ref(false);
+
+const DB_ID = import.meta.env.PUBLIC_APPWRITE_DB_ID || 'resale_db';
+const orgSettings = ref({ $id: null, tenantId: '', placedLocations: [], allowedDomains: [] });
+const newLocation = ref('');
+const newDomain = ref('');
+const savingSettings = ref(false);
 
 const isOwner = computed(() => {
     // We need to check if the CURRENT USER is an owner of the CURRENT TEAM
@@ -138,6 +205,96 @@ const fetchMembers = async () => {
         members.value = response.memberships;
     } catch (e) {
         console.error("Failed to load members", e);
+    }
+};
+
+const fetchOrgSettings = async () => {
+    if (!currentTeam.value) return;
+    try {
+        const response = await databases.listDocuments(DB_ID, 'org_settings', [
+            Query.equal('tenantId', currentTeam.value.$id)
+        ]);
+        if (response.documents.length > 0) {
+            const doc = response.documents[0];
+            orgSettings.value = {
+                $id: doc.$id,
+                tenantId: doc.tenantId,
+                placedLocations: doc.placedLocations || [],
+                allowedDomains: doc.allowedDomains || []
+            };
+        } else {
+            orgSettings.value = { $id: null, tenantId: currentTeam.value.$id, placedLocations: [], allowedDomains: [] };
+        }
+    } catch (e) {
+        console.error("Failed to fetch org settings:", e);
+    }
+};
+
+const saveOrgSettings = async () => {
+    if (!currentTeam.value) return;
+    savingSettings.value = true;
+    try {
+        if (orgSettings.value.$id) {
+            await databases.updateDocument(DB_ID, 'org_settings', orgSettings.value.$id, {
+                placedLocations: orgSettings.value.placedLocations,
+                allowedDomains: orgSettings.value.allowedDomains
+            });
+        } else {
+            const doc = await databases.createDocument(DB_ID, 'org_settings', ID.unique(), {
+                tenantId: currentTeam.value.$id,
+                placedLocations: orgSettings.value.placedLocations,
+                allowedDomains: orgSettings.value.allowedDomains
+            });
+            orgSettings.value.$id = doc.$id;
+        }
+    } catch (e) {
+        console.error("Failed to save org settings:", e);
+        alert("Failed to save settings. See console.");
+    } finally {
+        savingSettings.value = false;
+    }
+};
+
+const addDomain = () => {
+    let dom = newDomain.value.trim().toLowerCase();
+    if (!dom) return;
+    if (dom.endsWith('/')) dom = dom.slice(0, -1);
+    
+    if (!orgSettings.value.allowedDomains) orgSettings.value.allowedDomains = [];
+    if (orgSettings.value.allowedDomains.length >= 3) {
+        alert("Maximum 3 allowed domains permitter per organization.");
+        return;
+    }
+    
+    if (!orgSettings.value.allowedDomains.includes(dom)) {
+        orgSettings.value.allowedDomains.push(dom);
+        saveOrgSettings();
+    }
+    newDomain.value = '';
+};
+
+const removeDomain = (idx: number) => {
+    if (orgSettings.value.allowedDomains) {
+        orgSettings.value.allowedDomains.splice(idx, 1);
+        saveOrgSettings();
+    }
+};
+
+const addLocation = () => {
+    const loc = newLocation.value.trim();
+    if (!loc) return;
+    if (!orgSettings.value.placedLocations) orgSettings.value.placedLocations = [];
+    if (!orgSettings.value.placedLocations.includes(loc)) {
+        orgSettings.value.placedLocations.push(loc);
+        saveOrgSettings();
+    }
+    newLocation.value = '';
+};
+
+const removeLocation = (idx: number) => {
+    if (orgSettings.value.placedLocations) {
+        orgSettings.value.placedLocations.splice(idx, 1);
+        saveOrgSettings();
     }
 };
 
@@ -225,7 +382,10 @@ const handleResend = async (member: Models.Membership) => {
 
 // React to team changes
 watch(currentTeam, (newTeam) => {
-    if (newTeam) fetchMembers();
+    if (newTeam) {
+        fetchMembers();
+        fetchOrgSettings();
+    }
 }, { immediate: true });
 
 </script>
