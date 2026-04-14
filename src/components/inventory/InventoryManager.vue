@@ -89,6 +89,16 @@
                                 Apply
                             </button>
                         </div>
+                        <div class="join" v-if="orgPlacedLocations && orgPlacedLocations.length > 0">
+                            <select v-model="bulkLocationTarget" class="select select-sm select-bordered join-item bg-base-100 text-base-content min-w-[120px]">
+                                <option value="" disabled selected>Change Location...</option>
+                                <option v-for="loc in orgPlacedLocations" :key="loc" :value="loc">{{ loc }}</option>
+                            </select>
+                            <button class="btn btn-sm btn-secondary join-item" @click="applyBulkLocation" :disabled="!bulkLocationTarget || processingBulkLoc">
+                                <span v-if="processingBulkLoc" class="loading loading-spinner loading-xs"></span>
+                                Apply
+                            </button>
+                        </div>
                     </div>
                     <button class="btn btn-sm btn-ghost text-error" @click="selectedItems = []">Cancel</button>
                 </div>
@@ -164,7 +174,14 @@
                                 placeholder="Any..." 
                                 badgeClass="badge-secondary" 
                             />
+                            <div class="form-control w-full mt-2" v-if="orgPlacedLocations && orgPlacedLocations.length > 0">
+                            <label class="label pt-0 -mb-2"><span class="label-text font-bold text-[10px] uppercase opacity-70">Location</span></label>
+                            <select v-model="filterBinLocation" class="select select-bordered select-sm w-full text-xs shadow-sm bg-base-100 mt-2">
+                                <option value="">All Locations</option>
+                                <option v-for="loc in orgPlacedLocations" :key="loc" :value="loc">{{ loc }}</option>
+                            </select>
                         </div>
+                    </div>
                     </div>
                 </div>
             </div>
@@ -249,6 +266,7 @@ import { useInventory } from '../../composables/useInventory';
 import { updateInventoryItem, deleteInventoryItem, saveItemToInventory } from '../../lib/inventory';
 import BulkImport from './BulkImport.vue';
 import { useAuth } from '../../composables/useAuth';
+import { databases, Query } from '../../lib/appwrite';
 import ItemDrawer from '../common/ItemDrawer.vue';
 import ItemCard from '../common/ItemCard.vue';
 import ItemPreviewModal from './ItemPreviewModal.vue';
@@ -269,6 +287,23 @@ const currentTeamId = computed(() => currentTeam.value?.$id);
 const searchQuery = ref('');
 const filterStatus = ref('all');
 const filterKeywords = ref([]);
+const filterBinLocation = ref('');
+const orgPlacedLocations = ref([]);
+
+const fetchLocations = async () => {
+    if (!currentTeam.value) return;
+    try {
+        const DB_ID = import.meta.env.PUBLIC_APPWRITE_DB_ID || 'resale_db';
+        const res = await databases.listDocuments(DB_ID, 'org_settings', [
+            Query.equal('tenantId', currentTeam.value.$id)
+        ]);
+        if (res.documents.length) {
+            orgPlacedLocations.value = res.documents[0].placedLocations || [];
+        }
+    } catch(e) {}
+};
+
+watch(currentTeam, (n) => { if(n) fetchLocations(); }, { immediate: true });
 
 // Lifecycle
 const cartItems = computed(() => inventoryItems.value.filter(i => i.status === 'scouted'));
@@ -279,6 +314,11 @@ const filteredInventory = computed(() => {
         
         // Filter by Status
         if (filterStatus.value !== 'all' && item.status !== filterStatus.value) {
+            return false;
+        }
+
+        // Filter by Bin Location
+        if (filterBinLocation.value && item.binLocation !== filterBinLocation.value) {
             return false;
         }
 
@@ -328,6 +368,8 @@ const openPreview = (item) => {
 // Bulk Selection State
 const selectedItems = ref([]);
 const bulkStatusTarget = ref('');
+const bulkLocationTarget = ref('');
+const processingBulkLoc = ref(false);
 
 const isAllSelected = computed(() => {
     return filteredInventory.value.length > 0 && selectedItems.value.length === filteredInventory.value.length;
@@ -367,6 +409,34 @@ const applyBulkStatus = async () => {
         alert("Failed to apply bulk update: " + e.message);
     } finally {
         processingBulk.value = false;
+    }
+};
+
+const applyBulkLocation = async () => {
+    if (!bulkLocationTarget.value || selectedItems.value.length === 0) return;
+    
+    processingBulkLoc.value = true;
+    const targetLoc = bulkLocationTarget.value;
+    const idsToUpdate = [...selectedItems.value];
+    
+    try {
+        const promises = idsToUpdate.map(id => updateInventoryItem(id, { binLocation: targetLoc }));
+        await Promise.all(promises);
+        
+        // Optimistically update local state
+        inventoryItems.value.forEach(item => {
+            if (idsToUpdate.includes(item.$id)) {
+                item.binLocation = targetLoc;
+            }
+        });
+        
+        // Reset selection
+        selectedItems.value = [];
+        bulkLocationTarget.value = '';
+    } catch (e) {
+        alert("Failed to apply bulk location update: " + e.message);
+    } finally {
+        processingBulkLoc.value = false;
     }
 };
 

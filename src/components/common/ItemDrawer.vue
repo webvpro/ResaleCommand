@@ -147,7 +147,10 @@
                 <div class="grid grid-cols-2 gap-4">
                      <div class="form-control w-full">
                         <label class="label"><span class="label-text">Bin Location</span></label>
-                        <input type="text" v-model="editForm.binLocation" class="input input-bordered w-full" />
+                        <input type="text" list="org-bin-locations" v-model="editForm.binLocation" class="input input-bordered w-full" placeholder="Type or select..." />
+                        <datalist id="org-bin-locations">
+                            <option v-for="loc in orgPlacedLocations" :key="loc" :value="loc"></option>
+                        </datalist>
                     </div>
                     
                     <!-- Order ID (Editable) -->
@@ -378,11 +381,31 @@ import { marked } from 'marked';
 import ScannerWidget from './ScannerWidget.vue';
 import TagInput from './TagInput.vue';
 import { saveItemToInventory } from '../../lib/inventory';
-import { account } from '../../lib/appwrite';
+import { account, databases, Query } from '../../lib/appwrite';
+import { useAuth } from '../../composables/useAuth';
+
+const { currentTeam } = useAuth();
+const DB_ID = import.meta.env.PUBLIC_APPWRITE_DB_ID || 'resale_db';
+const orgPlacedLocations = ref([]);
+
+const fetchLocations = async () => {
+    if (!currentTeam.value) return;
+    try {
+        const res = await databases.listDocuments(DB_ID, 'org_settings', [
+            Query.equal('tenantId', currentTeam.value.$id)
+        ]);
+        if (res.documents.length) {
+            orgPlacedLocations.value = res.documents[0].placedLocations || [];
+        }
+    } catch(e) {}
+};
 
 onMounted(() => {
     document.body.style.overflow = 'hidden';
+    fetchLocations();
 });
+
+watch(currentTeam, (n) => { if(n) fetchLocations(); });
 
 onUnmounted(() => {
     document.body.style.overflow = '';
