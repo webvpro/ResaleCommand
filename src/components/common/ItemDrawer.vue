@@ -452,6 +452,8 @@ import TagInput from './TagInput.vue';
 import { saveItemToInventory } from '../../lib/inventory';
 import { account, databases, Query } from '../../lib/appwrite';
 import { useAuth } from '../../composables/useAuth';
+import { addToast } from '../../stores/toast';
+import { confirmDialog } from '../../stores/confirm';
 
 const { currentTeam } = useAuth();
 const DB_ID = import.meta.env.PUBLIC_APPWRITE_DB_ID || 'resale_db';
@@ -513,10 +515,10 @@ const performExtraction = async (base64) => {
         if (data.components) {
             componentsList.value = data.components;
         } else {
-            alert("Failed to parse list from image. " + (data.error || ""));
+            addToast({ type: 'error', message: "Failed to parse list from image. " + (data.error || "") });
         }
     } catch(err) {
-        alert("Extraction error: " + err.message);
+        addToast({ type: 'error', message: "Extraction error: " + err.message });
     } finally {
         extracting.value = false;
     }
@@ -563,7 +565,7 @@ const extractComponentsFromId = async (id) => {
         reader.onload = (e) => img.src = e.target.result;
         reader.readAsDataURL(blob);
     } catch (e) {
-        alert("Error mapping photo: " + e.message);
+        addToast({ type: 'error', message: "Error mapping photo: " + e.message });
         extracting.value = false;
     }
 };
@@ -957,16 +959,16 @@ const generateDescription = async () => {
             const data = await res.json();
             if(data.success && data.description) {
                 editForm.description = data.description;
-                if(data.warning) alert(`Warning: ${data.warning}`);
+                if(data.warning) addToast({ type: 'warning', message: `Warning: ${data.warning}` });
             } else {
-                alert("Failed to generate: " + (data.error || "Unknown"));
+                addToast({ type: 'error', message: "Failed to generate: " + (data.error || "Unknown") });
             }
         } else {
-            alert('Please save the item first before generating a description.');
+            addToast({ type: 'warning', message: 'Please save the item first before generating a description.' });
         }
         
     } catch (e) {
-        alert('Description generation failed: ' + e.message);
+        addToast({ type: 'error', message: 'Description generation failed: ' + e.message });
     } finally {
         generatingDescription.value = false;
     }
@@ -993,7 +995,7 @@ const saveEdit = async () => {
         };
         emit('save', payload);
     } catch (e) {
-        alert('Save failed: ' + e.message);
+        addToast({ type: 'error', message: 'Save failed: ' + e.message });
     } finally {
         processing.value = false;
     }
@@ -1036,11 +1038,11 @@ const handleDrop = async (e) => {
             if (file) {
                 handleCapturedPhotos([file]);
             } else {
-                alert("Could not load image from that link due to security restrictions. Please save it to your computer first.");
+                addToast({ type: 'warning', message: "Could not load image from that link due to security restrictions. Please save it to your computer first." });
             }
         } else {
             console.warn('No files found in drop dataTransfer');
-            alert('No images or valid links detected in drop.');
+            addToast({ type: 'warning', message: 'No images or valid links detected in drop.' });
         }
     }
 };
@@ -1073,7 +1075,10 @@ const handleCapturedPhotos = (files) => {
 const fetchImagesFromUrl = async () => {
     const url = editForm.purchaseLocation;
     const isId = url && url.match(/^\d+$/);
-    if (!url || (!url.startsWith('http') && !isId)) return alert("Please enter a valid URL or Item ID.");
+    if (!url || (!url.startsWith('http') && !isId)) {
+        addToast({ type: 'warning', message: "Please enter a valid URL or Item ID." });
+        return;
+    }
     fetchingImages.value = true;
     fetchedImages.value = [];
     let finalUrl = url;
@@ -1089,14 +1094,14 @@ const fetchImagesFromUrl = async () => {
         if (data.success && data.images.length > 0) {
             fetchedImages.value = data.images;
         } else if (data.success && data.images.length === 0) {
-            alert("No images found on that page.");
+            addToast({ type: 'warning', message: "No images found on that page." });
         }
         if (data.success) {
             if (data.price && (!editForm.cost || parseFloat(editForm.cost) === 0)) editForm.cost = data.price.toString().replace(/[$,]/g, '');
             if (data.title && (!editForm.title || editForm.title.trim().length < 4)) editForm.title = data.title;
         }
     } catch (e) {
-        alert("Failed to fetch images: " + e.message);
+        addToast({ type: 'error', message: "Failed to fetch images: " + e.message });
     } finally {
         fetchingImages.value = false;
     }
@@ -1136,11 +1141,14 @@ const selectFetchedImage = async (url) => {
         if (!actualMainPhoto.value.file && !editForm.imageId && !actualMainPhoto.value.url) {
             mainPhotoSelection.value = { type: 'new', val: editGalleryBuffer.value.length - 1 };
         }
-    } else alert("Could not download image.");
+    } else addToast({ type: 'error', message: "Could not download image." });
 };
 
 const analyzeExistingItem = async () => {
-    if (!actualMainPhoto.value.url && !editForm.purchaseLocation && !scoutQuery.value) return alert("Please provide text, a photo, or a link to analyze.");
+    if (!actualMainPhoto.value.url && !editForm.purchaseLocation && !scoutQuery.value) {
+        addToast({ type: 'warning', message: "Please provide text, a photo, or a link to analyze." });
+        return;
+    }
     analyzing.value = true;
     try {
         let base64Images = [];
@@ -1253,14 +1261,14 @@ const analyzeExistingItem = async () => {
             }
             descTab.value = 'edit';
         }
-    } catch (e) { alert("Analysis Error: " + e.message); } finally { analyzing.value = false; }
+    } catch (e) { addToast({ type: 'error', message: "Analysis Error: " + e.message }); } finally { analyzing.value = false; }
 };
 
 const extractLotItems = async () => {
     if (!Array.isArray(scoutResult.value) || scoutResult.value.length === 0) return;
     
     // Confirm extraction
-    if (!confirm(`Are you sure you want to create ${scoutResult.value.length} new items from this lot?`)) return;
+    if (!(await confirmDialog(`Are you sure you want to create ${scoutResult.value.length} new items from this lot?`, 'Extract Lot', 'Extract', 'Cancel'))) return;
     
     extractingLot.value = true;
     try {
@@ -1324,11 +1332,11 @@ const extractLotItems = async () => {
             successCount++;
         }
         
-        alert(`Successfully extracted ${successCount} items!`);
+        addToast({ type: 'success', message: `Successfully extracted ${successCount} items!` });
         // We can close drawer or leave open. We'll leave open so they can see the parent item still if they want to save changes to it.
         
     } catch (e) {
-        alert("Failed to extract lot: " + e.message);
+        addToast({ type: 'error', message: "Failed to extract lot: " + e.message });
         console.error(e);
     } finally {
          extractingLot.value = false;

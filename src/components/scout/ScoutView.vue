@@ -352,7 +352,8 @@
 import { ref, onMounted, watch } from 'vue';
 import { useAuth } from '../../composables/useAuth';
 import { useCart } from '../../composables/useCart';
-import { storage, databases, ID } from '../../lib/appwrite'; // Modified this line
+import { storage, databases, ID } from '../../lib/appwrite';
+import { addToast } from '../../stores/toast';
 
 // APPWRITE
 const DB_ID = import.meta.env.PUBLIC_APPWRITE_DB_ID; // Added this line
@@ -389,11 +390,11 @@ onMounted(async () => {
                 // So we just show the result.
             } else {
                 console.warn('[ScoutView] Item found but no rawAnalysis:', itemDoc);
-                alert("This item was saved before the 'Re-Scout' feature was added. Cannot reload analysis.");
+                addToast({ type: 'warning', message: "This item was saved before the 'Re-Scout' feature was added. Cannot reload analysis." });
             }
         } catch (e) {
             console.error('[ScoutView] Failed to load re-scout item:', e);
-            alert("Failed to load item for re-scouting.");
+            addToast({ type: 'error', message: "Failed to load item for re-scouting." });
         } finally {
             analyzing.value = false;
         }
@@ -469,7 +470,7 @@ async function startCamera() {
         }
     } catch (err: any) {
         console.error("Camera Error:", err);
-        alert("Could not access camera: " + err.message);
+        addToast({ type: 'error', message: "Could not access camera: " + err.message });
     }
 }
 
@@ -557,7 +558,7 @@ async function handleDrop(e: DragEvent) {
              }
         }
         if (!processedAtLeastOne) {
-             alert('No valid image files detected in drop. (File type: ' + files[0].type + ')');
+             addToast({ type: 'warning', message: 'No valid image files detected in drop. (File type: ' + files[0].type + ')' });
         }
     } else {
         // Attempt to handle dropped URL (e.g. dragging image from another tab)
@@ -583,14 +584,14 @@ async function handleDrop(e: DragEvent) {
                     const file = new File([blob], filename, { type: blob.type || 'image/jpeg' });
                     await processFile(file);
                 } else {
-                    alert("Could not load image from website due to security restrictions. Please save it to your computer first.");
+                    addToast({ type: 'warning', message: "Could not load image from website due to security restrictions. Please save it to your computer first." });
                 }
             } catch(err: any) {
-                alert("Error fetching dropped image: " + err.message);
+                addToast({ type: 'error', message: "Error fetching dropped image: " + err.message });
             }
         } else {
             console.warn('No files found in dataTransfer');
-            alert('No images or valid links detected in drop.');
+            addToast({ type: 'warning', message: 'No images or valid links detected in drop.' });
         }
     }
 }
@@ -674,7 +675,10 @@ const handleImageError = (e: Event) => {
 async function analyzeListing() {
     const url = scoutUrl.value;
     const isId = url && url.match(/^\d+$/);
-    if (!url || (!url.startsWith('http') && !isId)) return alert("Please enter a valid URL or Item ID.");
+    if (!url || (!url.startsWith('http') && !isId)) {
+        addToast({ type: 'warning', message: "Please enter a valid URL or Item ID." });
+        return;
+    }
     
     loading.value = true;
     error.value = null;
@@ -793,7 +797,7 @@ async function handleSaveItem(item: any, index: number) {
     console.log('[ScoutView] handleSaveItem callled for item:', item.identity);
     
     if (!user.value) {
-        alert("Please login first.");
+        addToast({ type: 'warning', message: "Please login first." });
         return;
     }
     
@@ -811,7 +815,7 @@ async function handleSaveItem(item: any, index: number) {
             await switchTeam(teams.value[0]);
         } else {
             error.value = "Active Team Missing. Resale Command requires an active organization to save data.";
-            alert("No active organization found. Please create one in the dashboard or navbar.");
+            addToast({ type: 'error', message: "No active organization found. Please create one in the dashboard or navbar." });
             return;
         }
     }

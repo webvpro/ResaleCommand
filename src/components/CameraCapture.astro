@@ -526,6 +526,7 @@
 <script>
   import { saveItemToInventory } from "../lib/inventory";
   import { authStore } from "../lib/store";
+  import { addToast } from "../stores/toast";
 
   declare global {
     interface Window {
@@ -612,9 +613,7 @@
       checkGuestLimit() {
         if (this.isAuthenticated) return true;
         if (this.dailyScans >= 5) {
-          alert(
-            "Guest Limit Reached (5 scans/day). Please Login or Sign Up to continue scanning unlimited items!",
-          );
+          addToast({ type: 'warning', message: "Guest Limit Reached (5 scans/day). Please Login or Sign Up to continue scanning unlimited items!" });
           return false;
         }
         return true;
@@ -639,7 +638,7 @@
 
       getLocation() {
         if (!navigator.geolocation) {
-          alert("Geolocation is not supported by your browser");
+          addToast({ type: 'error', message: "Geolocation is not supported by your browser" });
           return;
         }
 
@@ -690,7 +689,7 @@
           },
           (err) => {
             console.error(err);
-            alert("Unable to retrieve location. Check browser permissions.");
+            addToast({ type: 'error', message: "Unable to retrieve location. Check browser permissions." });
             this.gettingLocation = false;
           },
           {
@@ -736,15 +735,11 @@
                 });
                 await this.processFiles([file]);
               } else {
-                alert(
-                  "Captured URL, but could not download image due to site security. Please save image and upload, or take a screenshot.",
-                );
+                addToast({ type: 'warning', message: "Captured URL, but could not download image due to site security. Please save image and upload, or take a screenshot." });
               }
             } catch (err) {
               console.warn("Could not fetch dropped image URL:", err);
-              alert(
-                "Captured URL for records, but could not process image directly (CORS locked).",
-              );
+              addToast({ type: 'warning', message: "Captured URL for records, but could not process image directly (CORS locked)." });
             }
           }
         }
@@ -809,7 +804,7 @@
           this.$refs.videoPreview.srcObject = this.stream;
         } catch (err) {
           console.error("Camera Error:", err);
-          alert("Could not access camera. Please allow permissions.");
+          addToast({ type: 'error', message: "Could not access camera. Please allow permissions." });
           this.isCameraOpen = false;
         }
       },
@@ -826,7 +821,7 @@
         if (!this.stream) return;
 
         if (this.images.length >= 5) {
-          alert("Maximum 5 images allowed.");
+          addToast({ type: 'warning', message: "Maximum 5 images allowed." });
           return;
         }
 
@@ -881,7 +876,7 @@
       async analyzeImage() {
         if (!this.checkGuestLimit()) return;
         if (this.images.length === 0) {
-          alert("No images selected!");
+          addToast({ type: 'warning', message: "No images selected!" });
           return;
         }
 
@@ -906,7 +901,7 @@
             let errData;
             try { errData = JSON.parse(errText); } 
             catch (e) { errData = { error: errText }; }
-            alert(`Server Error: ${errData.details || errData.error}`);
+            addToast({ type: 'error', message: `Server Error: ${errData.details || errData.error}` });
             throw new Error(errData.details || errData.error || "Analysis failed");
           }
 
@@ -918,7 +913,7 @@
           }
         } catch (err) {
           console.error("Camera Analysis Error:", err);
-          alert(`Error: ${err.message}`);
+          addToast({ type: 'error', message: `Error: ${err.message}` });
         } finally {
           this.loading = false;
         }
@@ -944,14 +939,14 @@
             galleryFiles: galleryImages,
           });
 
-          alert("Success! Item saved to Inventory.");
+          addToast({ type: 'success', message: "Success! Item saved to Inventory." });
           saveBtn.innerText = "Saved!";
 
           saveBtn.classList.remove("btn-success");
           saveBtn.classList.add("btn-disabled");
         } catch (err) {
           console.error(err);
-          alert(`Save Failed: ${err.message}. \n\nCheck if you created the Database/Collection in Appwrite and added IDs to .env`);
+          addToast({ type: 'error', message: `Save Failed: ${err.message}. \n\nCheck if you created the Database/Collection in Appwrite and added IDs to .env` });
           const saveBtn = btnEl || this.$el;
           saveBtn.innerText = "Save to Inventory";
           saveBtn.disabled = false;

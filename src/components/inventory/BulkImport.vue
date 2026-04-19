@@ -64,6 +64,7 @@ import { saveItemToInventory } from '../../lib/inventory';
 import { useAuth } from '../../composables/useAuth';
 import { databases, Query } from '../../lib/appwrite';
 import { isAlphaMode } from '../../stores/env';
+import { addToast } from '../../stores/toast';
 
 const getCollectionId = () => isAlphaMode.get() 
     ? (import.meta.env.PUBLIC_APPWRITE_ALPHA_COLLECTION_ID || 'alpha_items') 
@@ -99,7 +100,7 @@ const processCSV = async () => {
     // improved security check
     const teamId = currentTeam.value?.$id || user.value?.$id;
     if (!teamId) {
-        alert("Error: You must be logged in to import items.");
+        addToast({ type: 'error', message: "Error: You must be logged in to import items." });
         return;
     }
 

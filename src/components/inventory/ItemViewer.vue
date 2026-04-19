@@ -1,41 +1,42 @@
 <template>
-    <dialog ref="previewModal" class="modal">
-        <!-- Close overlay -->
-        <form method="dialog" class="modal-backdrop">
-            <button @click="close">close</button>
-        </form>
+    <div class="container mx-auto px-4 py-8 relative min-h-[80vh]">
         
-        <div v-if="item" class="modal-box w-full max-w-none h-full max-h-none min-h-screen rounded-none flex flex-col p-0 overflow-hidden bg-base-100 shadow-none relative">
-            
-            <!-- Sticky Header -->
-            <div class="navbar bg-base-200 border-b border-base-300 min-h-12 sticky top-0 z-20 px-4">
-                <div class="flex-1">
+        <div v-if="loading" class="flex flex-col items-center justify-center h-64 gap-4">
+            <span class="loading loading-spinner loading-lg text-primary"></span>
+            <p class="text-sm font-bold opacity-60 uppercase tracking-widest">Loading Item Details...</p>
+        </div>
+
+        <div v-else-if="error" class="alert alert-error shadow-lg max-w-xl mx-auto">
+            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <div>
+                <h3 class="font-bold">Item Not Found or Unauthorized</h3>
+                <div class="text-xs">{{ error }}</div>
+            </div>
+            <a href="/inventory" class="btn btn-sm">Return to Inventory</a>
+        </div>
+
+        <div v-else-if="item" class="w-full bg-base-100 rounded-2xl shadow-xl overflow-hidden border border-base-200">
+            <!-- Header bar -->
+            <div class="navbar bg-base-200 border-b border-base-300 min-h-12 px-6">
+                <div class="flex-1 breadcrumbs text-sm font-bold opacity-70">
+                    <ul>
+                      <li><a href="/inventory">Inventory</a></li> 
+                      <li>{{ item.$id.slice(-8) }}</li>
+                    </ul>
+                </div>
+                <div class="flex-none gap-2">
                     <div class="badge badge-lg font-bold uppercase truncate" :class="statusBadgeClass">
                         {{ statusText }}
                     </div>
-                    <span v-if="item.salesChannel && item.salesChannel.length > 0" class="ml-2 text-xs opacity-70 flex gap-1 items-center">
-                        <span v-for="chan in item.salesChannel" :key="chan" class="badge badge-sm badge-outline">{{ chan }}</span>
-                    </span>
-                </div>
-                <div class="flex-none gap-2">
-                    <button class="btn btn-sm btn-ghost tooltip tooltip-bottom" data-tip="Copy Share Link" @click="copyShareLink">
-                        🔗 Share
-                    </button>
-                    <button class="btn btn-sm btn-primary" @click="editItem">
-                        ✏️ Edit Item
-                    </button>
-                    <button class="btn btn-sm btn-circle btn-ghost" @click="close">✕</button>
                 </div>
             </div>
 
-            <!-- Scrollable Content -->
-            <div class="flex-1 overflow-y-auto w-full flex flex-col lg:flex-row">
-                
+            <!-- Content Area - Replicates ItemPreviewModal Layout -->
+            <div class="flex flex-col lg:flex-row w-full">
                 <!-- Left Column: Media -->
                 <div class="w-full lg:w-5/12 bg-base-300 border-r border-base-300 flex flex-col relative shrink-0">
                     <!-- Main Image Area (Carousel) -->
                     <div class="w-full aspect-square relative bg-base-200 flex items-center justify-center overflow-hidden group">
-                        
                         <!-- Carousel Container -->
                         <div v-if="gallery.length > 0" class="carousel w-full h-full snap-x snap-mandatory overflow-x-auto" ref="carouselRef" @scroll.passive="onCarouselScroll">
                             <div v-for="(img, i) in gallery" :key="i" :id="`preview-slide-${i}`" class="carousel-item relative w-full shrink-0 items-center justify-center snap-center">
@@ -81,7 +82,7 @@
                              </div>
                              <div class="flex justify-between items-center text-xs opacity-60 font-mono">
                                  <span>Max Buy Target:</span>
-                                 <span>{{ formatCurrency(props.item.maxBuyPrice) }}</span>
+                                 <span>{{ formatCurrency(item.maxBuyPrice) }}</span>
                              </div>
                          </div>
                     </div>
@@ -91,10 +92,13 @@
                 <div class="w-full lg:w-7/12 p-6 md:p-8 space-y-6 bg-base-100">
                     
                     <div>
-                        <h1 class="text-2xl md:text-3xl font-bold leading-tight mb-2">{{ title }}</h1>
-                        <div class="flex items-center gap-4 text-sm opacity-60 font-mono">
-                            <span v-if="locationText" class="flex gap-1 items-center">📍 {{ locationText }}</span>
-                            <span v-if="item.$id">ID: {{ item.$id.slice(-6) }}</span>
+                        <h1 class="text-3xl md:text-4xl font-bold leading-tight mb-2">{{ title }}</h1>
+                        <div class="flex flex-wrap items-center gap-4 text-sm opacity-60 font-mono">
+                            <span v-if="locationText" class="flex gap-1 items-center badge badge-outline">📍 {{ locationText }}</span>
+                            <span>ID: {{ item.$id }}</span>
+                            <span v-if="item.salesChannel && item.salesChannel.length > 0" class="flex gap-1 items-center">
+                                <span v-for="chan in item.salesChannel" :key="chan" class="badge badge-sm">{{ chan }}</span>
+                            </span>
                         </div>
                     </div>
 
@@ -181,28 +185,26 @@
                         <div class="divider text-xs uppercase opacity-50 font-bold tracking-widest mt-0">Full Details</div>
                         <div v-html="renderedDescription" class="whitespace-pre-wrap"></div>
                     </div>
-                    <div v-else class="text-center py-12 opacity-40">
-                        <p class="italic text-lg">No additional description available.</p>
-                    </div>
-
                 </div>
             </div>
         </div>
-    </dialog>
+    </div>
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { marked } from 'marked';
-import { addToast } from '../../stores/toast';
+import { databases, Query } from '../../lib/appwrite';
+import { isAlphaMode } from '../../stores/env';
 
 const props = defineProps({
-    item: { type: Object, default: null } // The item to preview. If null, modal is fully hidden.
+    itemId: { type: String, required: true }
 });
 
-const emit = defineEmits(['close', 'edit']);
+const item = ref(null);
+const loading = ref(true);
+const error = ref(null);
 
-const previewModal = ref(null);
 const selectedIndex = ref(0);
 const carouselRef = ref(null);
 let isProgrammaticScroll = false;
@@ -211,16 +213,22 @@ const ENDPOINT = import.meta.env.PUBLIC_APPWRITE_ENDPOINT;
 const PROJECT = import.meta.env.PUBLIC_APPWRITE_PROJECT_ID;
 const BUCKET = import.meta.env.PUBLIC_APPWRITE_BUCKET_ID;
 
-// Watch for item changes to open modal and reset gallery
-watch(() => props.item, async (newItem) => {
-    if (newItem) {
-        selectedIndex.value = 0;
-        if (carouselRef.value) carouselRef.value.scrollLeft = 0;
-        previewModal.value?.showModal();
-        await loadScoutData(newItem);
-    } else {
-        previewModal.value?.close();
-        parsedScoutData.value = null;
+onMounted(async () => {
+    loading.value = true;
+    error.value = null;
+    try {
+        const DB_ID = import.meta.env.PUBLIC_APPWRITE_DB_ID || 'resale_db';
+        const collId = isAlphaMode.get() 
+            ? (import.meta.env.PUBLIC_APPWRITE_ALPHA_COLLECTION_ID || 'alpha_items') 
+            : (import.meta.env.PUBLIC_APPWRITE_COLLECTION_ID || 'items');
+            
+        item.value = await databases.getDocument(DB_ID, collId, props.itemId);
+        await loadScoutData(item.value);
+    } catch (err) {
+        console.error("Failed to load item:", err);
+        error.value = err.message || "Could not fetch this item. You may not have access, or it was deleted.";
+    } finally {
+        loading.value = false;
     }
 });
 
@@ -233,7 +241,7 @@ const scrollToSlide = (index) => {
             left: index * carouselRef.value.clientWidth,
             behavior: 'smooth'
         });
-        setTimeout(() => { isProgrammaticScroll = false; }, 400); // Allow time for scroll animation
+        setTimeout(() => { isProgrammaticScroll = false; }, 400);
     }
 };
 
@@ -270,41 +278,17 @@ const selectThumbnail = (index) => {
     scrollToSlide(index);
 };
 
-const close = () => {
-    previewModal.value?.close();
-    emit('close');
-};
-
-const editItem = () => {
-    const itemToEdit = { ...props.item };
-    close();
-    emit('edit', itemToEdit);
-};
-
-const copyShareLink = async () => {
-    if (!props.item?.$id) return;
-    const url = `${window.location.origin}/item/${props.item.$id}`;
-    try {
-        await navigator.clipboard.writeText(url);
-        // Dispatch optional custom event if a global toast system exists
-        window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Link copied to clipboard!', type: 'success' } }));
-        addToast({ type: 'success', message: 'Share link copied to clipboard!' });
-    } catch (err) {
-        addToast({ type: 'error', message: 'Failed to copy link: ' + url });
-    }
-};
-
 // --- COMPUTED CONTENT ---
-const title = computed(() => props.item?.title || props.item?.identity || props.item?.itemName || "Untitled Item");
-const locationText = computed(() => props.item?.binLocation || props.item?.purchaseLocation || '');
+const title = computed(() => item.value?.title || item.value?.identity || item.value?.itemName || "Untitled Item");
+const locationText = computed(() => item.value?.binLocation || item.value?.purchaseLocation || '');
 
 const statusText = computed(() => {
-    const s = props.item?.status || 'Active';
+    const s = item.value?.status || 'Active';
     return s.replace(/_/g, ' ');
 });
 
 const statusBadgeClass = computed(() => {
-    const s = props.item?.status;
+    const s = item.value?.status;
     if (s === 'received' || s === 'scouted') return 'badge-info';
     if (s === 'acquired') return 'badge-secondary';
     if (s === 'placed') return 'badge-success';
@@ -313,35 +297,30 @@ const statusBadgeClass = computed(() => {
 });
 
 const renderedDescription = computed(() => {
-    if (!props.item?.description) return '';
-    return marked.parse(props.item.description);
+    if (!item.value?.description) return '';
+    return marked.parse(item.value.description);
 });
 
 const cleanConditionNotes = computed(() => {
-    if (!props.item?.conditionNotes) return '';
-    let text = props.item.conditionNotes;
-    // Strip out all the bracket metadata lines
+    if (!item.value?.conditionNotes) return '';
+    let text = item.value.conditionNotes;
     text = text.replace(/\[GALLERY IDS:.*?\n/g, '');
     text = text.replace(/\[SCOUT_REPORT_ID:.*?\]/g, '');
     text = text.replace(/\[SCOUT_DATA_LITE:.*?\]/g, '');
     text = text.replace(/\[SCOUT_DATA:.*?\]/g, '');
-    
-    // Also optionally strip out the pricing block if it's identical to the scraper block
     const scraperBlock = /Paid:[\s\S]*?Est\. High:.*?\n/i;
     text = text.replace(scraperBlock, '');
-
     return text.trim();
 });
 
 const parsedScoutData = ref(null);
 
-const loadScoutData = async (item) => {
+const loadScoutData = async (currentItem) => {
     parsedScoutData.value = null;
-    if (!item) return;
+    if (!currentItem) return;
 
-    // 1. Check if raw JSON object exists natively on the item
-    if (item.scoutData) {
-        let raw = item.scoutData;
+    if (currentItem.scoutData) {
+        let raw = currentItem.scoutData;
         if (typeof raw === 'object') {
             parsedScoutData.value = Array.isArray(raw) ? raw[0] : raw;
             return;
@@ -353,9 +332,8 @@ const loadScoutData = async (item) => {
         } catch (e) { }
     }
 
-    // 2. Check if there's a file ID reference in the condition notes
-    if (item.conditionNotes) {
-        const fileMatch = item.conditionNotes.match(/\[SCOUT_REPORT_ID:\s*([^\]]+)\]/);
+    if (currentItem.conditionNotes) {
+        const fileMatch = currentItem.conditionNotes.match(/\[SCOUT_REPORT_ID:\s*([^\]]+)\]/);
         if (fileMatch) {
             const fileId = fileMatch[1].trim();
             const downloadUrl = `${ENDPOINT}/storage/buckets/${BUCKET}/files/${fileId}/download?project=${PROJECT}`;
@@ -369,21 +347,19 @@ const loadScoutData = async (item) => {
             } catch (e) { console.warn("Failed to fetch scout file", e); }
         }
         
-        // 3. Fallback check for old embedded base64 data
-        const liteMatch = item.conditionNotes.match(/\[SCOUT_DATA_LITE:\s*([^\]]+)\]/);
+        const liteMatch = currentItem.conditionNotes.match(/\[SCOUT_DATA_LITE:\s*([^\]]+)\]/);
         if (liteMatch) {
             try { parsedScoutData.value = JSON.parse(atob(liteMatch[1])); return; } catch(e) {}
         }
-        const dataMatch = item.conditionNotes.match(/\[SCOUT_DATA:\s*([^\]]+)\]/);
+        const dataMatch = currentItem.conditionNotes.match(/\[SCOUT_DATA:\s*([^\]]+)\]/);
         if (dataMatch) {
             try { parsedScoutData.value = JSON.parse(atob(dataMatch[1])); return; } catch(e) {}
         }
     }
     
-    // 4. Fallback check for rawAnalysis
-    if (item.rawAnalysis) {
+    if (currentItem.rawAnalysis) {
          try {
-             const parsed = JSON.parse(item.rawAnalysis);
+             const parsed = JSON.parse(currentItem.rawAnalysis);
              parsedScoutData.value = Array.isArray(parsed) ? parsed[0] : (parsed.items ? parsed.items[0] : parsed);
          } catch (e) {}
     }
@@ -419,20 +395,19 @@ const parsePriceObj = (p) => {
 };
 
 const estValue = computed(() => {
-    if (!props.item) return 0;
-    if (props.item.resalePrice) return props.item.resalePrice;
-    if (props.item.estHigh) return parsePriceObj(props.item.estHigh);
-    return getNoteValue(props.item.conditionNotes, 'Est. High', true) || 0;
+    if (!item.value) return 0;
+    if (item.value.resalePrice) return item.value.resalePrice;
+    if (item.value.estHigh) return parsePriceObj(item.value.estHigh);
+    return getNoteValue(item.value.conditionNotes, 'Est. High', true) || 0;
 });
 
 const paidValue = computed(() => {
-    if (!props.item) return 0;
-    return props.item.cost || props.item.purchasePrice || getNoteValue(props.item.conditionNotes, 'Paid', true) || 0;
+    if (!item.value) return 0;
+    return item.value.cost || item.value.purchasePrice || getNoteValue(item.value.conditionNotes, 'Paid', true) || 0;
 });
 
 const formatCurrency = (val) => {
     if(!val || parseFloat(val) === 0) return '-';
-    // Strip everything except numbers and decimal to fix erroneous textual scraper data
     const cleanStr = String(val).replace(/[^\d.]/g, ''); 
     const num = parseFloat(cleanStr);
     return isNaN(num) ? val : '$' + num.toFixed(2);
@@ -451,19 +426,17 @@ const proxify = (url) => {
 const getAssetUrl = (id) => `${ENDPOINT}/storage/buckets/${BUCKET}/files/${id}/view?project=${PROJECT}`;
 
 const gallery = computed(() => {
-    if (!props.item) return [];
+    if (!item.value) return [];
     
-    // Check old array
-    if (props.item.galleryImageIds && props.item.galleryImageIds.length > 0) {
-        return props.item.galleryImageIds.map(id => {
+    if (item.value.galleryImageIds && item.value.galleryImageIds.length > 0) {
+        return item.value.galleryImageIds.map(id => {
             if (id.startsWith('http')) return proxify(id);
             return getAssetUrl(id);
         });
     }
     
-    // Check single image
-    if (props.item.imageId) {
-        const id = props.item.imageId;
+    if (item.value.imageId) {
+        const id = item.value.imageId;
         return [id.startsWith('http') ? proxify(id) : getAssetUrl(id)];
     }
     

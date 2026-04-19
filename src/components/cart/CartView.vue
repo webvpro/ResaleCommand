@@ -129,6 +129,8 @@ import ItemDrawer from '../common/ItemDrawer.vue';
 import { updateInventoryItem } from '../../lib/inventory';
 import ItemCard from '../common/ItemCard.vue';
 import ItemPreviewModal from '../inventory/ItemPreviewModal.vue';
+import { addToast } from '../../stores/toast';
+import { confirmDialog } from '../../stores/confirm';
 
 const BUCKET_ID = import.meta.env.PUBLIC_APPWRITE_BUCKET_ID;
 
@@ -171,7 +173,7 @@ async function saveEdit(payload: any) {
         
         closeEdit();
     } catch (e: any) {
-        alert("Failed to update item: " + e.message);
+        addToast({ type: 'error', message: "Failed to update item: " + e.message });
     }
 }
 
@@ -245,11 +247,12 @@ function getImageUrl(imageId: string) {
 }
 
 async function handleDeleteItem(itemId: string) {
-    if (confirm("Are you sure you want to remove this item?")) {
+    if (await confirmDialog("Are you sure you want to remove this item?", "Remove Item", "Remove", "Cancel", "btn-error")) {
         try {
             await deleteItem(itemId);
+            addToast({ type: 'success', message: 'Item deleted.' });
         } catch (e: any) {
-            alert("Failed to delete item: " + e.message);
+            addToast({ type: 'error', message: "Failed to delete item: " + e.message });
         }
     }
 }
@@ -263,24 +266,26 @@ async function handleAddExpense() {
         );
         newExpenseAmount.value = '';
         newExpenseNote.value = '';
+        addToast({ type: 'success', message: 'Expense added.' });
     } catch (e: any) {
-        alert("Failed to add expense: " + e.message);
+        addToast({ type: 'error', message: "Failed to add expense: " + e.message });
     }
 }
 
 async function handleFinishCart() {
-    if (confirm("Are you sure you are done shopping?")) {
+    if (await confirmDialog("Are you sure you are done shopping?", "Complete Trip", "Complete", "Cancel")) {
         try {
             await finishCart();
+            addToast({ type: 'success', message: 'Trip completed!' });
             window.location.href = '/dashboard';
         } catch (e: any) {
-            alert("Checkout failed: " + e.message);
+            addToast({ type: 'error', message: "Checkout failed: " + e.message });
         }
     }
 }
 
-function startNew() {
-     if(confirm("Start new tracker? Current one will be abandoned.")) {
+async function startNew() {
+     if(await confirmDialog("Start new tracker? Current one will be abandoned.", "Start New", "Start", "Cancel", "btn-warning")) {
          leaveCart();
          window.location.href = '/scout';
      }

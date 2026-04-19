@@ -125,7 +125,10 @@
                         </template>
 
                         <template #actions>
-                            <div class="flex justify-end items-center mt-1 pt-1 border-t border-base-200">
+                            <div class="flex justify-between items-center mt-1 pt-1 border-t border-base-200 w-full z-10 w-full">
+                                <button class="btn btn-xs btn-ghost tooltip tooltip-right text-base-content/50 hover:text-base-content h-6 min-h-0 px-1" data-tip="Copy Share Link" @click.stop="copyShareLink(item.$id)">
+                                    🔗
+                                </button>
                                 <button class="btn btn-xs btn-ghost text-error btn-square h-6 min-h-0 w-6" @click.stop="confirmDelete(item.$id)" :disabled="processingId === item.$id">
                                     <span v-if="processingId === item.$id" class="loading loading-spinner loading-xs"></span>
                                     <span v-else>🗑️</span>
@@ -271,6 +274,8 @@ import ItemDrawer from '../common/ItemDrawer.vue';
 import ItemCard from '../common/ItemCard.vue';
 import ItemPreviewModal from './ItemPreviewModal.vue';
 import TagInput from '../common/TagInput.vue';
+import { addToast } from '../../stores/toast';
+import { confirmDialog } from '../../stores/confirm';
 
 // Environment Variables
 const ENDPOINT = import.meta.env.PUBLIC_APPWRITE_ENDPOINT;
@@ -405,8 +410,9 @@ const applyBulkStatus = async () => {
         // Reset selection
         selectedItems.value = [];
         bulkStatusTarget.value = '';
+        addToast({ type: 'success', message: 'Bulk update applied.' });
     } catch (e) {
-        alert("Failed to apply bulk update: " + e.message);
+        addToast({ type: 'error', message: "Failed to apply bulk update: " + e.message });
     } finally {
         processingBulk.value = false;
     }
@@ -433,8 +439,9 @@ const applyBulkLocation = async () => {
         // Reset selection
         selectedItems.value = [];
         bulkLocationTarget.value = '';
+        addToast({ type: 'success', message: 'Bulk location updated.' });
     } catch (e) {
-        alert("Failed to apply bulk location update: " + e.message);
+        addToast({ type: 'error', message: "Failed to apply bulk location update: " + e.message });
     } finally {
         processingBulkLoc.value = false;
     }
@@ -644,7 +651,7 @@ const submitCheckout = async () => {
         generatedDescription.value = "Item correctly transitioned to 'Acquired'. Description generation has been deferred until the item is placed for sale.";
         
     } catch (e) {
-        alert('Checkout failed: ' + e.message);
+        addToast({ type: 'error', message: 'Checkout failed: ' + e.message });
     } finally {
         processing.value = false;
     }
@@ -693,8 +700,9 @@ const saveEdit = async (payload) => {
         closeEditDrawer();
         // Fire async refresh in background just in case
         fetchInventory('').catch(() => {});
+        addToast({ type: 'success', message: 'Item saved successfully.' });
     } catch (e) {
-        alert('Save failed: ' + e.message);
+        addToast({ type: 'error', message: 'Save failed: ' + e.message });
     } finally {
         processing.value = false;
     }
@@ -732,7 +740,7 @@ const startCamera = async (context) => {
             }, 100);
         }
     } catch (e) {
-        alert("Camera Error: " + e.message);
+        addToast({ type: 'error', message: "Camera Error: " + e.message });
     }
 };
 
@@ -765,15 +773,28 @@ const capturePhoto = (context) => {
 
 // General
 const confirmDelete = async (id) => {
-    if(!confirm('Delete item?')) return;
+    if (!(await confirmDialog('Are you sure you want to delete this item?', 'Delete Item', 'Delete', 'Cancel', 'btn-error'))) return;
     processingId.value = id;
     try {
         await deleteInventoryItem(id);
+        addToast({ type: 'success', message: 'Item deleted.' });
         // Realtime should handle removal from list, but manual optimistic update supported by useInventory too
     } catch(e) {
-        alert('Delete failed');
+        addToast({ type: 'error', message: 'Delete failed' });
     } finally {
         processingId.value = false;
+    }
+};
+
+const copyShareLink = async (id) => {
+    if (!id) return;
+    const url = `${window.location.origin}/item/${id}`;
+    try {
+        await navigator.clipboard.writeText(url);
+        window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Link copied to clipboard!', type: 'success' } }));
+        addToast({ type: 'success', message: 'Link copied to clipboard!' });
+    } catch (err) {
+        addToast({ type: 'error', message: 'Failed to copy link: ' + url });
     }
 };
 

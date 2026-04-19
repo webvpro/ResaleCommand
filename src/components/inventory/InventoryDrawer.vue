@@ -129,6 +129,7 @@ import { useInventory } from '../../composables/useInventory';
 import CsvImporter from './CsvImporter.vue';
 import { storage, databases, ID } from '../../lib/appwrite';
 import { useAuth } from '../../composables/useAuth';
+import { addToast } from '../../stores/toast';
 
 const BUCKET_ID = import.meta.env.PUBLIC_APPWRITE_BUCKET_ID;
 const DB = import.meta.env.PUBLIC_APPWRITE_DB_ID;
@@ -220,7 +221,7 @@ async function analyzeImage() {
         }
         
     } catch (e: any) {
-        alert("Failed to analyze: " + e.message);
+        addToast({ type: 'error', message: "Failed to analyze: " + e.message });
     } finally {
         analyzing.value = false;
     }
@@ -229,7 +230,7 @@ async function analyzeImage() {
 async function saveItem() {
     if (!form.title) return;
     if (!user.value) {
-        alert("Please login first");
+        addToast({ type: 'warning', message: "Please login first" });
         return;
     }
     loading.value = true;
@@ -274,7 +275,7 @@ async function saveItem() {
         window.location.reload();
 
     } catch (e: any) {
-        alert("Error saving: " + e.message);
+        addToast({ type: 'error', message: "Error saving: " + e.message });
     } finally {
         loading.value = false;
     }

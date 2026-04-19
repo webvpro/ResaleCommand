@@ -135,6 +135,7 @@ import { ref, computed } from 'vue';
 import { useStore } from '@nanostores/vue';
 import { isAlphaMode } from '../../stores/env';
 import { useAuth } from '../../composables/useAuth';
+import { addToast } from '../../stores/toast';
 
 const { 
   user, isAuthenticated, currentTeam, teams, ownedTeam, isPartner, loading,
@@ -189,7 +190,7 @@ const handleCreateTeam = async () => {
         showCreateModal.value = false;
         newTeamName.value = '';
     } catch(e: any) {
-        alert(e.message);
+        addToast({ type: 'error', message: e.message });
     }
 };
 
@@ -199,12 +200,12 @@ const handleInvite = async () => {
         await inviteMember(currentTeam.value.$id, inviteEmail.value);
         showInviteModal.value = false;
         inviteEmail.value = '';
-        alert('Invitation sent!');
+        addToast({ type: 'success', message: 'Invitation sent!' });
     } catch(e: any) {
         if (e.message.includes('unique') || e.code === 409) {
-            alert('This user is already a member or has a pending invitation.');
+            addToast({ type: 'warning', message: 'This user is already a member or has a pending invitation.' });
         } else {
-            alert(e.message);
+            addToast({ type: 'error', message: e.message });
         }
     }
 };

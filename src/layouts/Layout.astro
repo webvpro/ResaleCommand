@@ -2,6 +2,7 @@
 import Navbar from "@components/nav/Navbar.vue";
 import Footer from "@components/Footer.astro";
 import ToastContainer from "@components/ui/ToastContainer.vue";
+import ConfirmContainer from "@components/ui/ConfirmContainer.vue";
 import MarkdownModal from "@components/ui/MarkdownModal.astro";
 import { siteConfig } from "site-config";
 
@@ -37,12 +38,12 @@ const { title = siteConfig.title, description, image } = Astro.props;
   </main>
   <MarkdownModal />
   <ToastContainer client:load />
+  <ConfirmContainer client:load />
   <Footer />
   <script>
-    import { useAuth } from "../composables/useAuth";
+    import { initAuth } from "../lib/store";
 
     // Initialize auth state on client load
-    const { init } = useAuth();
-    init();
+    initAuth();
   </script>
 </body>

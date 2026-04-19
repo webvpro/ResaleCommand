@@ -174,6 +174,8 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useAuth } from '../../composables/useAuth';
 import { teams, ID, databases, Query } from '../../lib/appwrite';
 import type { Models } from 'appwrite';
+import { addToast } from '../../stores/toast';
+import { confirmDialog } from '../../stores/confirm';
 
 const { user, isAuthenticated, currentTeam, loading } = useAuth();
 
@@ -249,7 +251,7 @@ const saveOrgSettings = async () => {
         }
     } catch (e) {
         console.error("Failed to save org settings:", e);
-        alert("Failed to save settings. See console.");
+        addToast({ type: 'error', message: "Failed to save settings. See console." });
     } finally {
         savingSettings.value = false;
     }
@@ -262,7 +264,7 @@ const addDomain = () => {
     
     if (!orgSettings.value.allowedDomains) orgSettings.value.allowedDomains = [];
     if (orgSettings.value.allowedDomains.length >= 3) {
-        alert("Maximum 3 allowed domains permitter per organization.");
+        addToast({ type: 'warning', message: "Maximum 3 allowed domains permitter per organization." });
         return;
     }
     
@@ -319,13 +321,13 @@ const handleInvite = async () => {
 
         inviteEmail.value = '';
         showInviteModal.value = false;
-        alert('Invitation sent!');
+        addToast({ type: 'success', message: 'Invitation sent!' });
         fetchMembers(); // Refresh list to show pending
     } catch (e: any) {
         if (e.message.includes('unique') || e.code === 409) {
-            alert('This user is already a member or has a pending invitation.');
+            addToast({ type: 'warning', message: 'This user is already a member or has a pending invitation.' });
         } else {
-            alert(`Failed to send invite: ${e.message}`);
+            addToast({ type: 'error', message: `Failed to send invite: ${e.message}` });
         }
     } finally {
         inviting.value = false;
@@ -333,18 +335,19 @@ const handleInvite = async () => {
 };
 
 const confirmRemove = async (member: Models.Membership) => {
-    if (confirm(`Are you sure you want to remove ${member.userName || member.userEmail}?`)) {
+    if (await confirmDialog(`Are you sure you want to remove ${member.userName || member.userEmail}?`, 'Remove Member', 'Remove', 'Cancel', 'btn-error')) {
         try {
             await teams.deleteMembership(currentTeam.value!.$id, member.$id);
             fetchMembers();
+            addToast({ type: 'success', message: 'Member removed.' });
         } catch (e: any) {
-             alert(e.message);
+             addToast({ type: 'error', message: e.message });
         }
     }
 };
 
 const handleResend = async (member: Models.Membership) => {
-    if (confirm(`Resend invitation to ${member.userEmail}? This will generate a new invite link.`)) {
+    if (await confirmDialog(`Resend invitation to ${member.userEmail}? This will generate a new invite link.`, 'Resend Invite', 'Resend', 'Cancel')) {
         try {
              // To resend, we delete the old membership (canceling old link) and create a new one
              try {
@@ -371,11 +374,11 @@ const handleResend = async (member: Models.Membership) => {
                 await teams.createMembership(currentTeam.value!.$id, ['member'], member.userEmail, undefined, undefined, url);
              }
 
-             alert('New invitation sent!');
+             addToast({ type: 'success', message: 'New invitation sent!' });
              fetchMembers();
         } catch (e: any) {
              console.error("Resend flow error:", e);
-             alert(`Failed to resend: ${e.message}`);
+             addToast({ type: 'error', message: `Failed to resend: ${e.message}` });
         }
     }
 };
