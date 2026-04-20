@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { model } from '../../lib/gemini';
+import { model, generateContentWithBackoff } from '../../lib/gemini';
 
 export const prerender = false;
 
@@ -110,7 +110,7 @@ export const ALL: APIRoute = async ({ request }) => {
 
         const contentParts: any[] = [{ text: prompt }, ...imageParts];
         
-        const result = await model.generateContent({
+        const result = await generateContentWithBackoff({
             contents: [{ role: 'user', parts: contentParts }],
             generationConfig: { responseMimeType: "application/json" }
         });

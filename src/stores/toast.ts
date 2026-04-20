@@ -14,11 +14,30 @@ export const toasts = atom<Toast[]>([]);
 
 export const addToast = (toast: Omit<Toast, 'id'>) => {
     const id = Math.random().toString(36).substring(2, 9);
-    const newToast = { ...toast, id };
+    
+    // Set default duration if not provided
+    let duration = toast.duration;
+    if (duration === undefined) {
+        switch (toast.type) {
+            case 'success':
+            case 'info':
+                duration = 3000;
+                break;
+            case 'warning':
+            case 'error':
+                duration = 5000;
+                break;
+            case 'loading':
+                duration = 0; // Loading toasts don't auto-dismiss by default
+                break;
+        }
+    }
+    
+    const newToast = { ...toast, id, duration };
     toasts.set([...toasts.get(), newToast]);
 
-    if (toast.duration && toast.duration > 0) {
-        setTimeout(() => removeToast(id), toast.duration);
+    if (duration && duration > 0) {
+        setTimeout(() => removeToast(id), duration);
     }
     return id;
 };

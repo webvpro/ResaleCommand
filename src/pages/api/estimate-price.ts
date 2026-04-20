@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { model } from '../../lib/gemini';
+import { model, generateContentWithBackoff } from '../../lib/gemini';
 
 export const POST: APIRoute = async ({ request }) => {
   try {
@@ -18,7 +18,7 @@ export const POST: APIRoute = async ({ request }) => {
       Return ONLY a JSON object: { "min": number, "max": number, "fair": number, "reason": "short string" }
     `;
 
-    const result = await model.generateContent(prompt);
+    const result = await generateContentWithBackoff(prompt);
     const text = result.response.text();
     
     // Clean markdown

@@ -901,6 +901,12 @@
             let errData;
             try { errData = JSON.parse(errText); } 
             catch (e) { errData = { error: errText }; }
+            
+            if (errData.isRateLimit) {
+                 addToast({ type: 'warning', message: `Warning: ${errData.details || errData.error}` });
+                 return; // Do not throw, stop execution gracefully
+            }
+            
             addToast({ type: 'error', message: `Server Error: ${errData.details || errData.error}` });
             throw new Error(errData.details || errData.error || "Analysis failed");
           }

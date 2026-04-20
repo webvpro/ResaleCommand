@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { model } from '../../lib/gemini';
+import { model, generateContentWithBackoff } from '../../lib/gemini';
 
 export const prerender = false;
 
@@ -400,11 +400,13 @@ export const ALL: APIRoute = async ({ request }) => {
             contentParts.push(...imageParts);
         }
 
-        const result = await model.generateContent({
+        const result = await generateContentWithBackoff({
             contents: [{ role: 'user', parts: contentParts }],
             generationConfig: { responseMimeType: "application/json" }
         });
+        
         const response = await result.response;
+        
         const taskResponse = response.text();
         
         // Clean up potential markdown code blocks \`\`\`json ... \`\`\`
@@ -433,9 +435,16 @@ export const ALL: APIRoute = async ({ request }) => {
 
     } catch (error: any) {
         console.error("Detailed Gemini Analysis Error:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        return new Response(JSON.stringify({ error: 'Analysis failed', details: errorMessage }), { 
-            status: 500,
+        let errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        let statusCode = 500;
+        
+        if (error?.status === 429 || errorMessage.includes('429 Too Many Requests')) {
+            errorMessage = "AI Rate Limit Reached (15 requests/min). Please wait 60 seconds and try again.";
+            statusCode = 429;
+        }
+        
+        return new Response(JSON.stringify({ error: 'Analysis failed', details: errorMessage, isRateLimit: statusCode === 429 }), { 
+            status: statusCode,
             headers: { "Access-Control-Allow-Origin": "*" }
         });
     }

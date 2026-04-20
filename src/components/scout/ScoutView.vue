@@ -683,7 +683,7 @@ async function analyzeListing() {
     loading.value = true;
     error.value = null;
     
-    const targetUrl = isId ? `https://shopgoodwill.com/item/${url}` : url;
+    const targetUrl = url;
     
     // Auto-fill the purchase location field so it's ready when saving
     purchaseLocation.value = targetUrl;

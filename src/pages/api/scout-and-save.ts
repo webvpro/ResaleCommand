@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { Client, Databases, Query, ID, Storage } from "node-appwrite";
 import { InputFile } from "node-appwrite/file";
-import { model } from '../../lib/gemini';
+import { model, generateContentWithBackoff } from '../../lib/gemini';
 
 export const prerender = false;
 
@@ -123,7 +123,7 @@ export const ALL: APIRoute = async ({ request }) => {
         `;
 
         console.log("[Headless] Sending to Gemini...");
-        const result = await model.generateContent([prompt, imagePart]);
+        const result = await generateContentWithBackoff([prompt, imagePart]);
         const responseText = result.response.text();
         const cleanedResponse = responseText.replace(/```json|```/g, '').trim();
         

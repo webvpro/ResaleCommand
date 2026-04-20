@@ -4,6 +4,7 @@ import { Client, Databases, Storage } from 'node-appwrite';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Buffer } from 'node:buffer';
 import type { APIRoute } from 'astro';
+import { generateContentWithBackoff } from '../../lib/gemini';
 
 export const POST: APIRoute = async ({ request }) => {
     try {
@@ -96,8 +97,6 @@ export const POST: APIRoute = async ({ request }) => {
 
         // 4. Call Gemini
         console.log('[API] Calling Gemini...');
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
         const prompt = `
         You are an expert eBay reseller. Write a compelling, SEO-friendly product description for this item${validImageParts.length > 0 ? ' based on the provided photos.' : '.'}
@@ -118,7 +117,7 @@ export const POST: APIRoute = async ({ request }) => {
         CRITICAL: Return ONLY the plain text string. Do NOT wrap the output in any code blocks.
         `;
 
-        const result = await model.generateContent([prompt, ...validImageParts]);
+        const result = await generateContentWithBackoff([prompt, ...validImageParts]);
         const response = await result.response;
         const text = response.text();
         console.log('[API] Gemini response received');
@@ -150,12 +149,22 @@ export const POST: APIRoute = async ({ request }) => {
 
     } catch (error: any) {
         console.error('[API] Error generating description:', error);
+        
+        let errorMessage = error.message || 'Unknown server error';
+        let statusCode = 500;
+        
+        if (error?.status === 429 || errorMessage.includes('429 Too Many Requests')) {
+            errorMessage = "AI Rate Limit Reached (15 requests/min). Please wait 60 seconds and try again.";
+            statusCode = 429;
+        }
+
         // Ensure we return JSON even on error
         return new Response(JSON.stringify({ 
-            error: error.message || 'Unknown server error',
+            error: errorMessage,
+            isRateLimit: statusCode === 429,
             stack: import.meta.env.DEV ? error.stack : undefined 
         }), { 
-            status: 500,
+            status: statusCode,
             headers: { 'Content-Type': 'application/json' }
         });
     }

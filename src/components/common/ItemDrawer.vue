@@ -161,12 +161,12 @@
                         </datalist>
                     </div>
                     
-                    <!-- Order ID (Editable) -->
+                    <!-- Order ID / URL (Editable) -->
                     <div class="form-control w-full">
-                        <label class="label"><span class="label-text">Order #</span></label>
+                        <label class="label"><span class="label-text">Source Link / Order #</span></label>
                          <div class="join w-full flex">
-                            <input type="text" v-model="editForm.orderId" class="input input-bordered join-item grow" placeholder="Order ID" />
-                            <a v-if="editForm.orderId && editForm.orderId.length > 5" :href="`https://shopgoodwill.com/shopgoodwill/order/${editForm.orderId}`" target="_blank" class="btn btn-neutral join-item shrink-0">🔗</a>
+                            <input type="text" v-model="editForm.orderId" class="input input-bordered join-item grow" placeholder="URL or Order ID" />
+                            <a v-if="editForm.orderId && editForm.orderId.startsWith('http')" :href="editForm.orderId" target="_blank" class="btn btn-neutral join-item shrink-0">🔗</a>
                          </div>
                     </div>
                 </div>
@@ -961,7 +961,7 @@ const generateDescription = async () => {
                 editForm.description = data.description;
                 if(data.warning) addToast({ type: 'warning', message: `Warning: ${data.warning}` });
             } else {
-                addToast({ type: 'error', message: "Failed to generate: " + (data.error || "Unknown") });
+                addToast({ type: data.isRateLimit ? 'warning' : 'error', message: data.isRateLimit ? data.error : "Failed to generate: " + (data.error || "Unknown") });
             }
         } else {
             addToast({ type: 'warning', message: 'Please save the item first before generating a description.' });
@@ -1199,7 +1199,14 @@ const analyzeExistingItem = async () => {
             method: 'PUT', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ images: base64Images, imageUrl: actualMainPhoto.value.url, notes: contextNotes })
         });
-        if (!response.ok) throw new Error("Analysis API failed");
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            if (errData.isRateLimit) {
+                addToast({ type: 'warning', message: errData.details || errData.error });
+                return;
+            }
+            throw new Error(errData.details || errData.error || "Analysis API failed");
+        }
         
         const data = await response.json();
         if (data.items && data.items.length > 0) {
@@ -1289,8 +1296,8 @@ const extractLotItems = async () => {
             
             // Try to assign a portion of the total cost to each item (e.g. Total / Count)
             let apportionedCost = 0;
-            if (editForm.value.cost && parseFloat(editForm.value.cost) > 0) {
-                 apportionedCost = parseFloat(editForm.value.cost) / scoutResult.value.length;
+            if (editForm.cost && parseFloat(editForm.cost) > 0) {
+                 apportionedCost = parseFloat(editForm.cost) / scoutResult.value.length;
             }
 
             // Estimate Resale Price from AI
@@ -1302,8 +1309,8 @@ const extractLotItems = async () => {
             // Figure out image inheritance
             let inheritedGallery = [];
             let mainImageId = null;
-            if (editForm.value.existingGalleryIds && editForm.value.existingGalleryIds.length > 0) {
-                 inheritedGallery = [...editForm.value.existingGalleryIds];
+            if (editForm.existingGalleryIds && editForm.existingGalleryIds.length > 0) {
+                 inheritedGallery = [...editForm.existingGalleryIds];
                  mainImageId = inheritedGallery[0];
             } else if (actualMainPhoto.value.id) {
                  inheritedGallery = [actualMainPhoto.value.id];
@@ -1314,9 +1321,9 @@ const extractLotItems = async () => {
                  cost: apportionedCost,
                  resalePrice: resalePrice ? resalePrice.toFixed(2) : undefined,
                  status: 'acquired', // New Workflow Status Standard
-                 purchaseLocation: editForm.value.purchaseLocation || 'Bulk Lot',
-                 orderId: editForm.value.orderId,
-                 binLocation: editForm.value.binLocation,
+                 purchaseLocation: editForm.purchaseLocation || 'Bulk Lot',
+                 orderId: editForm.orderId,
+                 binLocation: editForm.binLocation,
                  imageId: mainImageId,
                  galleryImageIds: inheritedGallery,
                  scoutData: lotItem
