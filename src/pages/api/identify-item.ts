@@ -403,7 +403,7 @@ export const ALL: APIRoute = async ({ request }) => {
         const result = await generateContentWithBackoff({
             contents: [{ role: 'user', parts: contentParts }],
             generationConfig: { responseMimeType: "application/json" }
-        });
+        }, 3, 2000); // Only retry 3 times for real-time frontend calls to prevent 2.5 minute UI hangs
         
         const response = await result.response;
         

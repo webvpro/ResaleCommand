@@ -117,7 +117,7 @@ export const POST: APIRoute = async ({ request }) => {
         CRITICAL: Return ONLY the plain text string. Do NOT wrap the output in any code blocks.
         `;
 
-        const result = await generateContentWithBackoff([prompt, ...validImageParts]);
+        const result = await generateContentWithBackoff([prompt, ...validImageParts], 3, 2000);
         const response = await result.response;
         const text = response.text();
         console.log('[API] Gemini response received');
