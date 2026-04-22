@@ -1,5 +1,5 @@
 <template>
-    <div class="relative z-50">
+    <div class="relative z-[300]">
         <div class="fixed inset-0 bg-black/50 transition-opacity" @click="closeDrawer"></div>
         <div class="fixed inset-y-0 right-0 w-full md:w-[480px] bg-base-100 shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out">
             <!-- Header -->
@@ -97,13 +97,6 @@
                             </div>
                         </div>
                         
-                        <!-- Analyze Button -->
-                        <div class="pt-2">
-                             <button class="btn btn-secondary w-full gap-2" @click="analyzeExistingItem" :disabled="analyzing || (!scoutQuery && !actualMainPhoto.url && !editForm.purchaseLocation)">
-                                <span v-if="analyzing" class="loading loading-spinner loading-sm"></span>
-                                <span v-else>✨ Run AI Scout</span>
-                            </button>
-                        </div>
                     </div>
                 </div>
 
@@ -114,7 +107,12 @@
                             ✨ Use: {{ suggestedTitleStr }}
                         </span>
                     </label>
-                    <input type="text" v-model="editForm.title" class="input input-bordered w-full font-bold" />
+                    <div class="join w-full flex">
+                        <input type="text" v-model="editForm.title" class="input input-bordered font-bold join-item grow" />
+                        <button class="btn btn-neutral join-item shrink-0" @click="copyToClipboard(editForm.title)" title="Copy Title">
+                            📋
+                        </button>
+                    </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
@@ -433,12 +431,23 @@
             </div>
 
             <!-- Footer -->
-            <div class="p-4 border-t border-base-200 flex justify-end bg-base-100 z-10 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] gap-2 shrink-0">
-                <button class="btn btn-ghost" @click="closeDrawer">Cancel</button>
-                <button class="btn btn-primary flex-1" @click="saveEdit" :disabled="processing">
-                    <span v-if="processing" class="loading loading-spinner"></span>
-                    Save Changes
+            <div class="p-4 border-t border-base-200 flex justify-between items-center bg-base-100 z-10 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] gap-4 shrink-0">
+                <!-- Static AI Scout Button -->
+                <button class="btn btn-secondary shadow-md shrink-0" @click="analyzeExistingItem" :disabled="analyzing || (!scoutQuery && !actualMainPhoto.url && !editForm.purchaseLocation)">
+                    <span v-if="analyzing" class="loading loading-spinner"></span>
+                    <template v-else>
+                        <span class="hidden sm:inline">✨ AI Scout</span>
+                        <span class="sm:hidden">✨ AI</span>
+                    </template>
                 </button>
+                
+                <div class="flex gap-2 w-full justify-end">
+                    <button class="btn btn-ghost" @click="closeDrawer">Cancel</button>
+                    <button class="btn btn-primary shadow-md" @click="saveEdit" :disabled="processing">
+                        <span v-if="processing" class="loading loading-spinner"></span>
+                        Save
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -575,6 +584,16 @@ const handleVerifiedToggle = (comp) => {
           comp.found = comp.expected; // Auto-fill found if user checks it
      }
 };
+
+async function copyToClipboard(text) {
+    if (!text) return;
+    try {
+        await navigator.clipboard.writeText(text);
+        addToast({ type: 'success', message: 'Copied to clipboard!' });
+    } catch (e) {
+        addToast({ type: 'error', message: 'Failed to copy to clipboard.' });
+    }
+}
 
 const editForm = reactive({
     title: '',

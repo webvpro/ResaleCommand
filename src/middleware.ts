@@ -1,7 +1,7 @@
 import { defineMiddleware } from "astro:middleware";
 
 export const onRequest = defineMiddleware((context, next) => {
-  const protectedRoutes = ["/dashboard", "/inventory", "/partners", "/cart"];
+  const protectedRoutes = ["/dashboard", "/inventory", "/partners"];
   const url = new URL(context.request.url);
 
   // Check if current path requires protection

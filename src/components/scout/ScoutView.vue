@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-[calc(100vh-4rem)] flex flex-col bg-base-100 relative">
+  <div class="bg-base-100 min-h-full relative flex flex-col">
     
     <!-- ERROR TOAST -->
     <div v-if="error" class="toast toast-top toast-center z-100">
@@ -15,21 +15,9 @@
         </div>
     </div>
 
-    <!-- MAIN SCROLLABLE AREA -->
-    <div class="flex-1 w-full bg-base-100 p-4 md:p-6 space-y-6 pb-32">
+    <!-- MAIN CONTENT AREA -->
+    <div class="flex-1 p-4 md:p-6 space-y-6 w-full max-w-screen-xl mx-auto">
         
-        <!-- HEADER -->
-        <div v-if="activeCart" class="navbar bg-base-200 min-h-12 border-b border-base-300 px-4 sticky top-0 z-30">
-            <div class="flex-1 min-w-0 text-sm flex items-center pr-2">
-                <span class="opacity-70 mr-2 whitespace-nowrap hidden sm:inline">🛒 Active Cart:</span>
-                <span class="opacity-70 mr-1 whitespace-nowrap sm:hidden">🛒</span>
-                <span class="font-bold truncate">{{ activeCart.source }}</span>
-            </div>
-            <div class="flex-none text-sm">
-                <span class="badge badge-neutral mr-2">{{ cartItems ? cartItems.length : 0 }} Items</span>
-                <a href="/cart" class="link link-primary no-underline font-bold">View Cart &rarr;</a>
-            </div>
-        </div>
 
         <!-- 1. INPUT SECTION -->
         <div class="card bg-base-100 shadow-sm border border-base-200">
@@ -89,10 +77,6 @@
                         <label class="label py-1"><span class="label-text opacity-70 text-sm">Paste Web URL</span></label>
                         <div class="join w-full flex">
                             <input type="text" v-model="scoutUrl" class="input input-bordered join-item grow font-mono" placeholder="http://..." />
-                            <button class="btn btn-primary join-item shrink-0" @click="analyzeListing" :disabled="!scoutUrl || loading">
-                                <span v-if="loading" class="loading loading-spinner loading-xs"></span>
-                                <span v-else>Analyze Listing</span>
-                            </button>
                         </div>
                     </div>
                     
@@ -109,11 +93,7 @@
                     <textarea v-model="userNotes" class="textarea textarea-bordered h-24 text-sm" placeholder="e.g. Size Large, Nike tag from 2015, small tear on sleeve..."></textarea>
                 </div>
 
-                <!-- ANALYZE BUTTON -->
-                <button @click="analyzeImage" class="btn btn-primary w-full mt-4 shadow-lg text-lg normal-case" :disabled="loading || images.length === 0">
-                    <span v-if="loading" class="loading loading-spinner"></span>
-                    <span v-else>✨ Analyze with Gemini</span>
-                </button>
+                <!-- ANALYZE BUTTON MOVED TO COMPONENT STICKY FOOTER -->
             </div>
         </div>
 
@@ -152,7 +132,7 @@
         </div>
 
         <!-- 3. RESULTS (ITEM CARDS) -->
-        <div v-if="result" class="space-y-6">
+        <div v-if="result" id="scout-results-section" class="space-y-6">
             <div v-for="(item, index) in (result.items || [])" :key="index" class="card bg-base-100 shadow-lg border-t-4 border-t-primary">
                 <div class="card-body p-4 md:p-6">
                     
@@ -179,19 +159,19 @@
                     <div class="grid grid-cols-4 gap-2 text-center mt-2">
                         <div class="bg-base-200 rounded p-2 flex flex-col">
                             <span class="text-[10px] uppercase font-bold opacity-50">NEW/MINT</span>
-                            <span class="text-success font-bold text-sm md:text-base">{{ item.price_breakdown?.mint || '-' }}</span>
+                            <span class="text-success font-bold text-sm md:text-base">{{ formatPriceDisplay(item.price_breakdown?.mint) }}</span>
                         </div>
                         <div class="bg-primary/10 rounded p-2 flex flex-col border border-primary/20">
                             <span class="text-[10px] uppercase font-bold opacity-50 text-primary">USED/FAIR</span>
-                            <span class="text-primary font-bold text-sm md:text-base">{{ item.price_breakdown?.fair || '-' }}</span>
+                            <span class="text-primary font-bold text-sm md:text-base">{{ formatPriceDisplay(item.price_breakdown?.fair) }}</span>
                         </div>
                         <div class="bg-base-200 rounded p-2 flex flex-col">
                             <span class="text-[10px] uppercase font-bold opacity-50">POOR</span>
-                            <span class="text-warning font-bold text-xs md:text-sm">{{ item.price_breakdown?.poor || '-' }}</span>
+                            <span class="text-warning font-bold text-xs md:text-sm">{{ formatPriceDisplay(item.price_breakdown?.poor) }}</span>
                         </div>
                         <div class="bg-secondary/10 rounded p-2 flex flex-col border border-secondary/20">
                             <span class="text-[10px] uppercase font-bold opacity-70 text-secondary">BOUTIQUE</span>
-                            <span class="text-secondary font-bold text-sm md:text-base">{{ item.price_breakdown?.boutique_premium || '-' }}</span>
+                            <span class="text-secondary font-bold text-sm md:text-base">{{ formatPriceDisplay(item.price_breakdown?.boutique_premium) }}</span>
                         </div>
                     </div>
 
@@ -264,6 +244,34 @@
                         <div class="relative">
                             <input v-model="item.title" type="text" class="input input-bordered w-full font-bold text-sm pr-8" />
                             <span class="absolute right-2 top-1/2 -translate-y-1/2 opacity-30">📋</span>
+                        </div>
+                    </div>
+
+                    <!-- Custom Resale Price Slider -->
+                    <div class="form-control mt-6 bg-base-200 p-4 rounded-xl border border-base-300">
+                        <label class="label pt-0 pb-2">
+                             <span class="label-text font-bold opacity-70 flex items-center gap-2">
+                                 🏷️ Target Resale Price
+                             </span>
+                        </label>
+                        
+                        <div class="flex flex-col sm:flex-row items-center gap-4">
+                            <input type="range" 
+                                   v-model.number="item.selected_resale_price" 
+                                   :min="getSliderMinMax(item).min" 
+                                   :max="getSliderMinMax(item).max" 
+                                   class="range sm:grow w-full" 
+                                   :class="getSliderColor(item)"
+                                   step="1" />
+                            
+                            <div class="join w-full sm:w-auto mt-2 sm:mt-0 shadow-sm">
+                                <span class="join-item btn no-animation bg-base-100 border-base-300 pointer-events-none">$</span>
+                                <input type="number" v-model.number="item.selected_resale_price" class="input input-bordered join-item w-full sm:w-24 font-bold text-lg text-center" />
+                            </div>
+                        </div>
+                        <div class="w-full flex justify-between text-xs px-2 mt-2 font-bold opacity-40">
+                             <span>Low (${{ getSliderMinMax(item).min }})</span>
+                             <span>High (${{ getSliderMinMax(item).max }})</span>
                         </div>
                     </div>
 
@@ -345,11 +353,39 @@
         </div>
     </dialog>
 
+    <!-- BOTTOM DOCK NAV (Sticky to Viewport) -->
+    <div class="sticky bottom-0 z-40 flex h-20 bg-base-200 border-t border-base-300 w-full shadow-[0_-15px_40px_-15px_rgba(0,0,0,0.15)]">
+        
+        <!-- Start New -->
+        <button @click="startNewScan" class="flex-1 flex flex-col items-center justify-center text-base-content/70 hover:bg-base-300 hover:text-base-content transition-colors pb-safe">
+            <span class="text-2xl leading-none mb-1">↺</span>
+            <span class="font-bold tracking-wider uppercase text-[10px]">Start New</span>
+        </button>
+
+        <!-- AI Scout Primary -->
+        <button @click="mode === 'speed' ? analyzeImage() : analyzeListing()" 
+                class="flex-1 flex flex-col items-center justify-center bg-primary text-primary-content hover:bg-primary/90 transition-colors border-x border-base-300 shadow-inner pb-safe"
+                :disabled="loading || (mode === 'speed' && images.length === 0) || (mode === 'link' && !scoutUrl)">
+            <span v-if="loading" class="loading loading-spinner mb-1"></span>
+            <span v-else class="text-3xl leading-none mb-1">✨</span>
+            <span class="font-black tracking-widest uppercase text-xs">AI Scout</span>
+        </button>
+
+        <!-- Track All / Save -->
+        <button @click="saveAllItems" 
+                class="flex-1 flex flex-col items-center justify-center transition-colors pb-safe"
+                :class="(result && result.items && result.items.length > 0 && !result.items.some((i: any) => !i.saved && !i.saving)) ? 'bg-success/20 text-success' : (result && result.items && result.items.length > 0 ? 'bg-success text-success-content hover:bg-success/90' : 'text-base-content/30 cursor-not-allowed')"
+                :disabled="!result || !result.items || result.items.length === 0 || !result.items.some((i: any) => !i.saved && !i.saving)">
+            <span class="text-2xl leading-none mb-1">🛒</span>
+            <span class="font-bold tracking-wider uppercase text-[10px]">Track All</span>
+        </button>
+        
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, nextTick } from 'vue';
 import { useAuth } from '../../composables/useAuth';
 import { useCart } from '../../composables/useCart';
 import { storage, databases, ID } from '../../lib/appwrite';
@@ -437,9 +473,6 @@ const initCartCheck = async () => {
         console.log('[ScoutView] User present, checking cart:', user.value.$id);
         await checkActiveCart(user.value.$id);
         console.log('[ScoutView] checkActiveCart complete. ActiveCart:', activeCart.value);
-        if (activeCart.value) {
-            purchaseLocation.value = activeCart.value.source || '';
-        }
     }
 };
 
@@ -685,9 +718,6 @@ async function analyzeListing() {
     
     const targetUrl = url;
     
-    // Auto-fill the purchase location field so it's ready when saving
-    purchaseLocation.value = targetUrl;
-    
     try {
         const payload = JSON.stringify({ 
             images: [], 
@@ -708,10 +738,23 @@ async function analyzeListing() {
         const data = await response.json();
         
         if (data && !data.items && (data.identity || data.title)) {
-            result.value = { items: [{ ...data }] };
-        } else {
-            result.value = data;
+            data.items = [{ ...data }];
         }
+        
+        if (data.items) {
+            data.items.forEach((it: any) => {
+                it.selected_resale_price = Math.round(parsePrice(it.price_breakdown?.fair) || 0);
+            });
+        }
+        result.value = data;
+        
+        nextTick(() => {
+            const el = document.getElementById('scout-results-section');
+            if (el) {
+                const y = el.getBoundingClientRect().top + window.scrollY - 80;
+                window.scrollTo({ top: y, behavior: 'smooth' });
+            }
+        });
 
     } catch (e: any) {
         console.error(e);
@@ -750,16 +793,49 @@ async function analyzeImage() {
         const data = await response.json();
         
         if (data && !data.items && (data.identity || data.title)) {
-            result.value = { items: [{ ...data }] };
-        } else {
-            result.value = data;
+            data.items = [{ ...data }];
         }
+        
+        if (data.items) {
+            data.items.forEach((it: any) => {
+                it.selected_resale_price = Math.round(parsePrice(it.price_breakdown?.fair) || 0);
+            });
+        }
+        result.value = data;
+        
+        nextTick(() => {
+            const el = document.getElementById('scout-results-section');
+            if (el) {
+                const y = el.getBoundingClientRect().top + window.scrollY - 80;
+                window.scrollTo({ top: y, behavior: 'smooth' });
+            }
+        });
 
     } catch (e: any) {
         console.error(e);
         error.value = `Analysis Failed: ${e.message}`;
     } finally {
         loading.value = false;
+    }
+}
+
+// -- ACTION COMBOS --
+function startNewScan() {
+    result.value = null;
+    images.value = [];
+    imageFiles.value = [];
+    scoutUrl.value = '';
+    userNotes.value = '';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function saveAllItems() {
+    if (!result.value || !result.value.items) return;
+    for (let i = 0; i < result.value.items.length; i++) {
+        const item = result.value.items[i];
+        if (!item.saved && !item.saving) {
+             await handleSaveItem(item, i);
+        }
     }
 }
 
@@ -790,6 +866,59 @@ function parsePrice(priceStr: any) {
 function calculateMaxBuy(fairPriceStr: any) {
     const fair = parsePrice(fairPriceStr);
     return Math.floor(fair * 0.4); // 40% rule placeholder
+}
+
+function formatPriceDisplay(val: any) {
+    if (!val) return '-';
+    
+    if (Array.isArray(val)) {
+        return '$' + val.join(' - $');
+    }
+    
+    if (typeof val === 'string') {
+        const cleanVal = val.trim();
+        if (cleanVal.startsWith('[') && cleanVal.endsWith(']')) {
+             try {
+                 const parsed = JSON.parse(cleanVal);
+                 if (Array.isArray(parsed)) return '$' + parsed.join(' - $');
+             } catch(e){}
+        }
+        
+        if (cleanVal.includes('$')) return cleanVal;
+        
+        const matches = cleanVal.match(/[0-9.]+/g);
+        if (matches) {
+            if (matches.length === 2) return `$${matches[0]} - $${matches[1]}`;
+            if (matches.length === 1) return `$${matches[0]}`;
+        }
+        return cleanVal;
+    }
+    
+    return String(val);
+}
+
+function getSliderMinMax(item: any) {
+    const poor = parsePrice(item.price_breakdown?.poor);
+    const boutique = parsePrice(item.price_breakdown?.boutique_premium);
+    const mint = parsePrice(item.price_breakdown?.mint);
+    
+    let min = Math.floor(poor || 0);
+    let max = Math.ceil(boutique || mint || (min * 3) || 100);
+    
+    if (min >= max) max = min + 10;
+    return { min, max };
+}
+
+function getSliderColor(item: any) {
+    const min = parsePrice(item.price_breakdown?.poor) || 0;
+    const fair = parsePrice(item.price_breakdown?.fair) || 0;
+    const mint = parsePrice(item.price_breakdown?.mint) || 0;
+    const val = item.selected_resale_price || 0;
+    
+    if (val <= min) return 'range-warning';
+    if (val <= fair) return 'range-primary';
+    if (val <= mint) return 'range-success';
+    return 'range-secondary';
 }
 
 // -- SAVE ACTION --
@@ -849,7 +978,7 @@ async function handleSaveItem(item: any, index: number) {
             red_flags: item.red_flags || [],
             
             cost: cost.value ? parseFloat(parseFloat(cost.value).toFixed(2)) : 0.0,
-            resalePrice: parsePrice(item.price_breakdown?.fair) || 0.0,
+            resalePrice: item.selected_resale_price || parsePrice(item.price_breakdown?.fair) || 0.0,
             maxBuyPrice: calculateMaxBuy(item.price_breakdown?.fair) || 0.0,
             
             purchaseLocation: purchaseLocation.value || '',

@@ -10,10 +10,14 @@
       <a v-for="link in navLinks" 
          :key="link.url"
          :href="link.url"
-         @click="link.url === '/cart' ? (e) => { e.preventDefault(); window.location.href = '/cart'; } : null"
-         class="hidden md:inline-flex btn btn-lg btn-ghost hover:bg-base-200">
+         class="hidden md:inline-flex btn btn-ghost hover:bg-base-200">
         {{ link.text }}
       </a>
+      
+      <!-- Tracker Drawer Toggle (Fast Open for Mobile/Tablet) -->
+      <button v-if="isAuthenticated" @click="toggleTracker" class="btn btn-ghost btn-circle hover:bg-base-200 text-xl">
+        🛒
+      </button>
       
       <!-- Auth Section -->
       <div v-if="loading" class="hidden md:inline-flex items-center gap-2">
@@ -28,6 +32,8 @@
 
         <!-- Authenticated -->
         <div v-else class="flex items-center gap-2">
+           
+           <ThemeSwitcher />
            
            <!-- Team Selector -->
            <div class="dropdown dropdown-end mr-2">
@@ -84,6 +90,11 @@
              {{ link.text }}
           </a>
 
+          <!-- Mobile Tracker Toggle -->
+          <label v-if="isAuthenticated" for="tracker-drawer" class="text-2xl text-primary-content hover:text-accent cursor-pointer lg:hidden" @click="openMobile = false">
+             Tracker
+          </label>
+
           <div v-if="!loading" class="flex flex-col items-center gap-4">
              <a v-if="!isAuthenticated" href="/login" class="text-2xl text-primary-content hover:text-accent" @click="openMobile = false">Login</a>
              <div v-else class="flex flex-col items-center gap-2">
@@ -136,6 +147,7 @@ import { useStore } from '@nanostores/vue';
 import { isAlphaMode } from '../../stores/env';
 import { useAuth } from '../../composables/useAuth';
 import { addToast } from '../../stores/toast';
+import ThemeSwitcher from '../ui/ThemeSwitcher.vue';
 
 const { 
   user, isAuthenticated, currentTeam, teams, ownedTeam, isPartner, loading,
@@ -155,7 +167,6 @@ const navLinks = computed(() => {
   if (isAuthenticated.value) {
     links.push(
       { text: 'Dashboard', url: '/dashboard' },
-      { text: 'Tracker', url: '/cart' },
       { text: 'Inventory', url: '/inventory' },
       { text: 'Organization', url: '/org/settings' }
     );
@@ -209,4 +220,20 @@ const handleInvite = async () => {
         }
     }
 };
+
+const toggleTracker = () => {
+    if (window.innerWidth >= 1024) {
+        // Desktop: toggle static side-by-side pane
+        const drawer = document.getElementById('app-drawer');
+        if (drawer) {
+            drawer.classList.toggle('lg:drawer-open');
+            setTimeout(() => window.dispatchEvent(new Event('resize')), 50); // Help graphs/masonry recalculate
+        }
+    } else {
+        // Mobile/Tablet: toggle overlay checkbox
+        const cb = document.getElementById('tracker-drawer') as HTMLInputElement;
+        if (cb) cb.checked = !cb.checked;
+    }
+};
+
 </script>

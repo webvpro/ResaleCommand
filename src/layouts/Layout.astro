@@ -1,5 +1,6 @@
 ---
 import Navbar from "@components/nav/Navbar.vue";
+import TrackerDrawer from "@components/cart/TrackerDrawer.vue";
 import Footer from "@components/Footer.astro";
 import ToastContainer from "@components/ui/ToastContainer.vue";
 import ConfirmContainer from "@components/ui/ConfirmContainer.vue";
@@ -32,14 +33,28 @@ const { title = siteConfig.title, description, image } = Astro.props;
   </head>
 </html>
 <body>
-  <Navbar client:load />
-  <main>
-    <slot />
-  </main>
+  <div id="app-drawer" class="drawer drawer-end">
+    <input id="tracker-drawer" type="checkbox" class="drawer-toggle" />
+    
+    <div class="drawer-content flex flex-col min-h-screen">
+      <Navbar client:load />
+      <main class="flex-1">
+        <slot />
+      </main>
+      <Footer />
+    </div>
+
+    <div class="drawer-side z-[200]">
+      <label for="tracker-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
+      <aside class="w-[100vw] sm:w-[400px] h-[100dvh] flex flex-col bg-base-200 shadow-xl overflow-hidden">
+        <TrackerDrawer client:only="vue" />
+      </aside>
+    </div>
+  </div>
+
   <MarkdownModal />
   <ToastContainer client:load />
   <ConfirmContainer client:load />
-  <Footer />
   <script>
     import { initAuth } from "../lib/store";
 

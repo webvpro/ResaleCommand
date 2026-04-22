@@ -320,6 +320,31 @@ export function useCart() {
         }
     };
     
+    // NEW: Abort Cart
+    const abortCart = async () => {
+        if (!activeCart.value) return;
+        loading.value = true;
+        try {
+            await databases.updateDocument(DB_ID, CARTS_COL, activeCart.value.$id, {
+                status: 'aborted'
+            });
+            
+            // Delete all items in this cart to clean up DB
+            const deletePromises = cartItems.value.map(item => {
+                 return databases.deleteDocument(DB_ID, getCollectionId(), item.$id)
+                 .catch(err => console.error(`Failed to delete aborted item ${item.$id}:`, err));
+            });
+            await Promise.allSettled(deletePromises);
+            
+            leaveCart();
+        } catch (e: any) {
+            error.value = e.message;
+            throw e; 
+        } finally {
+            loading.value = false;
+        }
+    };
+    
     const checkActiveCart = async (userId: string) => {
          loading.value = true;
          try {
@@ -397,6 +422,7 @@ export function useCart() {
         addItemToCart,
         addExpense,
         finishCart,
+        abortCart,
         checkActiveCart,
         leaveCart,
         deleteItem,
