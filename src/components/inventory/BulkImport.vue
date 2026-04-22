@@ -429,7 +429,7 @@ const processRows = async (rows) => {
             };
             const extraData = {
                 cost: price,
-                purchaseLocation: isOrderProxy && orderId 
+                sourcingLocation: isOrderProxy && orderId 
                     ? `https://shopgoodwill.com/shopgoodwill/order/${orderId}` 
                     : `https://shopgoodwill.com/item/${itemId}`,
                 status: 'received',

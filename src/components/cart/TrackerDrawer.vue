@@ -28,7 +28,7 @@
               <div class="flex flex-col gap-1 pr-6">
                   <h2 class="text-sm font-bold opacity-70 truncate uppercase">Active Sourcing</h2>
                   <h3 class="text-lg font-black truncate">{{ activeCart.source }}</h3>
-                  <div class="badge badge-accent badge-sm">{{ cartItems.length }} Items</div>
+                  <div class="badge badge-accent badge-sm">{{ trackedItems.length }} Tracked Items</div>
               </div>
               <div class="mt-2 text-xs opacity-70 flex justify-between font-bold bg-base-200 p-2 rounded">
                   <div>Est. Value: <span class="text-success">${{ cartTotalResale.toFixed(0) }}</span></div>
@@ -42,7 +42,7 @@
               <!-- ITEMS LIST -->
               <div class="flex flex-col gap-2">
                   <ItemCard 
-                      v-for="item in cartItems" 
+                      v-for="item in trackedItems" 
                       :key="item.$id" 
                       :item="item" 
                       :compact="true"
@@ -203,6 +203,8 @@ watch(user, async (newUser) => {
 });
 
 // -- COMPUTED --
+const trackedItems = computed(() => cartItems.value.filter(item => item.status === 'tracked'));
+
 const cartTotalResale = computed(() => {
     return cartItems.value.reduce((sum, item) => sum + (parseFloat(item.resalePrice as any) || 0), 0);
 });

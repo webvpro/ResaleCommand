@@ -65,7 +65,7 @@ const props = defineProps<{
     modelValue: string[];
     label?: string;
     placeholder?: string;
-    type: 'keyword' | 'salesChannel';
+    type: 'keyword' | 'sellingLocations';
     badgeClass?: string;
     recommendedTags?: string[];
 }>();

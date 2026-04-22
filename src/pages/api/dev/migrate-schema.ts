@@ -41,10 +41,10 @@ export const GET: APIRoute = async () => {
             { key: 'imageId', size: 255, required: false, array: false },
             { key: 'receiptImageId', size: 255, required: false, array: false },
             { key: 'cartId', size: 255, required: false, array: false },
-            { key: 'purchaseLocation', size: 255, required: false, array: false },
-            { key: 'binLocation', size: 255, required: false, array: false },
+            { key: 'sourcingLocation', size: 255, required: false, array: false },
+            { key: 'storageLocation', size: 255, required: false, array: false },
             { key: 'marketDescription', size: 65000, required: false, array: false },
-            { key: 'salesChannel', size: 255, required: false, array: false },
+            { key: 'sellingLocations', size: 255, required: false, array: false },
             
             // Array attributes
             { key: 'galleryImageIds', size: 255, required: false, array: true },

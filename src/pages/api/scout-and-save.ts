@@ -167,8 +167,8 @@ export const ALL: APIRoute = async ({ request }) => {
             paidPrice: 0.0,
             resalePrice: parseFloat(aiData.resalePrice) || parseFloat(aiData.price_breakdown?.fair) || 0.0,
             maxBuyPrice: 0.0,
-            purchaseLocation: "Headless Import",
-            binLocation: "To Be Processed",
+            sourcingLocation: "Headless Import",
+            storageLocation: "To Be Processed",
             status: "scouted", // The new initial status
             tenantId: tenantId, 
             imageId: imageId || "",

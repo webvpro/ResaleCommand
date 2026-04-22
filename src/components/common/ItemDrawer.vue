@@ -89,8 +89,8 @@
                         <div class="form-control w-full">
                             <label class="label py-1"><span class="label-text font-bold text-sm">Or Paste Link</span></label>
                             <div class="join w-full flex">
-                                <input type="text" v-model="editForm.purchaseLocation" class="input input-bordered input-sm join-item grow font-mono" placeholder="URL or Item ID..." />
-                                <button class="btn btn-sm btn-primary join-item shrink-0" @click="fetchImagesFromUrl" :disabled="!editForm.purchaseLocation || fetchingImages">
+                                <input type="text" v-model="editForm.sourcingLocation" class="input input-bordered input-sm join-item grow font-mono" placeholder="URL or Item ID..." />
+                                <button class="btn btn-sm btn-primary join-item shrink-0" @click="fetchImagesFromUrl" :disabled="!editForm.sourcingLocation || fetchingImages">
                                     <span v-if="fetchingImages" class="loading loading-spinner loading-xs"></span>
                                     <span v-else>Fetch</span>
                                 </button>
@@ -153,7 +153,7 @@
                 <div class="grid grid-cols-2 gap-4">
                      <div class="form-control w-full">
                         <label class="label"><span class="label-text">Bin Location</span></label>
-                        <input type="text" list="org-bin-locations" v-model="editForm.binLocation" class="input input-bordered w-full" placeholder="Type or select..." />
+                        <input type="text" list="org-bin-locations" v-model="editForm.storageLocation" class="input input-bordered w-full" placeholder="Type or select..." />
                         <datalist id="org-bin-locations">
                             <option v-for="loc in orgPlacedLocations" :key="loc" :value="loc"></option>
                         </datalist>
@@ -316,9 +316,9 @@
 
                 <div class="space-y-4">
                     <TagInput 
-                        v-model="editForm.salesChannel" 
+                        v-model="editForm.sellingLocations" 
                         label="Sales Channels" 
-                        type="salesChannel" 
+                        type="sellingLocations" 
                         badgeClass="badge-primary" 
                     />
                     <TagInput 
@@ -433,7 +433,7 @@
             <!-- Footer -->
             <div class="p-4 border-t border-base-200 flex justify-between items-center bg-base-100 z-10 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] gap-4 shrink-0">
                 <!-- Static AI Scout Button -->
-                <button class="btn btn-secondary shadow-md shrink-0" @click="analyzeExistingItem" :disabled="analyzing || (!scoutQuery && !actualMainPhoto.url && !editForm.purchaseLocation)">
+                <button class="btn btn-secondary shadow-md shrink-0" @click="analyzeExistingItem" :disabled="analyzing || (!scoutQuery && !actualMainPhoto.url && !editForm.sourcingLocation)">
                     <span v-if="analyzing" class="loading loading-spinner"></span>
                     <template v-else>
                         <span class="hidden sm:inline">✨ AI Scout</span>
@@ -601,14 +601,14 @@ const editForm = reactive({
     resalePrice: '',
     estLow: '',
     estHigh: '',
-    binLocation: '',
-    purchaseLocation: '',
+    storageLocation: '',
+    sourcingLocation: '',
     orderId: '',
     status: 'acquired',
     description: '',
     itemCondition: '',
     existingGalleryIds: [],
-    salesChannel: [],
+    sellingLocations: [],
     keywords: []
 });
 
@@ -851,14 +851,14 @@ const initForm = () => {
         editForm.resalePrice = i.resalePrice || i.priceFair || getNoteValue(i.conditionNotes, 'Resale', true) || '';
         editForm.estLow = i.estLow || getNoteValue(i.conditionNotes, 'Est. Low', true) || '';
         editForm.estHigh = i.estHigh || getNoteValue(i.conditionNotes, 'Est. High', true) || '';
-        editForm.binLocation = i.binLocation || getNoteValue(i.conditionNotes, 'Bin') || '';
-        editForm.purchaseLocation = i.purchaseLocation || getNoteValue(i.conditionNotes, 'Location') || '';
+        editForm.storageLocation = i.storageLocation || getNoteValue(i.conditionNotes, 'Bin') || '';
+        editForm.sourcingLocation = i.sourcingLocation || getNoteValue(i.conditionNotes, 'Location') || '';
         editForm.orderId = i.orderId || getNoteValue(i.conditionNotes, 'Order #') || getNoteValue(i.conditionNotes, 'Imported from Order #') || '';
         editForm.status = i.status || 'acquired';
         editForm.description = i.marketDescription || i.description || i.rawAnalysis || ''; 
         editForm.itemCondition = getNoteValue(i.conditionNotes, 'Condition') || '';
         editForm.existingGalleryIds = i.galleryImageIds || [];
-        editForm.salesChannel = i.salesChannel || [];
+        editForm.sellingLocations = i.sellingLocations || [];
         editForm.keywords = i.keywords || [];
 
         const existingUrl = getImageUrl(i);
@@ -931,14 +931,14 @@ const initForm = () => {
         editForm.resalePrice = '';
         editForm.estLow = '';
         editForm.estHigh = '';
-        editForm.binLocation = '';
-        editForm.purchaseLocation = '';
+        editForm.storageLocation = '';
+        editForm.sourcingLocation = '';
         editForm.orderId = '';
         editForm.status = 'acquired';
         editForm.description = '';
         editForm.itemCondition = '';
         editForm.existingGalleryIds = [];
-        editForm.salesChannel = [];
+        editForm.sellingLocations = [];
         editForm.keywords = [];
         mainPhotoSelection.value = { type: 'none', val: null };
         scoutResult.value = null;
@@ -1092,7 +1092,7 @@ const handleCapturedPhotos = (files) => {
 
 
 const fetchImagesFromUrl = async () => {
-    const url = editForm.purchaseLocation;
+    const url = editForm.sourcingLocation;
     const isId = url && url.match(/^\d+$/);
     if (!url || (!url.startsWith('http') && !isId)) {
         addToast({ type: 'warning', message: "Please enter a valid URL or Item ID." });
@@ -1164,7 +1164,7 @@ const selectFetchedImage = async (url) => {
 };
 
 const analyzeExistingItem = async () => {
-    if (!actualMainPhoto.value.url && !editForm.purchaseLocation && !scoutQuery.value) {
+    if (!actualMainPhoto.value.url && !editForm.sourcingLocation && !scoutQuery.value) {
         addToast({ type: 'warning', message: "Please provide text, a photo, or a link to analyze." });
         return;
     }
@@ -1212,7 +1212,7 @@ const analyzeExistingItem = async () => {
 
         let contextNotes = editForm.description || '';
         if (scoutQuery.value) contextNotes = `User Query/Description: ${scoutQuery.value}\n\n` + contextNotes;
-        if (editForm.purchaseLocation) contextNotes += `\n\nItem URL: ${editForm.purchaseLocation}`;
+        if (editForm.sourcingLocation) contextNotes += `\n\nItem URL: ${editForm.sourcingLocation}`;
 
         const response = await fetch(`/api/identify-item`, {
             method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -1340,9 +1340,9 @@ const extractLotItems = async () => {
                  cost: apportionedCost,
                  resalePrice: resalePrice ? resalePrice.toFixed(2) : undefined,
                  status: 'acquired', // New Workflow Status Standard
-                 purchaseLocation: editForm.purchaseLocation || 'Bulk Lot',
+                 sourcingLocation: editForm.sourcingLocation || 'Bulk Lot',
                  orderId: editForm.orderId,
-                 binLocation: editForm.binLocation,
+                 storageLocation: editForm.storageLocation,
                  imageId: mainImageId,
                  galleryImageIds: inheritedGallery,
                  scoutData: lotItem

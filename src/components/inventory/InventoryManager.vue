@@ -22,7 +22,7 @@
                                     <div class="text-xs opacity-70 mt-1">
                                         Max Buy: <span class="font-bold text-success">${{ item.maxBuyPrice }}</span>
                                     </div>
-                                    <div v-if="item.binLocation" class="badge badge-xs badge-outline mt-1">{{ item.binLocation }}</div>
+                                    <div v-if="item.storageLocation" class="badge badge-xs badge-outline mt-1">{{ item.storageLocation }}</div>
                                 </div>
                             </div>
                             <div class="card-actions justify-end mt-2">
@@ -322,7 +322,7 @@ const filteredInventory = computed(() => {
         }
 
         // Filter by Bin Location
-        if (filterBinLocation.value && item.binLocation !== filterBinLocation.value) {
+        if (filterBinLocation.value && item.storageLocation !== filterBinLocation.value) {
             return false;
         }
 
@@ -339,7 +339,7 @@ const filteredInventory = computed(() => {
             const query = searchQuery.value.toLowerCase();
             const titleMatch = (item.title || item.itemName || '').toLowerCase().includes(query);
             const idMatch = (item.identity || item.$id || '').toLowerCase().includes(query);
-            const binMatch = (item.binLocation || '').toLowerCase().includes(query);
+            const binMatch = (item.storageLocation || '').toLowerCase().includes(query);
             const keywordMatch = Array.isArray(item.keywords) && item.keywords.some(k => k.toLowerCase().includes(query));
             if (!titleMatch && !idMatch && !binMatch && !keywordMatch) return false;
         }
@@ -350,7 +350,7 @@ const filteredInventory = computed(() => {
 
 const cartGroups = computed(() => {
     return cartItems.value.reduce((groups, item) => {
-        const loc = item.purchaseLocation || 'Unknown Location';
+        const loc = item.sourcingLocation || 'Unknown Location';
         if (!groups[loc]) groups[loc] = [];
         groups[loc].push(item);
         return groups;
@@ -425,13 +425,13 @@ const applyBulkLocation = async () => {
     const idsToUpdate = [...selectedItems.value];
     
     try {
-        const promises = idsToUpdate.map(id => updateInventoryItem(id, { binLocation: targetLoc }));
+        const promises = idsToUpdate.map(id => updateInventoryItem(id, { storageLocation: targetLoc }));
         await Promise.all(promises);
         
         // Optimistically update local state
         inventoryItems.value.forEach(item => {
             if (idsToUpdate.includes(item.$id)) {
-                item.binLocation = targetLoc;
+                item.storageLocation = targetLoc;
             }
         });
         

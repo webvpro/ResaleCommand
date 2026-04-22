@@ -12,9 +12,9 @@ const BUCKET_ID = import.meta.env.PUBLIC_APPWRITE_BUCKET_ID || 'item_images';
 
 export interface ExtraItemData {
     cost?: string;
-    purchaseLocation?: string;
+    sourcingLocation?: string;
     maxBuyPrice?: string;
-    binLocation?: string;
+    storageLocation?: string;
     orderId?: string;
     cartId?: string;
     title?: string;
@@ -33,7 +33,7 @@ export interface ExtraItemData {
     estHigh?: string;
     boutiquePrice?: string | number;
     keywords?: string[];
-    salesChannel?: string;
+    sellingLocations?: string[];
     components?: string;
 }
 
@@ -104,8 +104,8 @@ export async function saveItemToInventory(itemData: any, imageFile: File | null,
         if (extraData.cost) extraInfo.push(`Paid: $${extraData.cost}`);
         if (extraData.resalePrice) extraInfo.push(`Resale: $${extraData.resalePrice}`);
         if (extraData.maxBuyPrice) extraInfo.push(`Max Buy: $${extraData.maxBuyPrice}`);
-        if (extraData.purchaseLocation) extraInfo.push(`Location: ${extraData.purchaseLocation}`);
-        if (extraData.binLocation) extraInfo.push(`Bin: ${extraData.binLocation}`);
+        if (extraData.sourcingLocation) extraInfo.push(`Location: ${extraData.sourcingLocation}`);
+        if (extraData.storageLocation) extraInfo.push(`Bin: ${extraData.storageLocation}`);
         if (extraData.orderId) extraInfo.push(`Order #: ${extraData.orderId}`);
         if (imageId) extraInfo.push(`[MAIN IMAGE ID: ${imageId}]`);
         if (galleryIds.length > 0) extraInfo.push(`[GALLERY IDS: ${galleryIds.join(', ')}]`);
@@ -241,8 +241,8 @@ export async function saveItemToInventory(itemData: any, imageFile: File | null,
             cost: extraData.cost !== undefined ? parseFloat(extraData.cost.toString()) || 0 : undefined,
             resalePrice: extraData.resalePrice !== undefined ? parseFloat(extraData.resalePrice.toString()) || 0 : undefined,
             maxBuyPrice: extraData.maxBuyPrice !== undefined ? parseFloat(extraData.maxBuyPrice.toString()) || 0 : undefined,
-            purchaseLocation: extraData.purchaseLocation || undefined,
-            binLocation: extraData.binLocation || undefined,
+            sourcingLocation: extraData.sourcingLocation || undefined,
+            storageLocation: extraData.storageLocation || undefined,
             cartId: extraData.cartId || undefined,
             marketDescription: extraData.marketDescription || undefined,
             keywords: Array.isArray(extraData.keywords) ? extraData.keywords : (extraData.scoutData && Array.isArray(extraData.scoutData.keywords) ? extraData.scoutData.keywords : undefined),
@@ -512,9 +512,9 @@ export async function updateInventoryItem(documentId: string, updates: Partial<E
              }
         }
 
-        if (updates.purchaseLocation !== undefined) {
-            data.purchaseLocation = updates.purchaseLocation === '' ? null : updates.purchaseLocation;
-            updateNoteValue('Location', updates.purchaseLocation);
+        if (updates.sourcingLocation !== undefined) {
+            data.sourcingLocation = updates.sourcingLocation === '' ? null : updates.sourcingLocation;
+            updateNoteValue('Location', updates.sourcingLocation);
         }
 
         if (updates.estLow !== undefined) updateNoteValue('Est. Low', updates.estLow === '' ? '' : `$${parseFloat(updates.estLow.toString()).toFixed(2)}`);
@@ -539,13 +539,13 @@ export async function updateInventoryItem(documentId: string, updates: Partial<E
             }
         }
 
-        if (updates.binLocation !== undefined) {
-            data.binLocation = updates.binLocation === '' ? null : updates.binLocation;
-            updateNoteValue('Bin', updates.binLocation);
+        if (updates.storageLocation !== undefined) {
+            data.storageLocation = updates.storageLocation === '' ? null : updates.storageLocation;
+            updateNoteValue('Bin', updates.storageLocation);
         }
         
-        if (updates.salesChannel !== undefined) {
-            data.salesChannel = updates.salesChannel;
+        if (updates.sellingLocations !== undefined) {
+            data.sellingLocations = updates.sellingLocations;
         }
 
         if (updates.keywords !== undefined) {

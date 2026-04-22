@@ -13,8 +13,8 @@
                     <div class="badge badge-lg font-bold uppercase truncate" :class="statusBadgeClass">
                         {{ statusText }}
                     </div>
-                    <span v-if="item.salesChannel && item.salesChannel.length > 0" class="ml-2 text-xs opacity-70 flex gap-1 items-center">
-                        <span v-for="chan in item.salesChannel" :key="chan" class="badge badge-sm badge-outline">{{ chan }}</span>
+                    <span v-if="item.sellingLocations && item.sellingLocations.length > 0" class="ml-2 text-xs opacity-70 flex gap-1 items-center">
+                        <span v-for="chan in item.sellingLocations" :key="chan" class="badge badge-sm badge-outline">{{ chan }}</span>
                     </span>
                 </div>
                 <div class="flex-none gap-2">
@@ -296,7 +296,7 @@ const copyShareLink = async () => {
 
 // --- COMPUTED CONTENT ---
 const title = computed(() => props.item?.title || props.item?.identity || props.item?.itemName || "Untitled Item");
-const locationText = computed(() => props.item?.binLocation || props.item?.purchaseLocation || '');
+const locationText = computed(() => props.item?.storageLocation || props.item?.sourcingLocation || '');
 
 const statusText = computed(() => {
     const s = props.item?.status || 'Active';

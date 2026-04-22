@@ -96,8 +96,8 @@
                         <div class="flex flex-wrap items-center gap-4 text-sm opacity-60 font-mono">
                             <span v-if="locationText" class="flex gap-1 items-center badge badge-outline">📍 {{ locationText }}</span>
                             <span>ID: {{ item.$id }}</span>
-                            <span v-if="item.salesChannel && item.salesChannel.length > 0" class="flex gap-1 items-center">
-                                <span v-for="chan in item.salesChannel" :key="chan" class="badge badge-sm">{{ chan }}</span>
+                            <span v-if="item.sellingLocations && item.sellingLocations.length > 0" class="flex gap-1 items-center">
+                                <span v-for="chan in item.sellingLocations" :key="chan" class="badge badge-sm">{{ chan }}</span>
                             </span>
                         </div>
                     </div>
@@ -280,7 +280,7 @@ const selectThumbnail = (index) => {
 
 // --- COMPUTED CONTENT ---
 const title = computed(() => item.value?.title || item.value?.identity || item.value?.itemName || "Untitled Item");
-const locationText = computed(() => item.value?.binLocation || item.value?.purchaseLocation || '');
+const locationText = computed(() => item.value?.storageLocation || item.value?.sourcingLocation || '');
 
 const statusText = computed(() => {
     const s = item.value?.status || 'Active';

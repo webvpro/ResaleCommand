@@ -108,16 +108,16 @@
                 </div>
 
                 <div class="form-control w-full">
-                    <label class="label"><span class="label-text opacity-70">Purchase Location / URL</span></label>
+                    <label class="label"><span class="label-text opacity-70">Sourcing Location / URL</span></label>
                     <div class="join w-full">
-                        <input v-model="purchaseLocation" type="text" class="input input-bordered join-item w-full" placeholder="e.g. Goodwill, Garage Sale" />
+                        <input v-model="sourcingLocation" type="text" class="input input-bordered join-item w-full" placeholder="e.g. Goodwill, Garage Sale" />
                         <button class="btn btn-outline btn-square join-item">📍</button>
                     </div>
                 </div>
                 
                  <div class="form-control w-full">
-                    <label class="label"><span class="label-text opacity-70">Cart / Bin Location</span></label>
-                    <input v-model="binLocation" type="text" class="input input-bordered w-full" placeholder="e.g. Front Cart, Blue Bin" />
+                    <label class="label"><span class="label-text opacity-70">Storage / Bin Location</span></label>
+                    <input v-model="storageLocation" type="text" class="input input-bordered w-full" placeholder="e.g. Front Cart, Blue Bin, Shelf 3" />
                 </div>
 
                 <div class="form-control w-full">
@@ -147,7 +147,7 @@
                                  alt="Item Thumbnail" />
                             <div>
                                 <h2 class="text-xl font-bold text-primary">{{ item.identity || 'Unidentified Item' }}</h2>
-                                <a v-if="purchaseLocation && purchaseLocation.startsWith('http')" :href="purchaseLocation" target="_blank" class="btn btn-xs mt-1 btn-outline btn-secondary">
+                                <a v-if="sourcingLocation && sourcingLocation.startsWith('http')" :href="sourcingLocation" target="_blank" class="btn btn-xs mt-1 btn-outline btn-secondary">
                                     🔗 View Source Listing
                                 </a>
                             </div>
@@ -456,8 +456,8 @@ const scoutUrl = ref('');
 
 // Shared Inputs
 const cost = ref('');
-const purchaseLocation = ref('');
-const binLocation = ref('');
+const sourcingLocation = ref('');
+const storageLocation = ref('');
 
 const result = ref<any>(null);
 
@@ -975,14 +975,14 @@ async function handleSaveItem(item: any, index: number) {
             identity: item.identity,
             title: item.title || item.identity,
             conditionNotes: (userNotes.value ? `User Note: ${userNotes.value}\n` : '') + (item.condition_notes || ''),
-            red_flags: item.red_flags || [],
+            redFlags: item.red_flags || [],
             
             cost: cost.value ? parseFloat(parseFloat(cost.value).toFixed(2)) : 0.0,
             resalePrice: item.selected_resale_price || parsePrice(item.price_breakdown?.fair) || 0.0,
             maxBuyPrice: calculateMaxBuy(item.price_breakdown?.fair) || 0.0,
             
-            purchaseLocation: purchaseLocation.value || '',
-            binLocation: binLocation.value || '',
+            sourcingLocation: sourcingLocation.value || '',
+            storageLocation: storageLocation.value || '',
             
             status: cost.value ? 'acquired' : 'tracked',
             keywords: item.keywords || [],
@@ -998,8 +998,8 @@ async function handleSaveItem(item: any, index: number) {
         }
         
         // Also note Location/Bin if needed as extra metadata (since cart handles location too)
-        if(binLocation.value) {
-            itemPayload.conditionNotes = `[BIN: ${binLocation.value}]\n` + itemPayload.conditionNotes;
+        if(storageLocation.value) {
+            itemPayload.conditionNotes = `[BIN: ${storageLocation.value}]\n` + itemPayload.conditionNotes;
         }
 
         // Save Full Analysis for Re-Scout
@@ -1013,7 +1013,7 @@ async function handleSaveItem(item: any, index: number) {
         console.log('[ScoutView] Checking activeCart:', activeCart.value);
         if (!activeCart.value) {
              console.log('[ScoutView] No active cart, starting new one...');
-             await startCart(purchaseLocation.value || "Quick Trip", currentTeam.value?.$id || '', user.value.$id);
+             await startCart(sourcingLocation.value || "Quick Trip", currentTeam.value?.$id || '', user.value.$id);
              console.log('[ScoutView] New cart started:', activeCart.value);
         }
 

@@ -250,7 +250,7 @@ async function saveItem() {
             title: form.title,
             cost: parseFloat(form.cost) || 0,
             resalePrice: form.listPrice, 
-            binLocation: form.bin,
+            storageLocation: form.bin,
             conditionNotes: form.description,
             status: 'acquired', 
             keywords: [],

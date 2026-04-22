@@ -648,7 +648,7 @@ async function importSelected() {
                         // Check memory to see if we have a match
                         const match = existing.documents.find(doc => 
                             doc.identity === item.itemId || 
-                            doc.purchaseLocation?.includes('ShopGoodwill')
+                            doc.sourcingLocation?.includes('ShopGoodwill')
                         );
                         
                         if (match) {
@@ -696,7 +696,7 @@ async function importSelected() {
                          cost: item.totalCost,
                          resalePrice: item.estimatedResale ? item.estimatedResale.toString() : undefined,
                          status: 'received' as const,
-                         purchaseLocation: item.sourceLink ? item.sourceLink : 'ShopGoodwill'
+                         sourcingLocation: item.sourceLink ? item.sourceLink : 'ShopGoodwill'
                     };
                     if (finalImageId) {
                         extraData.imageId = finalImageId;
