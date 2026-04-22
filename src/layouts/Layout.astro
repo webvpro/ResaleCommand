@@ -30,6 +30,10 @@ const { title = siteConfig.title, description, image } = Astro.props;
     <meta name="generator" content={Astro.generator} />
 
     <SEOmeta title={title} description={description} image={image} />
+    <script is:inline>
+      const theme = localStorage.getItem('theme') || 'emerald';
+      document.documentElement.setAttribute('data-theme', theme);
+    </script>
   </head>
 </html>
 <body>

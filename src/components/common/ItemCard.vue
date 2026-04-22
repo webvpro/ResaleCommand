@@ -18,6 +18,15 @@
                 {{ statusText }}
             </div>
             
+            <!-- ROI Meter Bar overlaid on bottom of image -->
+            <div class="absolute bottom-0 left-0 right-0 h-6 bg-black/50 backdrop-blur-sm overflow-hidden flex items-center">
+                <div :class="[profitColor, profitWidth]" class="h-full transition-all duration-500 opacity-90"></div>
+                <div class="absolute inset-0 flex justify-between items-center px-2 font-bold z-10 text-[9px] text-white pointer-events-none">
+                    <span class="opacity-90 uppercase tracking-wider">{{ item.condition || 'Mix' }}</span>
+                    <span><span v-if="roi !== null" class="ml-1 opacity-90">ROI: {{ roi }}%</span></span>
+                </div>
+            </div>
+            
             <slot name="image-overlay"></slot>
         </figure>
 
@@ -147,6 +156,37 @@ const formatCurrency = (val) => {
     const num = parseFloat(val.toString().replace('$',''));
     return isNaN(num) ? val : '$' + num.toFixed(2);
 };
+
+// --- ROI HELPERS ---
+const roi = computed(() => {
+    const paid = parseFloat(paidValue.value);
+    const est = parseFloat(estValue.value);
+    
+    if (isNaN(paid)) return null;
+    if (paid === 0 && est > 0) return 999;
+    if (paid === 0) return null;
+    if (!est || isNaN(est)) return 0;
+    
+    const profit = est - paid;
+    return Math.round((profit / paid) * 100);
+});
+
+const profitColor = computed(() => {
+    const paid = parseFloat(paidValue.value) || 0;
+    const est = parseFloat(estValue.value);
+    if (isNaN(est)) return 'bg-base-300';
+    if (est > paid) return 'bg-info'; 
+    return 'bg-error'; 
+});
+
+const profitWidth = computed(() => {
+    const r = roi.value;
+    if (r === null || r <= 0) return 'w-full'; 
+    if (r < 100) return 'w-1/4';
+    if (r <= 200) return 'w-1/2';
+    if (r <= 500) return 'w-3/4';
+    return 'w-full';
+});
 
 // --- IMAGE HELPERS ---
 const imageUrl = computed(() => {

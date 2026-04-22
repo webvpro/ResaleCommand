@@ -58,14 +58,7 @@
                       </template>
                       
                       <template #image-overlay>
-                          <!-- Profit Meter Bar overlaid on bottom of image -->
-                          <div class="absolute bottom-0 left-0 right-0 h-6 bg-black/50 backdrop-blur-sm overflow-hidden flex items-center">
-                              <div :class="[getProfitColor(item), getProfitWidth(item)]" class="h-full transition-all duration-500 opacity-90"></div>
-                              <div class="absolute inset-0 flex justify-between items-center px-2 font-bold z-10 text-[9px] text-white pointer-events-none">
-                                  <span class="opacity-90 uppercase tracking-wider">{{ item.condition || 'Mix' }}</span>
-                                  <span><span v-if="getROI(item) !== null" class="ml-1 opacity-90">ROI: {{ getROI(item) }}%</span></span>
-                              </div>
-                          </div>
+                          <!-- Image overlay removed since ROI is now built into ItemCard -->
                       </template>
                   </ItemCard>
               </div>
@@ -223,31 +216,6 @@ const expensesCost = computed(() => {
 });
 
 const totalSpend = computed(() => itemsCost.value + expensesCost.value);
-
-// -- HELPER FUNCTIONS --
-function getROI(item: CartItem): number | null {
-    if (item.cost === undefined || item.cost === null) return null;
-    if (item.cost === 0) return 999; 
-    if (!item.resalePrice) return 0;
-    const profit = item.resalePrice - item.cost;
-    return Math.round((profit / item.cost) * 100);
-}
-
-function getProfitColor(item: CartItem): string {
-    if (item.resalePrice === undefined || item.resalePrice === null) return 'bg-base-300';
-    const paid = item.cost || 0;
-    if (item.resalePrice > paid) return 'bg-info'; 
-    return 'bg-error'; 
-}
-
-function getProfitWidth(item: CartItem): string {
-    const roi = getROI(item);
-    if (roi === null || roi <= 0) return 'w-full'; 
-    if (roi < 100) return 'w-1/4';
-    if (roi <= 200) return 'w-1/2';
-    if (roi <= 500) return 'w-3/4';
-    return 'w-full';
-}
 
 // -- ACTIONS --
 function getImageUrl(imageId: string) {

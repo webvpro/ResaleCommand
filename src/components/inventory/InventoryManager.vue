@@ -125,13 +125,12 @@
                         </template>
 
                         <template #actions>
-                            <div class="flex justify-between items-center mt-1 pt-1 border-t border-base-200 w-full z-10 w-full">
-                                <button class="btn btn-xs btn-ghost tooltip tooltip-right text-base-content/50 hover:text-base-content h-6 min-h-0 px-1" data-tip="Copy Share Link" @click.stop="copyShareLink(item.$id)">
-                                    🔗
-                                </button>
-                                <button class="btn btn-xs btn-ghost text-error btn-square h-6 min-h-0 w-6" @click.stop="confirmDelete(item.$id)" :disabled="processingId === item.$id">
+                            <div class="join w-full mt-2 pt-2 border-t border-base-200/50 z-10" @click.stop>
+                                <button @click="copyShareLink(item.$id)" class="btn btn-ghost btn-xs join-item flex-1 opacity-70 hover:opacity-100">🔗 Share</button>
+                                <button @click="openEdit(item)" class="btn btn-ghost btn-xs join-item flex-1 opacity-70 hover:opacity-100">✏️ Edit</button>
+                                <button @click="confirmDelete(item.$id)" class="btn btn-ghost btn-xs join-item flex-1 text-error opacity-80 hover:opacity-100 hover:bg-error/10" :disabled="processingId === item.$id">
                                     <span v-if="processingId === item.$id" class="loading loading-spinner loading-xs"></span>
-                                    <span v-else>🗑️</span>
+                                    <span v-else>🗑️ Delete</span>
                                 </button>
                             </div>
                         </template>
