@@ -57,6 +57,9 @@
                         <button class="btn btn-sm btn-outline gap-2" @click="showImport = true">
                             📥 Import CSV
                         </button>
+                        <button class="btn btn-sm btn-accent gap-2" @click="showReconciliation = true">
+                            🔄 Booth Sync
+                        </button>
                         <span v-if="loading" class="loading loading-spinner loading-sm"></span>
                         <span class="badge badge-lg shadow-sm border border-base-200">{{ filteredInventory.length }} / {{ totalItems }} Items</span>
                     </div>
@@ -259,6 +262,9 @@
 
         <!-- Bulk Import Modal -->
         <BulkImport v-if="showImport" @close="showImport = false" @complete="showImport = false" />
+
+        <!-- Booth Reconciliation Modal -->
+        <BoothReconciliation :isOpen="showReconciliation" @close="showReconciliation = false" />
     </div>
 </template>
 
@@ -267,6 +273,7 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useInventory } from '../../composables/useInventory';
 import { updateInventoryItem, deleteInventoryItem, saveItemToInventory } from '../../lib/inventory';
 import BulkImport from './BulkImport.vue';
+import BoothReconciliation from './BoothReconciliation.vue';
 import { useAuth } from '../../composables/useAuth';
 import { databases, Query } from '../../lib/appwrite';
 import ItemDrawer from '../common/ItemDrawer.vue';
@@ -364,6 +371,7 @@ const processing = ref(false); // general loading state
 const processingBulk = ref(false); // bulk action state
 const activeItem = ref(null); // used for edit drawer
 const previewItem = ref(null); // used for full preview modal
+const showReconciliation = ref(false); // Booth sync modal
 
 const openPreview = (item) => {
     previewItem.value = item;

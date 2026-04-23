@@ -5,7 +5,7 @@ import { Permission, Role } from 'appwrite';
 import { isAlphaMode } from '../stores/env';
 
 const DB_ID = import.meta.env.PUBLIC_APPWRITE_DB_ID || 'resale_db'; 
-const getCollectionId = () => isAlphaMode.get() 
+export const getCollectionId = () => isAlphaMode.get() 
     ? (import.meta.env.PUBLIC_APPWRITE_ALPHA_COLLECTION_ID || 'alpha_items') 
     : (import.meta.env.PUBLIC_APPWRITE_COLLECTION_ID || 'items');
 const BUCKET_ID = import.meta.env.PUBLIC_APPWRITE_BUCKET_ID || 'item_images';
