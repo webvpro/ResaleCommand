@@ -1,7 +1,8 @@
 <template>
-    <div class="relative z-[300]">
-        <div class="fixed inset-0 bg-black/50 transition-opacity" @click="closeDrawer"></div>
-        <div class="fixed inset-y-0 right-0 w-full md:w-[480px] bg-base-100 shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out">
+    <Teleport to="body">
+        <div class="relative z-[400]">
+            <div class="fixed inset-0 bg-black/50 transition-opacity" @click="closeDrawer"></div>
+            <div class="fixed inset-y-0 right-0 w-full md:w-[480px] bg-base-100 shadow-2xl flex flex-col transform transition-transform duration-300 ease-in-out">
             <!-- Header -->
             <div class="p-4 border-b border-base-200 flex justify-between items-center bg-base-100 flex-none sticky top-0 z-20">
                 <h3 class="font-bold text-lg">{{ item ? 'Edit Item' : 'Add New Item' }}</h3>
@@ -444,9 +445,10 @@
                         Save
                     </button>
                 </div>
-            </div>
         </div>
-    </div>
+        </div>
+        </div>
+    </Teleport>
 </template>
 
 <script setup>

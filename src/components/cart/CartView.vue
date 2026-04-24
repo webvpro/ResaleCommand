@@ -24,25 +24,22 @@
       </div>
 
       <div v-else class="flex flex-col h-full"> 
-          <!-- HEADER -->
-          <div class="navbar bg-base-100 shadow-md z-10 px-4">
-              <div class="flex-1">
-                  <h2 class="text-xl font-bold truncate">Active Sourcing: {{ activeCart.source }}</h2>
-                  <div class="badge badge-accent ml-2">{{ cartItems.length }} Items</div>
-              </div>
-              <div class="flex-none">
-                  <div class="text-right text-xs opacity-70">
-                      <div>Total Est: <span class="text-success font-bold">${{ cartTotalResale.toFixed(0) }}</span></div>
-                      <div>Spent: <span class="text-warning font-bold">${{ totalSpend.toFixed(2) }}</span></div>
+          <!-- MAIN SCROLLABLE CONTENT -->
+          <div class="flex-1 overflow-y-auto relative pb-32" id="tracker-scroll">
+              
+              <!-- STICKY HEADER -->
+              <div class="sticky top-0 z-30 bg-base-100/95 backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.05)] px-4 py-3 border-b border-base-200 mb-4 -mx-0 flex justify-between items-center">
+                  <div class="flex-1 min-w-0 pr-4">
+                      <h2 class="text-xl font-bold truncate">Active Sourcing: {{ activeCart.source }}</h2>
+                  </div>
+                  <div class="flex-none text-right text-xs opacity-70 font-bold bg-base-200 p-2 rounded">
+                      <div>Est. Value: <span class="text-success">${{ cartTotalResale.toFixed(0) }}</span></div>
+                      <div>Spent: <span class="text-warning">${{ totalSpend.toFixed(2) }}</span></div>
                   </div>
               </div>
-          </div>
 
-          <!-- MAIN SCROLLABLE CONTENT -->
-          <div class="flex-1 overflow-y-auto p-4 space-y-4 pb-32">
-              
               <!-- ITEMS LIST -->
-              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-1">
+              <div class="px-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 pt-0">
                   <ItemCard 
                       v-for="item in cartItems" 
                       :key="item.$id" 
@@ -101,8 +98,15 @@
           </div>
 
           <!-- FOOTER ACTIONS -->
-          <div class="absolute bottom-0 left-0 right-0 p-4 bg-linear-to-t from-base-100 via-base-100 to-transparent pt-8">
-              <button @click="handleFinishCart" class="btn btn-primary w-full shadow-lg text-lg">
+          <div class="absolute bottom-0 left-0 right-0 p-4 bg-base-100 border-t border-base-200 pt-6 z-40">
+              <!-- Floating Total Count / Scroll to Top -->
+              <div class="absolute -top-6 left-1/2 -translate-x-1/2 transition-transform hover:-translate-y-1 cursor-pointer" @click="scrollToTop">
+                  <span class="badge badge-lg badge-primary border-none shadow-md px-6 py-4 font-bold text-sm flex gap-2 items-center rounded-full">
+                      {{ cartItems.length }} Tracked <Icon icon="solar:round-alt-arrow-up-linear" class="w-4 h-4" />
+                  </span>
+              </div>
+
+              <button @click="handleFinishCart" class="btn btn-primary w-full shadow-lg text-lg mt-2">
                   <Icon icon="solar:check-circle-linear" class="w-5 h-5 inline mr-1" /> Complete Trip (${{ totalSpend.toFixed(2) }})
               </button>
               <div class="text-center mt-2">
@@ -128,7 +132,14 @@ import { Icon } from '@iconify/vue';
 
 const BUCKET_ID = import.meta.env.PUBLIC_APPWRITE_BUCKET_ID;
 
-const { user } = useAuth();
+const { user, currentTeam } = useAuth();
+const currentTeamId = computed(() => currentTeam.value?.$id);
+
+const scrollToTop = () => {
+    const el = document.getElementById('tracker-scroll');
+    if (el) el.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
 const { 
   activeCart, cartItems, cartExpenses, loading, 
   checkActiveCart, addExpense, finishCart, leaveCart,

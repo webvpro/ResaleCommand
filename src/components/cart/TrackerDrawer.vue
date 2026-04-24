@@ -22,25 +22,24 @@
       </div>
 
       <div v-else class="flex flex-col h-full"> 
-          <!-- HEADER -->
-          <div class="bg-base-100 shadow-xs z-10 p-4 border-b border-base-300 relative">
-              <button class="btn btn-ghost btn-sm btn-circle absolute top-4 right-4" @click="closeTracker">✕</button>
-              <div class="flex flex-col gap-1 pr-6">
-                  <h2 class="text-sm font-bold opacity-70 truncate uppercase">Active Sourcing</h2>
-                  <h3 class="text-lg font-black truncate">{{ activeCart.source }}</h3>
-                  <div class="badge badge-accent badge-sm">{{ trackedItems.length }} Tracked Items</div>
-              </div>
-              <div class="mt-2 text-xs opacity-70 flex justify-between font-bold bg-base-200 p-2 rounded">
-                  <div>Est. Value: <span class="text-success">${{ cartTotalResale.toFixed(0) }}</span></div>
-                  <div>Spent: <span class="text-warning">${{ totalSpend.toFixed(2) }}</span></div>
-              </div>
-          </div>
-
           <!-- MAIN SCROLLABLE CONTENT -->
-          <div class="flex-1 overflow-y-auto p-4 space-y-4 pb-32">
+          <div class="flex-1 overflow-y-auto relative pb-32" id="tracker-scroll">
               
+              <!-- STICKY HEADER -->
+              <div class="sticky top-0 z-30 bg-base-200/95 backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.05)] p-4 border-b border-base-300 mb-4 -mx-0">
+                  <button class="btn btn-ghost btn-sm btn-circle absolute top-4 right-4" @click="closeTracker">✕</button>
+                  <div class="flex flex-col gap-1 pr-6">
+                      <h2 class="text-sm font-bold opacity-70 truncate uppercase">Active Sourcing</h2>
+                      <h3 class="text-lg font-black truncate">{{ activeCart.source }}</h3>
+                  </div>
+                  <div class="mt-2 text-xs opacity-70 flex justify-between font-bold bg-base-300/50 p-2 rounded">
+                      <div>Est. Value: <span class="text-success">${{ cartTotalResale.toFixed(0) }}</span></div>
+                      <div>Spent: <span class="text-warning">${{ totalSpend.toFixed(2) }}</span></div>
+                  </div>
+              </div>
+
               <!-- ITEMS LIST -->
-              <div class="flex flex-col gap-2">
+              <div class="p-4 flex flex-col gap-2 pt-0">
                   <ItemCard 
                       v-for="item in trackedItems" 
                       :key="item.$id" 
@@ -96,8 +95,15 @@
           </div>
 
           <!-- FOOTER ACTIONS -->
-          <div class="p-4 bg-base-100 border-t border-base-300">
-              <button @click="handleFinishCart" class="btn btn-primary w-full shadow-sm">
+          <div class="p-4 bg-base-100 border-t border-base-300 relative z-40">
+              <!-- Floating Total Count / Scroll to Top -->
+              <div class="absolute -top-6 left-1/2 -translate-x-1/2 transition-transform hover:-translate-y-1 cursor-pointer" @click="scrollToTop">
+                  <span class="badge badge-lg badge-primary border-none shadow-md px-6 py-4 font-bold text-sm flex gap-2 items-center rounded-full">
+                      {{ trackedItems.length }} Tracked <Icon icon="solar:round-alt-arrow-up-linear" class="w-4 h-4" />
+                  </span>
+              </div>
+
+              <button @click="handleFinishCart" class="btn btn-primary w-full shadow-sm mt-4">
                   <Icon icon="solar:check-circle-linear" class="w-5 h-5 inline mr-1" /> Finish Trip (${{ totalSpend.toFixed(2) }})
               </button>
               <div class="text-center mt-2">
@@ -179,11 +185,8 @@ const initCartCheck = async () => {
     }
 };
 
-
 const closeTracker = () => {
-    // If mobile, uncheck
-    const cb = document.getElementById('tracker-drawer');
-    if (cb) cb.checked = false;
+    document.getElementById('tracker-drawer').checked = false;
     
     // If desktop, remove static open class
     const drawer = document.getElementById('app-drawer');
@@ -191,6 +194,11 @@ const closeTracker = () => {
         drawer.classList.remove('lg:drawer-open');
         setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
     }
+};
+
+const scrollToTop = () => {
+    const el = document.getElementById('tracker-scroll');
+    if (el) el.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
 onMounted(async () => {
