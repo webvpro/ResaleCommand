@@ -44,12 +44,20 @@
             <div class="drawer-content flex flex-col pb-8 lg:pl-6 pt-1">
                 <!-- Mobile Toggle & Header -->
                 <div class="sticky top-0 z-30 bg-base-100/95 backdrop-blur-md border-b border-base-200 py-3 mb-6 -mx-4 px-4 sm:mx-0 sm:px-0 flex flex-col gap-3 shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
-                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-                        <div class="flex items-center gap-3">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-fade-in relative z-20 pointer-events-auto">
+                        <div class="flex flex-col">
+                            <h1 class="text-3xl font-bold text-base-content tracking-tight">Inventory</h1>
+                            <p v-if="insightFilter" class="text-sm text-warning flex items-center gap-1 mt-1">
+                                <Icon icon="solar:lightbulb-bolt-bold-duotone" />
+                                AI Filter Active: Fix {{ insightFilter.replace(/_/g, ' ') }}
+                                <button class="btn btn-xs btn-ghost text-error ml-2" @click="insightFilter = ''; filterStatus = 'all'">Clear Filter</button>
+                            </p>
+                        </div>
+                        <div class="flex items-center gap-2">
                             <label for="inventory-sidebar" class="btn btn-square btn-ghost lg:hidden shadow-sm border border-base-200 bg-base-100">
                                 <Icon icon="solar:hamburger-menu-linear" class="w-5 h-5" />
                             </label>
-                            <h2 class="text-2xl font-bold">In Inventory</h2>
+                            <h2 class="text-2xl font-bold hidden sm:block">In Inventory</h2>
                         </div>
                         <div class="flex flex-wrap gap-2 items-center">
                             <button class="btn btn-sm btn-primary gap-2" @click="openAdd">
@@ -317,6 +325,15 @@ const currentTeamId = computed(() => currentTeam.value?.$id);
 // State for Filters
 const searchQuery = ref('');
 const filterStatus = ref('all');
+const insightFilter = ref('');
+
+onMounted(() => {
+    // Check URL for AI Insight filters
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('insightFilter')) {
+        insightFilter.value = params.get('insightFilter') || '';
+    }
+});
 
 const scrollToTop = () => {
     // Check if we are inside a drawer-content or window
@@ -351,9 +368,32 @@ const filteredInventory = computed(() => {
     return inventoryItems.value.filter(item => {
         // Exclude cart items
         if (item.status === 'scouted') return false;
+
+        // --- AI Insight Filters ---
+        if (insightFilter.value) {
+            const parseVal = (itm, key, noteKey) => {
+                let val = 0;
+                if (itm[key]) {
+                    val = parseFloat(itm[key]);
+                } else if (itm.conditionNotes) {
+                    const regex = new RegExp(`${noteKey}[:\\s]*\\$?([\\d.]+)`, 'i');
+                    const match = itm.conditionNotes.match(regex);
+                    if (match) val = parseFloat(match[1]);
+                }
+                return isNaN(val) ? 0 : val;
+            };
+
+            if (insightFilter.value === 'missing_sold_price') {
+                if (item.status !== 'sold' || (parseVal(item, 'soldPrice', 'Sold') || parseVal(item, 'price', 'Sold'))) return false;
+            } else if (insightFilter.value === 'missing_est_value') {
+                if (item.status === 'sold' || (parseVal(item, 'estValue', 'Est') || parseVal(item, 'listPrice', 'Est'))) return false;
+            } else if (insightFilter.value === 'missing_cost') {
+                if (item.status === 'sold' || (parseVal(item, 'cost', 'Paid') || parseVal(item, 'purchasePrice', 'Paid'))) return false;
+            }
+        }
         
-        // Filter by Status
-        if (filterStatus.value !== 'all' && item.status !== filterStatus.value) {
+        // Filter by Status (Only if not using insight filter that forces status)
+        if (!insightFilter.value && filterStatus.value !== 'all' && item.status !== filterStatus.value) {
             return false;
         }
 
