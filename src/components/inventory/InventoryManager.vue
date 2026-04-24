@@ -43,7 +43,7 @@
             
             <div class="drawer-content flex flex-col pb-8 lg:pl-6 pt-1">
                 <!-- Mobile Toggle & Header -->
-                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+                <div class="sticky top-0 z-30 bg-base-100/95 backdrop-blur-md border-b border-base-200 py-3 mb-6 -mx-4 px-4 sm:mx-0 sm:px-0 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
                     <div class="flex items-center gap-3">
                         <label for="inventory-sidebar" class="btn btn-square btn-ghost lg:hidden shadow-sm border border-base-200 bg-base-100">
                             <Icon icon="solar:hamburger-menu-linear" class="w-5 h-5" />
@@ -61,7 +61,6 @@
                             <Icon icon="solar:refresh-circle-linear" class="w-4 h-4" /> Booth Sync
                         </button>
                         <span v-if="loading" class="loading loading-spinner loading-sm"></span>
-                        <span class="badge badge-lg shadow-sm border border-base-200">{{ filteredInventory.length }} / {{ totalItems }} Items</span>
                     </div>
                 </div>
 
@@ -265,6 +264,13 @@
 
         <!-- Booth Reconciliation Modal -->
         <BoothReconciliation :isOpen="showReconciliation" @close="showReconciliation = false" />
+
+        <!-- Floating Total Count / Scroll to Top -->
+        <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 transition-transform hover:-translate-y-1 cursor-pointer shadow-xl rounded-full" @click="scrollToTop">
+            <span class="badge badge-lg badge-primary border-none shadow-md px-6 py-4 font-bold text-sm flex gap-2 items-center">
+                {{ filteredInventory.length }} / {{ totalItems }} Items <Icon icon="solar:round-alt-arrow-up-linear" class="w-4 h-4" />
+            </span>
+        </div>
     </div>
 </template>
 
@@ -298,6 +304,15 @@ const currentTeamId = computed(() => currentTeam.value?.$id);
 // State for Filters
 const searchQuery = ref('');
 const filterStatus = ref('all');
+
+const scrollToTop = () => {
+    // Check if we are inside a drawer-content or window
+    const drawer = document.querySelector('.drawer-content');
+    if (drawer) {
+        drawer.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+};
 const filterKeywords = ref([]);
 const filterBinLocation = ref('');
 const orgPlacedLocations = ref([]);
