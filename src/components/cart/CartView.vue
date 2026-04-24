@@ -52,12 +52,12 @@
 
                       <template #absolute-top-left>
                            <!-- Actions Menu Override -->
-                            <div class="dropdown dropdown-bottom absolute top-2 right-2 z-20" @click.stop>
+                            <div class="dropdown dropdown-bottom z-20" @click.stop>
                                 <label tabindex="0" class="btn btn-ghost btn-sm btn-circle bg-base-100/80 backdrop-blur shadow-sm cursor-pointer">⋮</label>
                                 <ul tabindex="0" class="dropdown-content menu p-2 shadow-lg bg-base-100 rounded-box w-40 border border-base-200">
-                                    <li><a @click="openEditModal(item)">✏️ Edit</a></li>
-                                    <li><a :href="`/scout?rescout=${item.$id}`">🔍 Open in Scout</a></li>
-                                    <li><a @click="handleDeleteItem(item.$id)" class="text-error">🗑️ Delete</a></li>
+                                    <li><a @click="openEditModal(item)"><Icon icon="solar:pen-linear" class="w-4 h-4 inline" /> Edit</a></li>
+                                    <li><a :href="`/scout?rescout=${item.$id}`"><Icon icon="solar:magnifer-linear" class="w-4 h-4 inline" /> Scout</a></li>
+                                    <li><a @click="handleDeleteItem(item.$id)" class="text-error"><Icon icon="solar:trash-bin-trash-linear" class="w-4 h-4 inline" /> Delete</a></li>
                                 </ul>
                             </div>
                       </template>
@@ -103,7 +103,7 @@
           <!-- FOOTER ACTIONS -->
           <div class="absolute bottom-0 left-0 right-0 p-4 bg-linear-to-t from-base-100 via-base-100 to-transparent pt-8">
               <button @click="handleFinishCart" class="btn btn-primary w-full shadow-lg text-lg">
-                  ✅ Complete Trip (${{ totalSpend.toFixed(2) }})
+                  <Icon icon="solar:check-circle-linear" class="w-5 h-5 inline mr-1" /> Complete Trip (${{ totalSpend.toFixed(2) }})
               </button>
               <div class="text-center mt-2">
                   <button @click="startNew" class="btn btn-link btn-xs text-error no-underline">Abort / Start New</button>
@@ -124,6 +124,7 @@ import ItemCard from '../common/ItemCard.vue';
 import ItemPreviewModal from '../inventory/ItemPreviewModal.vue';
 import { addToast } from '../../stores/toast';
 import { confirmDialog } from '../../stores/confirm';
+import { Icon } from '@iconify/vue';
 
 const BUCKET_ID = import.meta.env.PUBLIC_APPWRITE_BUCKET_ID;
 

@@ -1,29 +1,44 @@
 <template>
-    <div class="card bg-base-100 shadow-sm border border-base-200 hover:border-primary transition-colors group relative cursor-pointer"
+    <div class="card bg-base-100 shadow-sm border border-base-200 hover:border-primary transition-colors group relative cursor-pointer overflow-hidden flex flex-col"
          :class="containerClass"
          @click="$emit('click-card', item)">
         
-        <!-- Slot for absolute positioning (Checkbox, badges, etc.) -->
-        <slot name="absolute-top-left"></slot>
-
         <!-- Image Area -->
-        <figure class="bg-base-200 relative overflow-hidden group-hover:opacity-90 transition-opacity" :class="imageClass">
+        <figure class="bg-base-200 relative overflow-hidden group-hover:opacity-90 transition-opacity flex-none" :class="imageClass">
             <img v-if="imageUrl" :src="imageUrl" :alt="title" class="w-full h-full object-cover" />
-            <div v-else class="flex flex-col items-center justify-center w-full h-full opacity-30 bg-base-300 p-2 text-4xl">
-                📦
+            <div v-else class="flex flex-col items-center justify-center w-full h-full opacity-30 bg-base-300 p-2">
+                <Icon icon="solar:box-linear" class="w-12 h-12" />
             </div>
             
-            <!-- Status Badge -->
-            <div class="absolute top-0 right-0 p-1 badge rounded-none rounded-bl-lg gap-1 font-bold z-10" :class="statusBadgeClass">
-                {{ statusText }}
+            <!-- Top Gradient Overlay (Title, Checkbox, Status) -->
+            <div class="absolute top-0 left-0 right-0 p-2 z-10 text-white flex flex-col gap-1 min-h-[50%] pointer-events-none" :class="headerBgClass">
+                <div class="flex justify-between items-start w-full">
+                    <!-- Left: Slot for Checkbox/Menu -->
+                    <div class="pointer-events-auto shrink-0 z-20">
+                        <slot name="absolute-top-left"></slot>
+                    </div>
+                    
+                    <!-- Right: Status Badge -->
+                    <div class="badge rounded shadow-sm font-bold opacity-100 border-none pointer-events-auto shrink-0" :class="statusBadgeClass">
+                        {{ statusText }}
+                    </div>
+                </div>
+                
+                <!-- Title -->
+                <h2 class="font-bold leading-tight line-clamp-3 drop-shadow-md mt-1 pointer-events-auto text-shadow" :class="titleClass">
+                    {{ title }}
+                </h2>
             </div>
             
             <!-- ROI Meter Bar overlaid on bottom of image -->
             <div class="absolute bottom-0 left-0 right-0 h-6 bg-black/50 backdrop-blur-sm overflow-hidden flex items-center">
                 <div :class="[profitColor, profitWidth]" class="h-full transition-all duration-500 opacity-90"></div>
-                <div class="absolute inset-0 flex justify-between items-center px-2 font-bold z-10 text-[9px] text-white pointer-events-none">
-                    <span class="opacity-90 uppercase tracking-wider">{{ item.condition || 'Mix' }}</span>
-                    <span><span v-if="roi !== null" class="ml-1 opacity-90">ROI: {{ roi }}%</span></span>
+                <div class="absolute inset-0 flex justify-between items-center px-2 font-bold z-10 text-[9px] text-white pointer-events-none drop-shadow-md">
+                    <span class="opacity-90 tracking-wider text-shadow">Paid: {{ formatCurrency(paidValue) }}</span>
+                    <span>
+                        <span class="opacity-90 text-shadow">Est: {{ formatCurrency(estValue) }}</span>
+                        <span v-if="roi !== null" class="ml-1 opacity-100 border-l border-white/30 pl-1 text-shadow">ROI: {{ roi }}%</span>
+                    </span>
                 </div>
             </div>
             
@@ -31,34 +46,15 @@
         </figure>
 
         <!-- Body Area -->
-        <div class="card-body p-3 gap-1">
-            <h2 class="font-bold leading-tight line-clamp-2" :class="titleClass">
-                {{ title }}
-            </h2>
-            
+        <div class="card-body p-2 pt-1 pb-1 gap-1 flex-1 flex flex-col justify-end">
             <!-- Subtitle/Location Slot -->
-            <div v-if="locationText" class="text-xs opacity-60 truncate">📍 {{ locationText }}</div>
+            <div v-if="locationText" class="text-xs opacity-60 truncate"><Icon icon="solar:map-point-linear" class="w-3 h-3 inline mr-1" />{{ locationText }}</div>
             
             <!-- Tags/Sales Channels -->
             <div v-if="tags && tags.length > 0" class="flex gap-1 flex-wrap mt-1">
                 <span v-for="tag in tags" :key="tag" class="badge badge-[10px] badge-outline opacity-70 px-1 py-0">{{ tag }}</span>
             </div>
             
-            <!-- Pricing Grid -->
-            <div class="flex justify-between items-end mt-2 pt-2 border-t border-base-200">
-                <div class="flex flex-col">
-                    <span class="text-[10px] uppercase opacity-50 font-bold">Est Value</span>
-                    <span class="text-sm font-bold text-success font-mono leading-none">
-                        {{ formatCurrency(estValue) }}
-                    </span>
-                </div>
-                <div class="flex flex-col text-right">
-                    <span class="text-[10px] uppercase opacity-50 font-bold">Paid</span>
-                    <span class="text-xs font-mono opacity-80 leading-none">
-                        {{ formatCurrency(paidValue) }}
-                    </span>
-                </div>
-            </div>
 
             <!-- Footer Actions Slot (e.g., Quick Add, Delete) -->
             <slot name="actions"></slot>
@@ -68,6 +64,7 @@
 
 <script setup>
 import { computed } from 'vue';
+import { Icon } from '@iconify/vue';
 
 const props = defineProps({
     item: { type: Object, required: true },
@@ -102,6 +99,15 @@ const statusBadgeClass = computed(() => {
     if (s === 'placed') return 'badge-success badge-sm';
     if (s === 'sold') return 'badge-neutral badge-sm';
     return 'badge-ghost badge-sm';
+});
+
+const headerBgClass = computed(() => {
+    const s = props.item.status;
+    if (s === 'received' || s === 'scouted') return 'bg-linear-to-b from-info/80 via-info/40 to-transparent';
+    if (s === 'acquired') return 'bg-linear-to-b from-secondary/80 via-secondary/40 to-transparent';
+    if (s === 'placed') return 'bg-linear-to-b from-success/80 via-success/40 to-transparent';
+    if (s === 'sold') return 'bg-linear-to-b from-neutral/80 via-neutral/40 to-transparent';
+    return 'bg-linear-to-b from-base-300/80 via-base-300/40 to-transparent';
 });
 
 // --- PRICE PARSING ---
@@ -174,9 +180,12 @@ const roi = computed(() => {
 const profitColor = computed(() => {
     const paid = parseFloat(paidValue.value) || 0;
     const est = parseFloat(estValue.value);
-    if (isNaN(est)) return 'bg-base-300';
+    
+    if (isNaN(est) || isNaN(paid) || (!paid && !est)) return 'bg-warning';
+    
     if (est > paid) return 'bg-info'; 
-    return 'bg-error'; 
+    if (est < paid) return 'bg-error';
+    return 'bg-warning'; 
 });
 
 const profitWidth = computed(() => {

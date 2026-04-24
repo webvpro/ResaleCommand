@@ -122,13 +122,13 @@
                         :class="{'ring-2 ring-primary': selectedItems.includes(item.$id)}">
                         
                         <template #absolute-top-left>
-                            <div class="absolute top-1 left-1 z-20">
-                                <input type="checkbox" :value="item.$id" v-model="selectedItems" class="checkbox checkbox-sm checkbox-primary bg-base-100/80 backdrop-blur shadow-sm cursor-pointer" @click.stop />
+                            <div class="z-20">
+                                <input type="checkbox" :value="item.$id" v-model="selectedItems" class="checkbox checkbox-sm checkbox-primary shadow-sm cursor-pointer border-none ring-1 ring-base-100/50" :class="!selectedItems.includes(item.$id) ? 'bg-base-100/80 backdrop-blur' : ''" @click.stop />
                             </div>
                         </template>
 
                         <template #actions>
-                            <div class="join w-full mt-2 pt-2 border-t border-base-200/50 z-10" @click.stop>
+                            <div class="join w-full mt-1 pt-1 border-t border-base-200/50 z-10" @click.stop>
                                 <button @click="copyShareLink(item.$id)" class="btn btn-ghost btn-xs join-item flex-1 opacity-70 hover:opacity-100"><Icon icon="solar:link-linear" class="w-4 h-4 inline" /> Share</button>
                                 <button @click="openEdit(item)" class="btn btn-ghost btn-xs join-item flex-1 opacity-70 hover:opacity-100"><Icon icon="solar:pen-linear" class="w-4 h-4 inline" /> Edit</button>
                                 <button @click="confirmDelete(item.$id)" class="btn btn-ghost btn-xs join-item flex-1 text-error opacity-80 hover:opacity-100 hover:bg-error/10" :disabled="processingId === item.$id">

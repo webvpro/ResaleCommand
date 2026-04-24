@@ -50,7 +50,7 @@
 
                       <template #actions>
                           <!-- Docked Bottom Actions -->
-                          <div class="join w-full mt-2 pt-2 border-t border-base-200/50" @click.stop>
+                          <div class="join w-full mt-1 pt-1 border-t border-base-200/50" @click.stop>
                               <button @click="openEditModal(item)" class="btn btn-ghost btn-xs join-item flex-1 opacity-70 hover:opacity-100"><Icon icon="solar:pen-linear" class="w-4 h-4 inline" /> Edit</button>
                               <a :href="`/scout?rescout=${item.$id}`" class="btn btn-ghost btn-xs join-item flex-1 opacity-70 hover:opacity-100"><Icon icon="solar:magnifer-linear" class="w-4 h-4 inline" /> Scout</a>
                               <button @click="handleDeleteItem(item.$id)" class="btn btn-ghost btn-xs join-item flex-1 text-error opacity-80 hover:opacity-100 hover:bg-error/10"><Icon icon="solar:trash-bin-trash-linear" class="w-4 h-4 inline" /> Drop</button>
