@@ -2,11 +2,11 @@
     <div class="space-y-12">
         <!-- SHOPPING CART SECTION -->
         <div v-if="cartItems.length > 0" class="space-y-8">
-            <h2 class="text-2xl font-bold flex items-center gap-2">🛒 Active Shopping Cart <span class="badge badge-primary">{{ cartItems.length }}</span></h2>
+            <h2 class="text-2xl font-bold flex items-center gap-2"><Icon icon="solar:object-scan-linear" class="w-8 h-8 text-primary" /> Active Sourcing Run <span class="badge badge-primary">{{ cartItems.length }}</span></h2>
 
             <div v-for="(groupItems, location) in cartGroups" :key="location" class="bg-base-200 p-6 rounded-2xl border-2 border-base-300 relative">
                 <div class="absolute -top-3 left-6 px-2 bg-base-200 text-sm font-bold opacity-70 border border-base-300 rounded">
-                    📍 {{ location }} ({{ groupItems.length }})
+                    <Icon icon="solar:map-point-linear" class="w-4 h-4 inline" /> {{ location }} ({{ groupItems.length }})
                 </div>
             
                 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-1 pt-2">
@@ -15,7 +15,7 @@
                             <div class="flex gap-4 cursor-pointer hover:opacity-80 transition-opacity" @click="openEdit(item)">
                                 <div class="w-16 h-16 bg-base-300 rounded-lg shrink-0 overflow-hidden relative">
                                     <img v-if="getImageUrl(item)" :src="getImageUrl(item)" class="w-full h-full object-cover" />
-                                    <div v-else class="flex items-center justify-center w-full h-full text-2xl">📦</div>
+                                    <div v-else class="flex items-center justify-center w-full h-full opacity-30"><Icon icon="solar:box-linear" class="w-8 h-8" /></div>
                                 </div>
                                 <div class="flex-1 min-w-0">
                                     <h3 class="font-bold truncate group-hover:text-primary transition-colors">{{ item.title }}</h3>
@@ -28,7 +28,7 @@
                             <div class="card-actions justify-end mt-2">
                                 <button class="btn btn-sm btn-ghost text-error" @click="confirmDelete(item.$id)" :disabled="processingId === item.$id">✕</button>
                                 <button class="btn btn-sm btn-primary" @click="openCheckout(item)">
-                                    Purchase 💸
+                                    Purchase <Icon icon="solar:dollar-linear" class="w-4 h-4 ml-1 inline" />
                                 </button>
                             </div>
                         </div>
@@ -46,19 +46,19 @@
                 <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
                     <div class="flex items-center gap-3">
                         <label for="inventory-sidebar" class="btn btn-square btn-ghost lg:hidden shadow-sm border border-base-200 bg-base-100">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-5 h-5 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                            <Icon icon="solar:hamburger-menu-linear" class="w-5 h-5" />
                         </label>
                         <h2 class="text-2xl font-bold">In Inventory</h2>
                     </div>
                     <div class="flex flex-wrap gap-2 items-center">
                         <button class="btn btn-sm btn-primary gap-2" @click="openAdd">
-                            ➕ Add New
+                            <Icon icon="solar:add-circle-linear" class="w-4 h-4" /> Add New
                         </button>
                         <button class="btn btn-sm btn-outline gap-2" @click="showImport = true">
-                            📥 Import CSV
+                            <Icon icon="solar:import-linear" class="w-4 h-4" /> Import CSV
                         </button>
                         <button class="btn btn-sm btn-accent gap-2" @click="showReconciliation = true">
-                            🔄 Booth Sync
+                            <Icon icon="solar:refresh-circle-linear" class="w-4 h-4" /> Booth Sync
                         </button>
                         <span v-if="loading" class="loading loading-spinner loading-sm"></span>
                         <span class="badge badge-lg shadow-sm border border-base-200">{{ filteredInventory.length }} / {{ totalItems }} Items</span>
@@ -129,11 +129,11 @@
 
                         <template #actions>
                             <div class="join w-full mt-2 pt-2 border-t border-base-200/50 z-10" @click.stop>
-                                <button @click="copyShareLink(item.$id)" class="btn btn-ghost btn-xs join-item flex-1 opacity-70 hover:opacity-100">🔗 Share</button>
-                                <button @click="openEdit(item)" class="btn btn-ghost btn-xs join-item flex-1 opacity-70 hover:opacity-100">✏️ Edit</button>
+                                <button @click="copyShareLink(item.$id)" class="btn btn-ghost btn-xs join-item flex-1 opacity-70 hover:opacity-100"><Icon icon="solar:link-linear" class="w-4 h-4 inline" /> Share</button>
+                                <button @click="openEdit(item)" class="btn btn-ghost btn-xs join-item flex-1 opacity-70 hover:opacity-100"><Icon icon="solar:pen-linear" class="w-4 h-4 inline" /> Edit</button>
                                 <button @click="confirmDelete(item.$id)" class="btn btn-ghost btn-xs join-item flex-1 text-error opacity-80 hover:opacity-100 hover:bg-error/10" :disabled="processingId === item.$id">
                                     <span v-if="processingId === item.$id" class="loading loading-spinner loading-xs"></span>
-                                    <span v-else>🗑️ Delete</span>
+                                    <span v-else><Icon icon="solar:trash-bin-trash-linear" class="w-4 h-4 inline" /> Delete</span>
                                 </button>
                             </div>
                         </template>
@@ -208,12 +208,12 @@
 
                     <div class="divider">Receipt</div>
                     <div class="flex flex-col gap-2">
-                        <button v-if="!isCameraOpen" @click="startCamera('checkout')" class="btn btn-outline gap-2">📷 Take Receipt Photo</button>
+                        <button v-if="!isCameraOpen" @click="startCamera('checkout')" class="btn btn-outline gap-2"><Icon icon="solar:camera-linear" class="w-5 h-5 inline" /> Take Receipt Photo</button>
                         
                         <!-- Camera View -->
                         <div v-if="isCameraOpen" class="relative rounded-lg overflow-hidden bg-black">
                              <video ref="cameraVideo" class="w-full h-48 object-cover" autoplay playsinline></video>
-                             <button @click="capturePhoto('checkout')" class="btn btn-circle absolute bottom-2 left-1/2 -translate-x-1/2 btn-success border-2 border-white">📸</button>
+                             <button @click="capturePhoto('checkout')" class="btn btn-circle absolute bottom-2 left-1/2 -translate-x-1/2 btn-success border-2 border-white"><Icon icon="solar:camera-linear" class="w-5 h-5" /></button>
                              <button @click="stopCamera" class="btn btn-circle btn-ghost btn-sm text-white absolute top-2 right-2">✕</button>
                         </div>
 
@@ -235,7 +235,7 @@
                 </div>
 
                 <div v-else class="text-center py-6">
-                    <h3 class="font-bold text-lg text-success mb-4">✅ Purchase Confirmed!</h3>
+                    <h3 class="font-bold text-lg text-success mb-4 flex justify-center items-center"><Icon icon="solar:check-circle-linear" class="w-6 h-6 mr-2 inline" /> Purchase Confirmed!</h3>
                     <p class="text-xs opacity-70 mb-4">Item moved to "Acquired".</p>
                     <div class="divider">AI Description</div>
                     <div class="p-4 bg-base-200 rounded-lg text-sm text-center">
@@ -276,6 +276,7 @@ import BulkImport from './BulkImport.vue';
 import BoothReconciliation from './BoothReconciliation.vue';
 import { useAuth } from '../../composables/useAuth';
 import { databases, Query } from '../../lib/appwrite';
+import { Icon } from '@iconify/vue';
 import ItemDrawer from '../common/ItemDrawer.vue';
 import ItemCard from '../common/ItemCard.vue';
 import ItemPreviewModal from './ItemPreviewModal.vue';

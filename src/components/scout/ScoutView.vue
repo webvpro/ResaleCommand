@@ -25,8 +25,12 @@
                 
                 <!-- TABS -->
                 <div class="tabs tabs-boxed justify-center mb-4 bg-base-200">
-                    <a class="tab" :class="{ 'tab-active': mode === 'speed' }" @click="mode = 'speed'">⚡ Speed Scout</a>
-                    <a class="tab" :class="{ 'tab-active': mode === 'precision' }" @click="mode = 'precision'">🔍 Precision</a>
+                    <a class="tab gap-2" :class="{ 'tab-active': mode === 'speed' }" @click="mode = 'speed'">
+                        <Icon icon="solar:bolt-linear" /> Speed Scout
+                    </a>
+                    <a class="tab gap-2" :class="{ 'tab-active': mode === 'precision' }" @click="mode = 'precision'">
+                        <Icon icon="solar:magnifer-linear" /> Precision
+                    </a>
                 </div>
 
                 <!-- IMAGE INPUTS -->
@@ -47,7 +51,7 @@
 
                         <!-- Empty State -->
                         <div v-if="images.length === 0" class="flex flex-col items-center justify-center opacity-50 pointer-events-none text-center h-full py-4">
-                            <div class="text-4xl mb-2">📸</div>
+                            <div class="text-4xl mb-2"><Icon icon="solar:camera-linear" class="mx-auto" /></div>
                             <div class="text-sm font-bold font-mono">Drag & Drop images here<br/>or Click to Browse</div>
                         </div>
 
@@ -68,7 +72,7 @@
                     <div class="divider my-0 mb-4 opacity-50">OR</div>
                     
                     <button @click="startCamera" class="btn btn-outline btn-primary w-full gap-2">
-                        📷 Add Photo with Camera
+                        <Icon icon="solar:camera-linear" class="w-5 h-5" /> Add Photo with Camera
                     </button>
                     
                     <div class="divider my-2 opacity-50 text-xs uppercase">Power Features</div>
@@ -111,7 +115,9 @@
                     <label class="label"><span class="label-text opacity-70">Sourcing Location / URL</span></label>
                     <div class="join w-full">
                         <input v-model="sourcingLocation" type="text" class="input input-bordered join-item w-full" placeholder="e.g. Goodwill, Garage Sale" />
-                        <button class="btn btn-outline btn-square join-item">📍</button>
+                        <button class="btn btn-outline btn-square join-item">
+                            <Icon icon="solar:map-point-linear" class="w-5 h-5" />
+                        </button>
                     </div>
                 </div>
                 
@@ -148,7 +154,7 @@
                             <div>
                                 <h2 class="text-xl font-bold text-primary">{{ item.identity || 'Unidentified Item' }}</h2>
                                 <a v-if="sourcingLocation && sourcingLocation.startsWith('http')" :href="sourcingLocation" target="_blank" class="btn btn-xs mt-1 btn-outline btn-secondary">
-                                    🔗 View Source Listing
+                                    <Icon icon="solar:link-linear" /> View Source Listing
                                 </a>
                             </div>
                         </div>
@@ -189,9 +195,9 @@
                         'border-primary bg-primary/10': !['PASS', 'WATCH', 'BUY_NOW', 'NEGOTIATE', 'CHASE_AUCTION'].includes(item.purchase_strategy.verdict)
                     }">
                         <div class="flex items-center gap-2 mb-2">
-                           <span class="text-2xl" v-if="['BUY_NOW', 'CHASE_AUCTION'].includes(item.purchase_strategy.verdict)">✨</span>
-                           <span class="text-2xl" v-if="item.purchase_strategy.verdict === 'PASS'">🛑</span>
-                           <span class="text-2xl" v-if="['WATCH', 'NEGOTIATE'].includes(item.purchase_strategy.verdict)">🧐</span>
+                           <Icon icon="solar:magic-stick-linear" class="text-2xl" v-if="['BUY_NOW', 'CHASE_AUCTION'].includes(item.purchase_strategy.verdict)" />
+                           <Icon icon="solar:stop-circle-linear" class="text-2xl" v-if="item.purchase_strategy.verdict === 'PASS'" />
+                           <Icon icon="solar:eye-linear" class="text-2xl" v-if="['WATCH', 'NEGOTIATE'].includes(item.purchase_strategy.verdict)" />
                            <h3 class="font-black text-lg uppercase tracking-wider" :class="{
                                 'text-success': ['BUY_NOW', 'CHASE_AUCTION'].includes(item.purchase_strategy.verdict),
                                 'text-error': item.purchase_strategy.verdict === 'PASS',
@@ -209,7 +215,7 @@
                     <!-- Condition Assessment -->
                     <div v-if="item.condition_notes" class="mt-4 bg-base-200 p-4 border border-base-300 rounded-lg">
                         <div class="font-bold text-sm mb-1 opacity-70 uppercase tracking-wide flex gap-2 items-center">
-                            <span>🔍</span> Visual Condition Assessment
+                            <span><Icon icon="solar:magnifer-linear" class="w-4 h-4" /></span> Visual Condition Assessment
                         </div>
                         <p class="text-sm font-medium">{{ item.condition_notes }}</p>
                     </div>
@@ -243,7 +249,7 @@
                         <label class="label"><span class="label-text font-bold opacity-70">Suggested Title</span></label>
                         <div class="relative">
                             <input v-model="item.title" type="text" class="input input-bordered w-full font-bold text-sm pr-8" />
-                            <span class="absolute right-2 top-1/2 -translate-y-1/2 opacity-30">📋</span>
+                            <span class="absolute right-2 top-1/2 -translate-y-1/2 opacity-30"><Icon icon="solar:clipboard-text-linear" class="w-5 h-5" /></span>
                         </div>
                     </div>
 
@@ -251,7 +257,7 @@
                     <div class="form-control mt-6 bg-base-200 p-4 rounded-xl border border-base-300">
                         <label class="label pt-0 pb-2">
                              <span class="label-text font-bold opacity-70 flex items-center gap-2">
-                                 🏷️ Target Resale Price
+                                 <Icon icon="solar:tag-linear" class="w-5 h-5" /> Target Resale Price
                              </span>
                         </label>
                         
@@ -347,7 +353,7 @@
 
                 <!-- Switch Camera (Right) -->
                 <button @click="switchCamera" class="btn btn-circle btn-ghost text-white bg-black/30 backdrop-blur-md w-[80px]">
-                   <span class="text-2xl">🔄</span>
+                   <span class="text-2xl"><Icon icon="solar:refresh-circle-linear" /></span>
                 </button>
             </div>
         </div>
@@ -358,7 +364,7 @@
         
         <!-- Start New -->
         <button @click="startNewScan" class="flex-1 flex flex-col items-center justify-center text-base-content/70 hover:bg-base-300 hover:text-base-content transition-colors pb-safe">
-            <span class="text-2xl leading-none mb-1">↺</span>
+            <span class="text-2xl leading-none mb-1"><Icon icon="solar:restart-linear" /></span>
             <span class="font-bold tracking-wider uppercase text-[10px]">Start New</span>
         </button>
 
@@ -367,7 +373,7 @@
                 class="flex-1 flex flex-col items-center justify-center bg-primary text-primary-content hover:bg-primary/90 transition-colors border-x border-base-300 shadow-inner pb-safe"
                 :disabled="loading || (mode === 'speed' && images.length === 0) || (mode === 'link' && !scoutUrl)">
             <span v-if="loading" class="loading loading-spinner mb-1"></span>
-            <span v-else class="text-3xl leading-none mb-1">✨</span>
+            <span v-else class="text-3xl leading-none mb-1"><Icon icon="solar:magic-stick-linear" /></span>
             <span class="font-black tracking-widest uppercase text-xs">AI Scout</span>
         </button>
 
@@ -376,7 +382,7 @@
                 class="flex-1 flex flex-col items-center justify-center transition-colors pb-safe"
                 :class="(result && result.items && result.items.length > 0 && !result.items.some((i: any) => !i.saved && !i.saving)) ? 'bg-success/20 text-success' : (result && result.items && result.items.length > 0 ? 'bg-success text-success-content hover:bg-success/90' : 'text-base-content/30 cursor-not-allowed')"
                 :disabled="!result || !result.items || result.items.length === 0 || !result.items.some((i: any) => !i.saved && !i.saving)">
-            <span class="text-2xl leading-none mb-1">🛒</span>
+            <span class="text-2xl leading-none mb-1"><Icon icon="solar:object-scan-linear" /></span>
             <span class="font-bold tracking-wider uppercase text-[10px]">Track All</span>
         </button>
         
@@ -390,6 +396,7 @@ import { useAuth } from '../../composables/useAuth';
 import { useCart } from '../../composables/useCart';
 import { storage, databases, ID } from '../../lib/appwrite';
 import { addToast } from '../../stores/toast';
+import { Icon } from '@iconify/vue';
 
 // APPWRITE
 const DB_ID = import.meta.env.PUBLIC_APPWRITE_DB_ID; // Added this line

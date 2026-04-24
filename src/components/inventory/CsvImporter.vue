@@ -11,9 +11,7 @@
         <div v-if="importMethod === 'file'" class="flex-1 flex flex-col items-center justify-center space-y-4">
             <label class="w-full flex justify-center px-6 pt-5 pb-6 border-2 border-primary border-dashed rounded-md cursor-pointer hover:bg-base-200 transition-colors">
                 <div class="space-y-1 text-center">
-                    <svg class="mx-auto h-12 w-12 text-primary" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                    </svg>
+                    <Icon icon="solar:upload-linear" class="mx-auto h-12 w-12 text-primary" />
                     <div class="flex text-sm text-gray-600 justify-center">
                         <span class="relative font-medium text-primary hover:text-primary-focus">
                             Upload CSV / Export
@@ -54,7 +52,7 @@
             <div class="flex items-center gap-2">
                 <span>Found <b>{{ parsedItems.length }}</b> items.</span>
                 <button v-if="!estimating" class="btn btn-xs btn-ghost text-primary gap-1" @click="runEstimates" :disabled="importing">
-                    ✨ Estimate All
+                    <Icon icon="solar:magic-stick-linear" class="w-4 h-4" /> Estimate All
                 </button>
                 <span v-else class="loading loading-spinner loading-xs text-primary"></span>
             </div>
@@ -82,9 +80,7 @@
                         <h3 class="font-bold text-xs uppercase tracking-wide opacity-70 flex items-center gap-2">
                             Order #{{ orderId }}
                             <a :href="`https://shopgoodwill.com/shopgoodwill/order/${orderId}`" target="_blank" class="btn btn-xs btn-square btn-ghost text-primary opacity-50 hover:opacity-100" title="Open Order in ShopGoodwill">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3 h-3">
-                                  <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                                </svg>
+                                <Icon icon="solar:link-linear" class="w-3 h-3" />
                             </a>
                         </h3>
                         <div class="text-xs text-right flex flex-col items-end gap-1">
@@ -118,13 +114,13 @@
                             <!-- Image Preview -->
                             <div class="w-12 h-12 bg-base-200 rounded flex-shrink-0 overflow-hidden relative border border-base-300">
                                 <img v-if="item.imageUrl" :src="item.imageUrl" class="w-full h-full object-cover" @error="item.imageError = true" />
-                                <div v-else class="flex items-center justify-center w-full h-full text-xs opacity-50">🖼️</div>
+                                <div v-else class="flex items-center justify-center w-full h-full opacity-30"><Icon icon="solar:gallery-linear" class="w-6 h-6" /></div>
                             </div>
                             
                             <div class="flex-1 min-w-0">
                                 <!-- Title & Validation -->
                                 <div class="flex items-start gap-1">
-                                    <span v-if="!item.title || !item.itemId || item.price === 0" class="text-warning text-xs" title="Missing Data">⚠️</span>
+                                    <span v-if="!item.title || !item.itemId || item.price === 0" class="text-warning" title="Missing Data"><Icon icon="solar:danger-triangle-linear" class="w-4 h-4 inline" /></span>
                                     <div class="text-sm font-bold truncate leading-tight">{{ item.title || 'UNKNOWN IMAGE/ITEM' }}</div>
                                 </div>
 
@@ -150,7 +146,7 @@
                                 </div>
 
                                 <div v-if="item.estimatedResale" class="mt-1 text-xs font-bold text-secondary flex items-center gap-1">
-                                    ✨ Est. Resale: ${{ item.estimatedResale }}
+                                    <Icon icon="solar:magic-stick-linear" class="w-4 h-4 inline mr-1" /> Est. Resale: ${{ item.estimatedResale }}
                                 </div>
                             </div>
                             
@@ -163,13 +159,13 @@
                                 <div v-if="importing || item.importStatus" class="mt-1">
                                     <span v-if="item.importStatus === 'processing'" class="loading loading-spinner loading-xs text-primary"></span>
                                     <span v-else-if="item.importStatus === 'success'" class="badge badge-success badge-xs gap-1">
-                                        ✓ Done
+                                        <Icon icon="solar:check-circle-linear" class="w-3 h-3" /> Done
                                     </span>
                                     <span v-else-if="item.importStatus === 'updated'" class="badge badge-info badge-xs gap-1">
-                                        ⟳ Dup
+                                        <Icon icon="solar:refresh-circle-linear" class="w-3 h-3" /> Dup
                                     </span>
-                                    <span v-else-if="item.importStatus === 'error'" class="badge badge-error badge-xs font-bold" :title="item.importError">
-                                        ⚠ Error
+                                    <span v-else-if="item.importStatus === 'error'" class="badge badge-error badge-xs font-bold gap-1" :title="item.importError">
+                                        <Icon icon="solar:danger-triangle-linear" class="w-3 h-3" /> Error
                                     </span>
                                 </div>
                             </div>
@@ -197,6 +193,7 @@ import { databases, ID } from '../../lib/appwrite';
 import { addToast, updateToast, removeToast } from '../../stores/toast';
 import Papa from 'papaparse';
 import { isAlphaMode } from '../../stores/env';
+import { Icon } from '@iconify/vue';
 
 const getCollectionId = () => isAlphaMode.get() 
     ? (import.meta.env.PUBLIC_APPWRITE_ALPHA_COLLECTION_ID || 'alpha_items') 

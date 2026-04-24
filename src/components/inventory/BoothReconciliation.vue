@@ -5,7 +5,7 @@
             <!-- Header -->
             <div class="p-6 border-b border-base-200 flex justify-between items-center bg-base-200/50">
                 <div>
-                    <h3 class="font-bold text-2xl flex items-center gap-2">🔄 Booth Reconciliation</h3>
+                    <h3 class="font-bold text-2xl flex items-center gap-2"><Icon icon="solar:refresh-circle-linear" class="w-6 h-6 inline mr-1" /> Booth Reconciliation</h3>
                     <p class="text-sm opacity-70 mt-1">Cross-reference your external CSV against the internal database to find missing or sold items.</p>
                 </div>
                 <button class="btn btn-circle btn-ghost btn-sm" @click="close">✕</button>
@@ -17,7 +17,7 @@
                 <div v-if="!results" class="flex flex-col items-center justify-center h-full max-w-md mx-auto space-y-6 text-center w-full">
                     
                     <div v-if="hasSavedSession" class="w-full bg-base-200 p-6 rounded-xl border border-primary/20 shadow-sm">
-                        <div class="flex items-center justify-center text-3xl mb-2">💾</div>
+                        <div class="flex items-center justify-center mb-2"><Icon icon="solar:diskette-linear" class="w-8 h-8" /></div>
                         <h3 class="font-bold text-lg">Active Audit Found</h3>
                         <p class="text-sm opacity-70 mb-4">You have an unfinished reconciliation session saved locally.</p>
                         <button class="btn btn-primary w-full" @click="resumeSession">Resume Previous Audit</button>
@@ -26,8 +26,8 @@
 
                     <div v-if="hasSavedSession" class="divider text-xs opacity-50 w-full">OR START NEW AUDIT</div>
 
-                    <div class="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center text-primary text-4xl mb-2" v-if="!hasSavedSession">
-                        📊
+                    <div class="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center text-primary mb-2" v-if="!hasSavedSession">
+                        <Icon icon="solar:chart-square-linear" class="w-10 h-10" />
                     </div>
                     <h2 class="text-2xl font-bold">Upload Consignment CSV</h2>
                     <p class="opacity-70 text-sm">Upload your exported CSV from your consignment software to begin the audit.</p>
@@ -37,8 +37,8 @@
                             <span class="label-text font-bold">Target Database</span>
                         </label>
                         <select v-model="targetDb" class="select select-bordered w-full font-mono text-sm shadow-sm bg-base-200">
-                            <option value="items_dev">🧪 DEV SANDBOX (items_dev)</option>
-                            <option value="items">🚨 PRODUCTION (items)</option>
+                            <option value="items_dev">DEV SANDBOX (items_dev)</option>
+                            <option value="items">PRODUCTION (items)</option>
                         </select>
                     </div>
 
@@ -194,7 +194,7 @@
                                             <select v-model="manualLinkSelections[idx]" class="select select-bordered select-xs w-full max-w-xs bg-base-200 font-mono text-xs truncate">
                                                 <option :value="undefined">Select stranded DB item...</option>
                                                 
-                                                <optgroup v-if="row._suggestions && row._suggestions.length > 0" label="⭐️ Top Suggestions">
+                                                <optgroup v-if="row._suggestions && row._suggestions.length > 0" label="Top Suggestions">
                                                     <option v-for="item in row._suggestions" :key="'s_' + item.$id" :value="item.$id">
                                                         {{ item.title }}
                                                     </option>
@@ -247,6 +247,7 @@ import { useInventory } from '../../composables/useInventory';
 import { updateInventoryItem, getCollectionId } from '../../lib/inventory';
 import { useAuth } from '../../composables/useAuth';
 import { addToast } from '../../stores/toast';
+import { Icon } from '@iconify/vue';
 
 const props = defineProps({
     isOpen: { type: Boolean, default: false }

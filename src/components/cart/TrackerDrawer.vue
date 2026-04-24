@@ -15,7 +15,7 @@
 
       <div v-else-if="!activeCart" class="flex flex-col flex-1 items-center justify-center p-6 text-center opacity-70 relative">
           <button class="btn btn-ghost btn-sm btn-circle absolute top-4 right-4" @click="closeTracker">✕</button>
-          <span class="text-6xl mb-4">🛒</span>
+          <Icon icon="solar:object-scan-linear" class="w-16 h-16 mb-4 opacity-50" />
           <h2 class="text-xl font-bold">Empty Tracker</h2>
           <p class="text-sm mt-2">Start scouting items to build your sourcing run!</p>
           <a href="/scout" class="btn btn-primary btn-sm mt-4">Start Scouting</a>
@@ -51,9 +51,9 @@
                       <template #actions>
                           <!-- Docked Bottom Actions -->
                           <div class="join w-full mt-2 pt-2 border-t border-base-200/50" @click.stop>
-                              <button @click="openEditModal(item)" class="btn btn-ghost btn-xs join-item flex-1 opacity-70 hover:opacity-100">✏️ Edit</button>
-                              <a :href="`/scout?rescout=${item.$id}`" class="btn btn-ghost btn-xs join-item flex-1 opacity-70 hover:opacity-100">🔍 Scout</a>
-                              <button @click="handleDeleteItem(item.$id)" class="btn btn-ghost btn-xs join-item flex-1 text-error opacity-80 hover:opacity-100 hover:bg-error/10">🗑️ Drop</button>
+                              <button @click="openEditModal(item)" class="btn btn-ghost btn-xs join-item flex-1 opacity-70 hover:opacity-100"><Icon icon="solar:pen-linear" class="w-4 h-4 inline" /> Edit</button>
+                              <a :href="`/scout?rescout=${item.$id}`" class="btn btn-ghost btn-xs join-item flex-1 opacity-70 hover:opacity-100"><Icon icon="solar:magnifer-linear" class="w-4 h-4 inline" /> Scout</a>
+                              <button @click="handleDeleteItem(item.$id)" class="btn btn-ghost btn-xs join-item flex-1 text-error opacity-80 hover:opacity-100 hover:bg-error/10"><Icon icon="solar:trash-bin-trash-linear" class="w-4 h-4 inline" /> Drop</button>
                           </div>
                       </template>
                       
@@ -98,7 +98,7 @@
           <!-- FOOTER ACTIONS -->
           <div class="p-4 bg-base-100 border-t border-base-300">
               <button @click="handleFinishCart" class="btn btn-primary w-full shadow-sm">
-                  ✅ Finish Trip (${{ totalSpend.toFixed(2) }})
+                  <Icon icon="solar:check-circle-linear" class="w-5 h-5 inline mr-1" /> Finish Trip (${{ totalSpend.toFixed(2) }})
               </button>
               <div class="text-center mt-2">
                   <button @click="startNew" class="btn btn-link btn-xs text-error no-underline">Abort / Start New</button>
@@ -117,6 +117,7 @@ import ItemDrawer from '../common/ItemDrawer.vue';
 import { updateInventoryItem } from '../../lib/inventory';
 import ItemCard from '../common/ItemCard.vue';
 import ItemPreviewModal from '../inventory/ItemPreviewModal.vue';
+import { Icon } from '@iconify/vue';
 import { addToast } from '../../stores/toast';
 import { confirmDialog } from '../../stores/confirm';
 

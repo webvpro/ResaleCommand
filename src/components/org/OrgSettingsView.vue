@@ -41,9 +41,7 @@
             <div class="flex justify-between items-center mb-4">
                 <h3 class="font-bold text-xl">Team Members</h3>
                 <button @click="showInviteModal = true" class="btn btn-primary btn-sm gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                    </svg>
+                    <Icon icon="solar:user-plus-linear" class="w-4 h-4" />
                     Invite Member
                 </button>
             </div>
@@ -83,7 +81,7 @@
     </div>
 
     <div v-else class="alert">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-info shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        <Icon icon="solar:info-circle-linear" class="w-6 h-6 text-info" />
         <span>Only organization owners can manage settings.</span>
     </div>
 
@@ -136,7 +134,7 @@
             <div class="flex flex-wrap gap-2 mt-4" v-if="orgSettings.placedLocations && orgSettings.placedLocations.length > 0">
                 <div v-for="(loc, idx) in orgSettings.placedLocations" :key="idx" class="badge badge-secondary badge-lg gap-2 cursor-pointer hover:badge-error transition-colors" @click="removeLocation(idx)">
                     {{ loc }}
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-4 h-4 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    <Icon icon="solar:close-circle-linear" class="w-4 h-4" />
                 </div>
             </div>
             <div v-else class="text-sm opacity-50 mt-4">
@@ -176,6 +174,7 @@ import { teams, ID, databases, Query } from '../../lib/appwrite';
 import type { Models } from 'appwrite';
 import { addToast } from '../../stores/toast';
 import { confirmDialog } from '../../stores/confirm';
+import { Icon } from '@iconify/vue';
 
 const { user, isAuthenticated, currentTeam, loading } = useAuth();
 

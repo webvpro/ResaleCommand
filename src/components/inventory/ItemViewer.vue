@@ -7,7 +7,7 @@
         </div>
 
         <div v-else-if="error" class="alert alert-error shadow-lg max-w-xl mx-auto">
-            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <Icon icon="solar:danger-circle-linear" class="w-6 h-6 text-error" />
             <div>
                 <h3 class="font-bold">Item Not Found or Unauthorized</h3>
                 <div class="text-xs">{{ error }}</div>
@@ -44,7 +44,7 @@
                             </div>
                         </div>
                         <div v-else class="w-full h-full flex items-center justify-center">
-                            <div class="text-6xl opacity-20">📦</div>
+                            <div class="text-6xl opacity-20"><Icon icon="solar:box-linear" class="mx-auto" /></div>
                         </div>
                         
                         <!-- Carousel Arrows -->
@@ -94,7 +94,7 @@
                     <div>
                         <h1 class="text-3xl md:text-4xl font-bold leading-tight mb-2">{{ title }}</h1>
                         <div class="flex flex-wrap items-center gap-4 text-sm opacity-60 font-mono">
-                            <span v-if="locationText" class="flex gap-1 items-center badge badge-outline">📍 {{ locationText }}</span>
+                            <span v-if="locationText" class="flex gap-1 items-center badge badge-outline"><Icon icon="solar:map-point-linear" /> {{ locationText }}</span>
                             <span>ID: {{ item.$id }}</span>
                             <span v-if="item.sellingLocations && item.sellingLocations.length > 0" class="flex gap-1 items-center">
                                 <span v-for="chan in item.sellingLocations" :key="chan" class="badge badge-sm">{{ chan }}</span>
@@ -196,6 +196,7 @@ import { ref, computed, onMounted } from 'vue';
 import { marked } from 'marked';
 import { databases, Query } from '../../lib/appwrite';
 import { isAlphaMode } from '../../stores/env';
+import { Icon } from '@iconify/vue';
 
 const props = defineProps({
     itemId: { type: String, required: true }

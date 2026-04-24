@@ -52,7 +52,7 @@
                                 <!-- Empty State -->
                                 <div v-if="editGalleryBuffer.length === 0 && (!editForm.existingGalleryIds || editForm.existingGalleryIds.length === 0)" 
                                      class="flex flex-col items-center justify-center opacity-50 pointer-events-none text-center">
-                                    <div class="text-3xl mb-1">📸</div>
+                                    <div class="text-3xl mb-1"><Icon icon="solar:camera-linear" class="mx-auto" /></div>
                                     <div class="text-xs font-bold font-mono">Drag & Drop images here<br/>or Click to Browse</div>
                                 </div>
 
@@ -61,13 +61,13 @@
                                     <!-- Existing -->
                                     <div v-for="id in editForm.existingGalleryIds" :key="id" class="relative w-16 h-16 shrink-0 group cursor-pointer" @click="setMainPhoto('existing', id)">
                                         <img :src="getAssetUrl(id)" class="w-full h-full object-cover rounded shadow-sm border border-base-300" :class="{'ring-4 ring-primary ring-inset z-10': actualMainPhoto.id === id}"/>
-                                        <div v-if="actualMainPhoto.id === id" class="absolute -top-3 -left-3 text-2xl drop-shadow-md z-20">⭐</div>
+                                        <div v-if="actualMainPhoto.id === id" class="absolute -top-3 -left-3 text-2xl drop-shadow-md z-20 text-warning"><Icon icon="solar:star-bold" /></div>
                                         <button @click.stop="removeGalleryItem(id, true)" class="btn btn-xs btn-circle btn-error absolute -top-2 -right-2 w-5 h-5 min-h-0 text-[10px] flex items-center justify-center z-30 shadow hover:scale-110">✕</button>
                                     </div>
                                     <!-- New -->
                                     <div v-for="(file, idx) in editGalleryBuffer" :key="idx" class="relative w-16 h-16 shrink-0 group cursor-pointer" @click="setMainPhoto('new', idx)">
                                         <img :src="getObjectUrl(file)" class="w-full h-full object-cover rounded shadow-sm border border-base-300" :class="{'ring-4 ring-primary ring-inset z-10': actualMainPhoto.file === file}"/>
-                                        <div v-if="actualMainPhoto.file === file" class="absolute -top-3 -left-3 text-2xl drop-shadow-md z-20">⭐</div>
+                                        <div v-if="actualMainPhoto.file === file" class="absolute -top-3 -left-3 text-2xl drop-shadow-md z-20 text-warning"><Icon icon="solar:star-bold" /></div>
                                         <button @click.stop="removeGalleryItem(idx, false)" class="btn btn-xs btn-circle btn-error absolute -top-2 -right-2 w-5 h-5 min-h-0 text-[10px] flex items-center justify-center z-30 shadow hover:scale-110">✕</button>
                                     </div>
                                     
@@ -103,15 +103,11 @@
                 <div class="form-control w-full">
                     <label class="label">
                         <span class="label-text font-bold">Item Title</span>
-                        <span v-if="suggestedTitleStr" class="label-text-alt text-xs font-bold text-secondary cursor-pointer hover:underline bg-secondary/10 px-2 py-0.5 rounded" @click="editForm.title = suggestedTitleStr">
-                            ✨ Use: {{ suggestedTitleStr }}
-                        </span>
+                            <Icon icon="solar:magic-stick-linear" class="w-4 h-4 inline mr-1" /> Use: {{ suggestedTitleStr }}
                     </label>
                     <div class="join w-full flex">
                         <input type="text" v-model="editForm.title" class="input input-bordered font-bold join-item grow" />
-                        <button class="btn btn-neutral join-item shrink-0" @click="copyToClipboard(editForm.title)" title="Copy Title">
-                            📋
-                        </button>
+                            <Icon icon="solar:clipboard-text-linear" class="w-5 h-5" />
                     </div>
                 </div>
 
@@ -164,7 +160,7 @@
                         <label class="label"><span class="label-text">Source Link / Order #</span></label>
                          <div class="join w-full flex">
                             <input type="text" v-model="editForm.orderId" class="input input-bordered join-item grow" placeholder="URL or Order ID" />
-                            <a v-if="editForm.orderId && editForm.orderId.startsWith('http')" :href="editForm.orderId" target="_blank" class="btn btn-neutral join-item shrink-0">🔗</a>
+                            <a v-if="editForm.orderId && editForm.orderId.startsWith('http')" :href="editForm.orderId" target="_blank" class="btn btn-neutral join-item shrink-0"><Icon icon="solar:link-linear" class="w-5 h-5" /></a>
                          </div>
                     </div>
                 </div>
@@ -176,7 +172,7 @@
                          <h4 class="font-bold text-sm uppercase opacity-70">Scout Report</h4>
                          <div class="flex gap-2">
                              <button v-if="scoutMdText" class="btn btn-xs btn-outline btn-secondary" @click="openMdModal">
-                                 📄 View MD Report
+                                 <Icon icon="solar:document-text-linear" class="w-4 h-4 inline mr-1" /> View MD Report
                              </button>
                              <button class="btn btn-xs btn-ghost" @click="scoutResult = null">✕</button>
                          </div>
@@ -185,7 +181,7 @@
                     <!-- New Multi-Item Layout -->
                     <div v-if="Array.isArray(scoutResult)" class="space-y-4">
                         <div class="alert alert-info py-2 px-3 text-xs shadow-sm">
-                            <span>📦 AI Identified {{ scoutResult.length }} Items in this Lot</span>
+                            <span><Icon icon="solar:box-linear" class="w-4 h-4 inline mr-1" /> AI Identified {{ scoutResult.length }} Items in this Lot</span>
                         </div>
                         
                         <div v-for="(resultItem, idx) in scoutResult" :key="idx" class="collapse collapse-arrow bg-base-100 border border-base-200 rounded-box">
@@ -197,8 +193,8 @@
                                 </span>
                             </div>
                             <div class="collapse-content text-xs space-y-2">
-                                 <div v-if="resultItem.red_flags?.length" class="text-warning">🚩 {{ resultItem.red_flags.join(', ') }}</div>
-                                 <div v-if="resultItem.condition_notes">📝 {{ resultItem.condition_notes }}</div>
+                                 <div v-if="resultItem.red_flags?.length" class="text-warning"><Icon icon="solar:flag-linear" class="w-4 h-4 inline mr-1" /> {{ resultItem.red_flags.join(', ') }}</div>
+                                 <div v-if="resultItem.condition_notes"><Icon icon="solar:document-add-linear" class="w-4 h-4 inline mr-1" /> {{ resultItem.condition_notes }}</div>
                                  <div class="grid grid-cols-2 gap-2 mt-1 opacity-70">
                                      <div>Mint: {{ formatPriceRange(resultItem.price_breakdown?.mint) }}</div>
                                      <div>Poor: {{ formatPriceRange(resultItem.price_breakdown?.poor) }}</div>
@@ -217,7 +213,7 @@
                         <div class="pt-4 border-t border-base-300">
                              <button class="btn btn-primary w-full gap-2 shadow-md" @click="extractLotItems" :disabled="extractingLot">
                                  <span v-if="extractingLot" class="loading loading-spinner"></span>
-                                 <span>✂️ Extract {{ scoutResult.length }} Items to Inventory</span>
+                                 <span><Icon icon="solar:scissors-linear" class="w-4 h-4 inline mr-1" /> Extract {{ scoutResult.length }} Items to Inventory</span>
                              </button>
                              <p class="text-xs text-center text-gray-400 mt-2">
                                  This will create {{ scoutResult.length }} new separate items using the data above.
@@ -234,7 +230,7 @@
 
                         <!-- Red Flags -->
                         <div v-if="scoutResult.red_flags && scoutResult.red_flags.length > 0" class="alert alert-warning shadow-sm mb-2 p-2 text-xs">
-                            <span class="font-bold">🚩 Flags:</span> {{ scoutResult.red_flags.join(', ') }}
+                            <span class="font-bold"><Icon icon="solar:flag-linear" class="w-4 h-4 inline mr-1" /> Flags:</span> {{ scoutResult.red_flags.join(', ') }}
                         </div>
                         
                         <!-- Valuation -->
@@ -357,7 +353,7 @@
                     </div>
                     <button class="btn btn-sm btn-secondary btn-outline" @click="generateDescription" :disabled="generatingDescription || !item">
                         <span v-if="generatingDescription" class="loading loading-spinner loading-xs"></span>
-                        ✨ AI Generate
+                        <Icon icon="solar:magic-stick-linear" class="w-4 h-4 inline mr-1" /> AI Generate
                     </button>
                 </div>
 
@@ -372,7 +368,7 @@
             <!-- Verify Content Tab -->
             <div class="flex-1 overflow-y-auto p-6 space-y-6" v-show="mainTab === 'verify'">
                 <div class="alert alert-info py-2 shadow-sm text-sm border-info/30">
-                     <span class="text-xl">🤖</span> Take a photo of the "Contents List" on the back of the box and the AI will build a checklist for you!
+                     <span class="text-xl"><Icon icon="solar:smart-speaker-minimalistic-linear" class="w-6 h-6 inline mr-2" /></span> Take a photo of the "Contents List" on the back of the box and the AI will build a checklist for you!
                 </div>
                 <div class="form-control w-full space-y-3">
                     <label class="label pb-0"><span class="label-text font-bold">1. Select or Capture Contents List</span></label>
@@ -436,8 +432,8 @@
                 <button class="btn btn-secondary shadow-md shrink-0" @click="analyzeExistingItem" :disabled="analyzing || (!scoutQuery && !actualMainPhoto.url && !editForm.sourcingLocation)">
                     <span v-if="analyzing" class="loading loading-spinner"></span>
                     <template v-else>
-                        <span class="hidden sm:inline">✨ AI Scout</span>
-                        <span class="sm:hidden">✨ AI</span>
+                        <span class="hidden sm:inline"><Icon icon="solar:magic-stick-linear" class="w-4 h-4 mr-1 inline" /> AI Scout</span>
+                        <span class="sm:hidden"><Icon icon="solar:magic-stick-linear" class="w-4 h-4 mr-1 inline" /> AI</span>
                     </template>
                 </button>
                 
@@ -463,6 +459,7 @@ import { account, databases, Query } from '../../lib/appwrite';
 import { useAuth } from '../../composables/useAuth';
 import { addToast } from '../../stores/toast';
 import { confirmDialog } from '../../stores/confirm';
+import { Icon } from '@iconify/vue';
 
 const { currentTeam } = useAuth();
 const DB_ID = import.meta.env.PUBLIC_APPWRITE_DB_ID || 'resale_db';

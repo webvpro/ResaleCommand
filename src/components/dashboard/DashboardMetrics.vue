@@ -6,7 +6,7 @@
       
       <div class="stat">
         <div class="stat-figure text-primary">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-8 h-8 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          <Icon icon="solar:wallet-money-linear" class="w-8 h-8" />
         </div>
         <div class="stat-title">Total Profit</div>
         <div class="stat-value text-primary">\${{ totalProfit.toFixed(2) }}</div>
@@ -15,7 +15,7 @@
       
       <div class="stat">
         <div class="stat-figure text-secondary">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-8 h-8 stroke-current"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+          <Icon icon="solar:chart-square-linear" class="w-8 h-8" />
         </div>
         <div class="stat-title">Projected Revenue</div>
         <div class="stat-value text-secondary">\${{ totalRevenue.toFixed(2) }}</div>
@@ -99,6 +99,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { databases, client } from '../../lib/appwrite';
 import { Query } from 'appwrite';
+import { Icon } from '@iconify/vue';
 
 const CARTS_COL = import.meta.env.PUBLIC_APPWRITE_COLLECTION_CARTS;
 const DB_ID = import.meta.env.PUBLIC_APPWRITE_DB_ID;

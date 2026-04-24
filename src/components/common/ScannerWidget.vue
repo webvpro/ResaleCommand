@@ -2,17 +2,17 @@
     <div>
         <div v-if="!hideUpload" class="grid grid-cols-2 gap-2 mt-1">
             <button @click="$refs.fileInput.click()" class="btn btn-sm btn-outline border-dashed gap-2">
-                📁 Upload
+                <Icon icon="solar:folder-with-files-linear" class="w-4 h-4 inline" /> Upload
             </button>
             <input type="file" ref="fileInput" multiple accept="image/*" class="hidden" @change="handleFileSelect" />
             
             <button @click="startCamera" class="btn btn-sm btn-outline border-dashed gap-2">
-                📸 Camera
+                <Icon icon="solar:camera-linear" class="w-4 h-4 inline" /> Camera
             </button>
         </div>
         <div v-else class="w-full mt-1">
             <button @click="startCamera" class="btn btn-sm btn-outline border-dashed gap-2 w-full">
-                📸 Open Camera
+                <Icon icon="solar:camera-linear" class="w-4 h-4 inline" /> Open Camera
             </button>
         </div>
 
@@ -37,7 +37,7 @@
                 <div class="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/80 to-transparent p-8 flex justify-between items-center z-10 pb-safe">
                     <button @click.prevent="stopCamera" class="btn btn-ghost text-white px-2">Done</button>
                     <button @click.prevent="capturePhoto" class="btn btn-circle btn-primary btn-lg border-4 border-white w-20 h-20 transform active:scale-95 transition-transform shadow-xl"></button>
-                    <button @click.prevent="flipCamera" class="btn btn-circle btn-ghost text-white bg-white/20">🔄</button>
+                    <button @click.prevent="flipCamera" class="btn btn-circle btn-ghost text-white bg-white/20"><Icon icon="solar:refresh-circle-linear" class="w-6 h-6" /></button>
                 </div>
             </div>
         </dialog>
@@ -46,6 +46,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
+import { Icon } from '@iconify/vue';
 
 const props = defineProps({
     photos: {

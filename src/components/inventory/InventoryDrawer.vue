@@ -2,7 +2,7 @@
   <div>
     <!-- TRIGGER BUTTON -->
     <button class="btn btn-primary gap-2" @click="isOpen = true">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+        <Icon icon="solar:add-square-linear" class="h-5 w-5" />
         Add New
     </button>
 
@@ -38,7 +38,7 @@
                      <label class="label pt-0"><span class="label-text font-bold">Photos (Required for AI)</span></label>
                      <div class="flex gap-2 items-center">
                          <button class="btn btn-outline border-dashed flex-1" @click="$refs.fileInput.click()">
-                             📸 Add Photo
+                             <Icon icon="solar:camera-linear" class="w-4 h-4 mr-1 inline" /> Add Photo
                          </button>
                          <input type="file" ref="fileInput" @change="handleFileSelect" accept="image/*" multiple class="hidden" />
                      </div>
@@ -57,7 +57,7 @@
                              class="btn btn-secondary w-full btn-sm shadow-sm gap-2" 
                              :disabled="analyzing">
                          <span v-if="analyzing" class="loading loading-spinner loading-xs"></span>
-                         ✨ Auto-Fill with AI
+                         <Icon icon="solar:magic-stick-linear" class="w-4 h-4 inline" /> Auto-Fill with AI
                      </button>
                 </div>
 
@@ -99,7 +99,7 @@
                 <div class="divider text-xs">OR IMPORT</div>
                 <div class="form-control">
                      <button class="btn btn-outline btn-sm w-full gap-2 border-dashed" @click="mode = 'csv'">
-                        📄 Import CSV (ShopGoodwill)
+                        <Icon icon="solar:document-text-linear" class="w-4 h-4 mr-1 inline" /> Import CSV (ShopGoodwill)
                      </button>
                 </div>
             </div>
@@ -130,6 +130,7 @@ import CsvImporter from './CsvImporter.vue';
 import { storage, databases, ID } from '../../lib/appwrite';
 import { useAuth } from '../../composables/useAuth';
 import { addToast } from '../../stores/toast';
+import { Icon } from '@iconify/vue';
 
 const BUCKET_ID = import.meta.env.PUBLIC_APPWRITE_BUCKET_ID;
 const DB = import.meta.env.PUBLIC_APPWRITE_DB_ID;

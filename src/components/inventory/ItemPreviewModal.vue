@@ -19,10 +19,10 @@
                 </div>
                 <div class="flex-none gap-2">
                     <button class="btn btn-sm btn-ghost tooltip tooltip-bottom" data-tip="Copy Share Link" @click="copyShareLink">
-                        🔗 Share
+                        <Icon icon="solar:link-linear" class="w-4 h-4 mr-1 inline" /> Share
                     </button>
                     <button class="btn btn-sm btn-primary" @click="editItem">
-                        ✏️ Edit Item
+                        <Icon icon="solar:pen-linear" class="w-4 h-4 mr-1 inline" /> Edit Item
                     </button>
                     <button class="btn btn-sm btn-circle btn-ghost" @click="close">✕</button>
                 </div>
@@ -43,7 +43,7 @@
                             </div>
                         </div>
                         <div v-else class="w-full h-full flex items-center justify-center">
-                            <div class="text-6xl opacity-20">📦</div>
+                            <div class="text-6xl opacity-20"><Icon icon="solar:box-linear" class="mx-auto" /></div>
                         </div>
                         
                         <!-- Carousel Arrows -->
@@ -93,7 +93,7 @@
                     <div>
                         <h1 class="text-2xl md:text-3xl font-bold leading-tight mb-2">{{ title }}</h1>
                         <div class="flex items-center gap-4 text-sm opacity-60 font-mono">
-                            <span v-if="locationText" class="flex gap-1 items-center">📍 {{ locationText }}</span>
+                            <span v-if="locationText" class="flex gap-1 items-center"><Icon icon="solar:map-point-linear" /> {{ locationText }}</span>
                             <span v-if="item.$id">ID: {{ item.$id.slice(-6) }}</span>
                         </div>
                     </div>
@@ -195,6 +195,7 @@
 import { ref, computed, watch } from 'vue';
 import { marked } from 'marked';
 import { addToast } from '../../stores/toast';
+import { Icon } from '@iconify/vue';
 
 const props = defineProps({
     item: { type: Object, default: null } // The item to preview. If null, modal is fully hidden.

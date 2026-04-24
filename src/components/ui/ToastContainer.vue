@@ -15,10 +15,10 @@
             <div class="flex items-center justify-between w-full">
                 <div class="flex items-center gap-2">
                     <span v-if="toast.type === 'loading'" class="loading loading-spinner loading-xs"></span>
-                    <span v-else-if="toast.type === 'success'">✅</span>
-                    <span v-else-if="toast.type === 'error'">⛔</span>
-                    <span v-else-if="toast.type === 'warning'">⚠️</span>
-                    <span v-else>ℹ️</span>
+                    <Icon v-else-if="toast.type === 'success'" icon="solar:check-circle-linear" class="w-5 h-5" />
+                    <Icon v-else-if="toast.type === 'error'" icon="solar:danger-circle-linear" class="w-5 h-5" />
+                    <Icon v-else-if="toast.type === 'warning'" icon="solar:danger-triangle-linear" class="w-5 h-5" />
+                    <Icon v-else icon="solar:info-circle-linear" class="w-5 h-5" />
                     <span class="text-sm font-medium">{{ toast.message }}</span>
                 </div>
                 <button v-if="toast.type !== 'loading'" class="btn btn-xs btn-ghost btn-circle" @click="remove(toast.id)">✕</button>
@@ -35,6 +35,7 @@
 <script setup lang="ts">
 import { useStore } from '@nanostores/vue';
 import { toasts, removeToast } from '../../stores/toast';
+import { Icon } from '@iconify/vue';
 
 const activeToasts = useStore(toasts);
 
