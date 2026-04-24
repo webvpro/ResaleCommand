@@ -39,7 +39,7 @@
               </div>
 
               <!-- ITEMS LIST -->
-              <div class="p-4 flex flex-col gap-2 pt-0">
+              <div class="p-4 flex flex-col gap-4 pt-0">
                   <ItemCard 
                       v-for="item in trackedItems" 
                       :key="item.$id" 

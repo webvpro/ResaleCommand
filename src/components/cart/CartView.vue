@@ -39,7 +39,7 @@
               </div>
 
               <!-- ITEMS LIST -->
-              <div class="px-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 pt-0">
+              <div class="px-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-0">
                   <ItemCard 
                       v-for="item in cartItems" 
                       :key="item.$id" 

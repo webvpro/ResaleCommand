@@ -79,7 +79,7 @@ const BUCKET = import.meta.env.PUBLIC_APPWRITE_BUCKET_ID;
 
 // --- COMPUTED STYLES ---
 const containerClass = computed(() => props.compact ? 'text-xs' : 'text-sm');
-const imageClass = computed(() => props.compact ? 'aspect-square' : 'aspect-square md:aspect-[4/3] h-48 md:h-auto');
+const imageClass = computed(() => props.compact ? 'aspect-video' : 'aspect-square md:aspect-[4/3] h-48 md:h-auto');
 const titleClass = computed(() => props.compact ? 'text-xs h-[2.5em]' : 'text-base h-[3em]');
 
 // --- COMPUTED DATA ---

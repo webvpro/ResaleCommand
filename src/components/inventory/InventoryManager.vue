@@ -43,24 +43,69 @@
             
             <div class="drawer-content flex flex-col pb-8 lg:pl-6 pt-1">
                 <!-- Mobile Toggle & Header -->
-                <div class="sticky top-0 z-30 bg-base-100/95 backdrop-blur-md border-b border-base-200 py-3 mb-6 -mx-4 px-4 sm:mx-0 sm:px-0 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
-                    <div class="flex items-center gap-3">
-                        <label for="inventory-sidebar" class="btn btn-square btn-ghost lg:hidden shadow-sm border border-base-200 bg-base-100">
-                            <Icon icon="solar:hamburger-menu-linear" class="w-5 h-5" />
-                        </label>
-                        <h2 class="text-2xl font-bold">In Inventory</h2>
+                <div class="sticky top-0 z-30 bg-base-100/95 backdrop-blur-md border-b border-base-200 py-3 mb-6 -mx-4 px-4 sm:mx-0 sm:px-0 flex flex-col gap-3 shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
+                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+                        <div class="flex items-center gap-3">
+                            <label for="inventory-sidebar" class="btn btn-square btn-ghost lg:hidden shadow-sm border border-base-200 bg-base-100">
+                                <Icon icon="solar:hamburger-menu-linear" class="w-5 h-5" />
+                            </label>
+                            <h2 class="text-2xl font-bold">In Inventory</h2>
+                        </div>
+                        <div class="flex flex-wrap gap-2 items-center">
+                            <button class="btn btn-sm btn-primary gap-2" @click="openAdd">
+                                <Icon icon="solar:add-circle-linear" class="w-4 h-4" /> Add New
+                            </button>
+                            <button class="btn btn-sm btn-outline gap-2" @click="showImport = true">
+                                <Icon icon="solar:import-linear" class="w-4 h-4" /> Import CSV
+                            </button>
+                            <button class="btn btn-sm btn-accent gap-2" @click="showReconciliation = true">
+                                <Icon icon="solar:refresh-circle-linear" class="w-4 h-4" /> Booth Sync
+                            </button>
+                            <span v-if="loading" class="loading loading-spinner loading-sm"></span>
+                        </div>
                     </div>
-                    <div class="flex flex-wrap gap-2 items-center">
-                        <button class="btn btn-sm btn-primary gap-2" @click="openAdd">
-                            <Icon icon="solar:add-circle-linear" class="w-4 h-4" /> Add New
-                        </button>
-                        <button class="btn btn-sm btn-outline gap-2" @click="showImport = true">
-                            <Icon icon="solar:import-linear" class="w-4 h-4" /> Import CSV
-                        </button>
-                        <button class="btn btn-sm btn-accent gap-2" @click="showReconciliation = true">
-                            <Icon icon="solar:refresh-circle-linear" class="w-4 h-4" /> Booth Sync
-                        </button>
-                        <span v-if="loading" class="loading loading-spinner loading-sm"></span>
+
+                    <!-- BULK ACTIONS ACCORDION (Sticky with header) -->
+                    <div class="collapse collapse-arrow bg-base-200 border border-base-300 mt-2 transition-all shadow-sm" :class="{'bg-primary/10 border-primary shadow-md': selectedItems.length > 0}">
+                        <input type="checkbox" v-model="bulkOpen" /> 
+                        <div class="collapse-title min-h-0 p-3 flex items-center gap-3">
+                            <input type="checkbox" :checked="isAllSelected" @change="toggleAll" @click.stop class="checkbox checkbox-sm checkbox-primary z-20 relative cursor-pointer" />
+                            <span class="font-bold text-sm select-none">
+                                Select All in View 
+                                <span v-if="selectedItems.length > 0" class="text-primary ml-2 animate-fade-in">({{ selectedItems.length }} selected)</span>
+                            </span>
+                        </div>
+                        <div class="collapse-content pb-3">
+                            <div class="flex flex-col gap-3 w-full pt-3 border-t border-base-300/50">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+                                    <div class="join w-full">
+                                        <select v-model="bulkStatusTarget" class="select select-sm select-bordered join-item bg-base-100 text-base-content flex-1">
+                                            <option value="" disabled selected>Change Status...</option>
+                                            <option value="acquired">Acquired</option>
+                                            <option value="placed">Placed</option>
+                                            <option value="sold">Sold</option>
+                                        </select>
+                                        <button class="btn btn-sm btn-primary join-item shrink-0" @click="applyBulkStatus" :disabled="!bulkStatusTarget || processingBulk">
+                                            <span v-if="processingBulk" class="loading loading-spinner loading-xs"></span>
+                                            Apply
+                                        </button>
+                                    </div>
+                                    <div class="join w-full" v-if="orgPlacedLocations && orgPlacedLocations.length > 0">
+                                        <select v-model="bulkLocationTarget" class="select select-sm select-bordered join-item bg-base-100 text-base-content flex-1">
+                                            <option value="" disabled selected>Change Location...</option>
+                                            <option v-for="loc in orgPlacedLocations" :key="loc" :value="loc">{{ loc }}</option>
+                                        </select>
+                                        <button class="btn btn-sm btn-secondary join-item shrink-0" @click="applyBulkLocation" :disabled="!bulkLocationTarget || processingBulkLoc">
+                                            <span v-if="processingBulkLoc" class="loading loading-spinner loading-xs"></span>
+                                            Apply
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="flex justify-end w-full">
+                                    <button class="btn btn-sm btn-ghost text-error" @click="selectedItems = []" v-if="selectedItems.length > 0">Clear Selection</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -75,43 +120,11 @@
             </div>
             
             <div v-else>
-                <!-- BULK ACTIONS BAR -->
-                <div v-if="selectedItems.length > 0" class="bg-primary/10 border border-primary text-primary-content p-3 rounded-lg flex justify-between items-center mb-4 transition-all animate-fade-in">
-                    <div class="flex items-center gap-4">
-                        <span class="font-bold text-sm text-primary">{{ selectedItems.length }} items selected</span>
-                        <div class="join">
-                            <select v-model="bulkStatusTarget" class="select select-sm select-bordered join-item bg-base-100 text-base-content min-w-[120px]">
-                                <option value="" disabled selected>Change Status...</option>
-                                <option value="acquired">Acquired</option>
-                                <option value="placed">Placed</option>
-                                <option value="sold">Sold</option>
-                            </select>
-                            <button class="btn btn-sm btn-primary join-item" @click="applyBulkStatus" :disabled="!bulkStatusTarget || processingBulk">
-                                <span v-if="processingBulk" class="loading loading-spinner loading-xs"></span>
-                                Apply
-                            </button>
-                        </div>
-                        <div class="join" v-if="orgPlacedLocations && orgPlacedLocations.length > 0">
-                            <select v-model="bulkLocationTarget" class="select select-sm select-bordered join-item bg-base-100 text-base-content min-w-[120px]">
-                                <option value="" disabled selected>Change Location...</option>
-                                <option v-for="loc in orgPlacedLocations" :key="loc" :value="loc">{{ loc }}</option>
-                            </select>
-                            <button class="btn btn-sm btn-secondary join-item" @click="applyBulkLocation" :disabled="!bulkLocationTarget || processingBulkLoc">
-                                <span v-if="processingBulkLoc" class="loading loading-spinner loading-xs"></span>
-                                Apply
-                            </button>
-                        </div>
-                    </div>
-                    <button class="btn btn-sm btn-ghost text-error" @click="selectedItems = []">Cancel</button>
-                </div>
 
-                <!-- ALL CHECKBOX (Optional header) -->
-                <div class="flex items-center gap-2 mb-2 px-2">
-                    <input type="checkbox" :checked="isAllSelected" @change="toggleAll" class="checkbox checkbox-sm checkbox-primary" />
-                    <span class="text-xs font-bold opacity-70">Select All in View</span>
-                </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-1">
+
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <ItemCard 
                         v-for="item in filteredInventory" 
                         :key="item.$id" 
@@ -122,7 +135,7 @@
                         
                         <template #absolute-top-left>
                             <div class="z-20">
-                                <input type="checkbox" :value="item.$id" v-model="selectedItems" class="checkbox checkbox-sm checkbox-primary shadow-sm cursor-pointer border-none ring-1 ring-base-100/50" :class="!selectedItems.includes(item.$id) ? 'bg-base-100/80 backdrop-blur' : ''" @click.stop />
+                                <input type="checkbox" :value="item.$id" v-model="selectedItems" class="checkbox checkbox-sm checkbox-primary shadow-sm cursor-pointer border-none bg-white/50 ring-1 ring-white/30" @click.stop />
                             </div>
                         </template>
 
@@ -398,6 +411,12 @@ const selectedItems = ref([]);
 const bulkStatusTarget = ref('');
 const bulkLocationTarget = ref('');
 const processingBulkLoc = ref(false);
+const bulkOpen = ref(false);
+
+watch(selectedItems, (newVal, oldVal) => {
+    if (newVal.length > 0 && oldVal.length === 0) bulkOpen.value = true;
+    else if (newVal.length === 0) bulkOpen.value = false;
+});
 
 const isAllSelected = computed(() => {
     return filteredInventory.value.length > 0 && selectedItems.value.length === filteredInventory.value.length;
