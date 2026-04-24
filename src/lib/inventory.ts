@@ -451,14 +451,20 @@ export async function updateInventoryItem(documentId: string, updates: Partial<E
         if (currentDoc.imageId && updates.imageId !== undefined && currentDoc.imageId !== updates.imageId && currentDoc.imageId !== newMainUploadId) {
             imagesToDelete.add(currentDoc.imageId);
         }
-        const oldMainMatch = notes.match(/\[MAIN IMAGE ID: ([^\]]+)\]/i);
-        if (oldMainMatch && updates.imageId !== undefined && oldMainMatch[1].trim() !== updates.imageId) {
-            imagesToDelete.add(oldMainMatch[1].trim());
+        
+        // Safely check old notes so we don't accidentally match the newly inserted tag
+        const oldNotes = currentDoc.conditionNotes || '';
+        const oldMainMatch = oldNotes.match(/\[MAIN IMAGE ID: ([^\]]+)\]/i);
+        if (oldMainMatch) {
+            const oldId = oldMainMatch[1].trim();
+            if (updates.imageId !== undefined && oldId !== updates.imageId && oldId !== newMainUploadId) {
+                imagesToDelete.add(oldId);
+            }
         }
 
         // Check if gallery images were removed
         if (updates.existingGalleryIds !== undefined) {
-             const oldGalleryMatch = notes.match(/\[GALLERY IDS: ([^\]]+)\]/i);
+             const oldGalleryMatch = oldNotes.match(/\[GALLERY IDS: ([^\]]+)\]/i);
              const oldGalleryIds = oldGalleryMatch ? oldGalleryMatch[1].split(',').map((s: string) => s.trim()).filter((s: string) => s) : (currentDoc.galleryImageIds || []);
              
              oldGalleryIds.forEach((oldId: string) => {
