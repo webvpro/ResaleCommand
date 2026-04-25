@@ -1,56 +1,39 @@
-# AI Product Description Generation
+# Implementation Plan: Bulk Lots & Quantity System
 
-## Goal
-Automatically generate an eBay-style product description in Markdown format when an item is purchased (moved to "need_to_list" status), using the item's photos and the Google Gemini API.
+## 1. Goal
+Support advanced inventory operations for buying bulk mystery boxes (mixed items) or large lots of identical items (e.g., 50 Lego Minifigs). Provide a structured way to split items out while retaining accurate unit cost and total lot ROI tracking.
 
-## Proposed Changes
+## 2. Proposed Changes
 
-### Database Schema
-#### [MODIFY] [update-schema.mjs](file:///c:/Users/15034/Projects/ResaleCommand/scripts/update-schema.mjs)
-- Add `marketDescription` (string, 5000 chars) attribute to the `items` collection.
+### A. Database Schema Updates (`items` and `items_dev` collections)
+- **`parentLotId` (String, Optional)**: To link an extracted child item back to its original parent box/lot.
+- **`quantity` (Integer, Default 1)**: To track identical bulk items without creating 50 separate documents.
+- **`isLot` (Boolean, Default false)**: Optional flag to explicitly mark a parent container as a Lot. (Alternative: We can just use the presence of children as the indicator).
 
-### Backend
-#### [NEW] [src/pages/api/generate-description.ts](file:///c:/Users/15034/Projects/ResaleCommand/src/pages/api/generate-description.ts)
-- Create an API endpoint actions:
-    - Receive `itemId`.
-    - Fetch item data to get image IDs (Main + Gallery).
-    - Download images from Appwrite Storage.
-    - Initialize Gemini model (`gemini-1.5-flash` or similar).
-    - Send prompt + images to Gemini.
-    - Receive generated Markdown description.
-    - Update item's `marketDescription` field in Appwrite.
-    - Return success status.
+### B. The "Mixed Lot" System (Parent/Child)
+- **Workflow:** You buy a mixed box of RPG books for $100. You create one item "Mixed RPG Box" with a cost of $100.
+- **Extracting:** In the `ItemDrawer`, we add an "Extract Item from Lot" tool.
+- **Cost Distribution Modal:** When extracting, the user specifies:
+  - Title of the child item.
+  - Cost to allocate to the child item (deducted from the parent's "Remaining Cost Basis" pool).
+- **Lot Reconciliation Dashboard:** When viewing a parent lot, a new tab ("Lot Dashboard") will query all child items (`parentLotId == parent.$id`). It displays:
+  - Original Lot Cost.
+  - Cost Allocated to Children so far.
+  - Realized Revenue (sum of sold children).
+  - Lot ROI (Are we profitable on this box yet?).
 
-### Frontend
-#### [MODIFY] [InventoryList.astro](file:///c:/Users/15034/Projects/ResaleCommand/src/components/InventoryList.astro)
-- Update the `checkout_confirm` event listener.
-- After successfully updating the status to `need_to_list`, call the new `generate-description` API.
-- Ideally, show a "Generating description..." toast or indicator (optional, but good UX), since this might take a few seconds. The user can continue, it can happen in background.
+### C. The "Quantity" System (Identical Items)
+- **Workflow:** You buy 50 identical Lego Minifigs for $20. You create one item "Lego Minifigs" with `Cost: 20` and `Quantity: 50`.
+- **Unit Cost:** The system computes `Unit Cost = Total Cost / Quantity` ($0.40/each).
+- **Selling:** In the `ItemDrawer` (or via Bulk Actions), add a "Sell One" button. This creates a Sold child item (cost: $0.40) and decrements the parent lot's quantity to 49.
 
-## Verification Plan
-### Automated Tests
-- None planned for this integration.
-33: 
-34: ### 2. Edit Modal Enhancements
-35: #### [MODIFY] [InventoryList.astro](file:///c:/Users/15034/Projects/ResaleCommand/src/components/InventoryList.astro)
-36: - Add `data-description` attribute to edit buttons.
-37: - Add Description field to Edit Modal with Tabs: [Edit] | [Preview].
-38: - Use `marked` library (via CDN) to render Markdown in the Preview tab.
-39: - Apply `prose` styling (with manual fallback) to the preview container.
-40:
-41: ### Automatic Tests
+### D. UI/UX Additions
+- **`ItemDrawer.vue`**: Add the `quantity` input. Add the "Extract from Lot" / "Sell One" buttons. Add the Lot Reconciliation tab for parent items.
+- **`InventoryManager.vue`**: Display `quantity` if > 1 on the item card. Ensure quantity calculations don't break existing ROI math.
+- **`ItemCard.vue`**: Show a small batch icon or "x50" badge if `quantity > 1`.
 
-### Manual Verification
-1. Add an item to the cart.
-2. Open "Confirm Purchase" modal.
-3. Take/Add receipt photo (optional) and confirm.
-4. Verify in Appwrite Console (or UI if I add a display) that `marketDescription` is populated with a markdown string.
-
-
-## ItemDrawer Input UI Refactor
-The user wants to refine the layout of the bottom portion of the `ItemDrawer` to be more spacious and intuitive.
-
-1.  **DaisyUI Status Steps**: Instead of a standard `<select>` dropdown for the Item Status (Acquired, Placed, Sold), implement a visual stepper using DaisyUI's `steps` component to clearly show progression. This should have clickable steps that update the `editForm.status`.
-2.  **TagInput Full Rows**: The "Sales Channels" and "Keywords" inputs currently share a flex column below the status dropdown. They will be given full width so they stack cleanly.
-3.  **Decoupled Tag Input Field**: In `TagInput.vue`, the text input field `<input>` is currently embedded *inside* the flex container holding the active tag badges. This gives it a constrained look. We will separate the input into its own distinct UI element visually positioned below the badge list.
-4.  **Graceful Degration on Auth Errors**: The console shows Appwrite 401 Unauthorized errors when fetching the tags collection in `TagInput.vue`. We need to handle this by silently catching the exception and proceeding with purely local additions, or fixing the database permissions if possible.
+## 3. Implementation Steps
+1. Run an Appwrite Node.js script (`scripts/add-lot-fields.mjs`) to append `parentLotId` and `quantity` to the database schema safely.
+2. Update the frontend `saveItemToInventory` logic to accept and persist `quantity` and `parentLotId`.
+3. Build the UI components in `ItemDrawer.vue` (Lot extraction modals and the Lot Reconciliation tab).
+4. Update `ItemCard.vue` and `DashboardMetrics.vue` to respect the `quantity` multiplier when calculating totals, if applicable.

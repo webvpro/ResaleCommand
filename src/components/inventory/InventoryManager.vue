@@ -251,6 +251,13 @@
                                 <option value="sold">Sold</option>
                             </select>
                         </div>
+                        
+                        <div class="form-control w-full">
+                            <label class="cursor-pointer label justify-start gap-3">
+                                <input type="checkbox" v-model="filterLotsOnly" class="checkbox checkbox-sm checkbox-primary" />
+                                <span class="label-text text-xs font-bold">Bulk Lots Only (Qty > 1)</span>
+                            </label>
+                        </div>
 
                         <div class="form-control w-full">
                             <label class="label pt-0 -mb-2"><span class="label-text font-bold text-[10px] uppercase opacity-70">Keywords</span></label>
@@ -332,7 +339,7 @@
         <!-- ----------------------------------------------------------- -->
         <!-- EDIT DRAWER -->
         <!-- ----------------------------------------------------------- -->
-        <ItemDrawer v-if="isEditDrawerOpen" :item="activeItem" @isNew="!activeItem" @close="closeEditDrawer" @save="saveEdit" />
+        <ItemDrawer v-if="isEditDrawerOpen" :item="activeItem" @close="closeEditDrawer" @save="saveEdit" />
 
         <!-- FULLSCREEN PREVIEW MODAL -->
         <ItemPreviewModal 
@@ -621,6 +628,7 @@ const scrollToTop = () => {
 };
 const filterKeywords = ref([]);
 const filterBinLocation = ref('');
+const filterLotsOnly = ref(false);
 const orgPlacedLocations = ref([]);
 
 const fetchLocations = async () => {
@@ -675,6 +683,11 @@ const filteredInventory = computed(() => {
         
         // Filter by Status (Only if not using insight filter that forces status)
         if (!insightFilter.value && filterStatus.value !== 'all' && item.status !== filterStatus.value) {
+            return false;
+        }
+
+        // Filter Lots Only
+        if (filterLotsOnly.value && (!item.quantity || item.quantity <= 1)) {
             return false;
         }
 

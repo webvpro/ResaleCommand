@@ -35,6 +35,8 @@ export interface ExtraItemData {
     keywords?: string[];
     sellingLocations?: string[];
     components?: string;
+    quantity?: number;
+    parentLotId?: string;
 }
 
 export async function saveItemToInventory(itemData: any, imageFile: File | null, extraData: ExtraItemData = {}, teamId?: string, ownerType: 'team' | 'user' = 'team') {
@@ -66,10 +68,9 @@ export async function saveItemToInventory(itemData: any, imageFile: File | null,
                 // Throw it so UI sees it
                 throw new Error(`Image Upload Failed: ${e.message}`);
             }
-        } else {
-            console.warn(`[Inventory] Skipping Image Upload - imageFile is NULL`);
+        } else if (!imageId) {
+            console.log(`[Inventory] Skipping Image Upload - no file or existing imageId provided.`);
         }
-
         let receiptImageId: string | null = null;
         if (extraData.receiptFile && extraData.receiptFile.size > 0 && BUCKET_ID) {
              try {
@@ -86,6 +87,12 @@ export async function saveItemToInventory(itemData: any, imageFile: File | null,
 
         // 1.5 Upload Gallery Images
         let galleryIds: string[] = [];
+        if (extraData.existingGalleryIds) {
+            galleryIds = [...extraData.existingGalleryIds];
+        } else if ((extraData as any).galleryImageIds) {
+            galleryIds = [...(extraData as any).galleryImageIds];
+        }
+        
         if (extraData.galleryFiles && extraData.galleryFiles.length > 0 && BUCKET_ID) {
             try {
                 const uploads = await Promise.all(extraData.galleryFiles.map(file => 
@@ -233,7 +240,7 @@ export async function saveItemToInventory(itemData: any, imageFile: File | null,
             title: itemData.title,
             identity: typeof itemData.identity === 'object' ? JSON.stringify(itemData.identity) : itemData.identity,
             conditionNotes: safeNotes,
-            status: extraData.status || 'received',
+            status: extraData.status || 'acquired',
             tenantId: teamId || null,
             imageId: imageId || undefined,
             galleryImageIds: galleryIds.length > 0 ? galleryIds : undefined,
@@ -247,7 +254,9 @@ export async function saveItemToInventory(itemData: any, imageFile: File | null,
             cartId: extraData.cartId || undefined,
             marketDescription: extraData.marketDescription || undefined,
             keywords: Array.isArray(extraData.keywords) ? extraData.keywords : (extraData.scoutData && Array.isArray(extraData.scoutData.keywords) ? extraData.scoutData.keywords : undefined),
-            components: extraData.components || undefined
+            components: extraData.components || undefined,
+            quantity: extraData.quantity || 1,
+            parentLotId: extraData.parentLotId || undefined
         };
 
         // Remove undefined keys to satisfy Appwrite's strict document validation
@@ -395,6 +404,8 @@ export async function updateInventoryItem(documentId: string, updates: Partial<E
         if (updates.title) data.title = updates.title;
         if (updates.description) data.marketDescription = updates.description;
         if (updates.components !== undefined) data.components = updates.components;
+        if (updates.quantity !== undefined) data.quantity = updates.quantity;
+        if (updates.parentLotId !== undefined) data.parentLotId = updates.parentLotId;
 
         // --- Handle File Uploads & Update Notes ---
 

@@ -14,6 +14,7 @@
                 <div role="tablist" class="tabs tabs-bordered font-bold">
                     <a role="tab" class="tab" :class="{'tab-active': mainTab === 'details'}" @click="mainTab = 'details'">Item Details</a>
                     <a role="tab" class="tab" :class="{'tab-active text-primary': mainTab === 'verify'}" @click="mainTab = 'verify'">Verify Contents</a>
+                    <a v-if="item" role="tab" class="tab" :class="{'tab-active text-secondary': mainTab === 'lot'}" @click="mainTab = 'lot'">Lot Dashboard</a>
                 </div>
             </div>
 
@@ -102,33 +103,55 @@
                 </div>
 
                 <div class="form-control w-full">
-                    <label class="label">
-                        <span class="label-text font-bold">Item Title</span>
-                            <Icon icon="solar:magic-stick-linear" class="w-4 h-4 inline mr-1" /> Use: {{ suggestedTitleStr }}
+                    <label class="label flex-col items-start sm:flex-row sm:items-start gap-1 sm:gap-2">
+                        <span class="label-text font-bold shrink-0 mt-1">Item Title</span>
+                        <div v-if="suggestedTitleStr" class="text-xs text-left sm:text-right text-primary cursor-pointer hover:opacity-70 whitespace-normal break-words w-full" @click="editForm.title = suggestedTitleStr">
+                            <Icon icon="solar:magic-stick-linear" class="w-4 h-4 inline shrink-0 align-text-bottom" /> Use: <span class="italic">{{ suggestedTitleStr }}</span>
+                        </div>
                     </label>
-                    <div class="join w-full flex">
-                        <input type="text" v-model="editForm.title" class="input input-bordered font-bold join-item grow" />
-                            <Icon icon="solar:clipboard-text-linear" class="w-5 h-5" />
+                    <div class="join w-full flex items-stretch">
+                        <textarea v-model="editForm.title" class="textarea textarea-bordered font-bold join-item grow leading-tight min-h-[3rem] py-2 resize-none" rows="2"></textarea>
+                        <button class="btn join-item border border-base-300 h-auto w-12 flex items-center justify-center p-0" @click="copyToClipboard(editForm.title)" title="Copy Title">
+                            <Icon icon="solar:copy-linear" class="w-5 h-5" />
+                        </button>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                      <div class="form-control w-full">
-                        <label class="label"><span class="label-text">Cost Basis</span></label>
+                        <label class="label"><span class="label-text">Quantity</span></label>
+                        <div class="flex flex-col gap-1">
+                            <input type="number" step="1" min="1" v-model="editForm.quantity" class="input input-bordered w-full text-center font-bold" />
+                            <button v-if="item && Number(editForm.quantity) > 1" @click.prevent="sellOneQuantity" class="btn btn-xs btn-success w-full mt-1 shadow-sm opacity-80 hover:opacity-100 transition-opacity">
+                                <Icon icon="solar:cart-check-linear" class="w-4 h-4" /> Sell One
+                            </button>
+                        </div>
+                    </div>
+                     <div class="form-control w-full">
+                        <label class="label flex flex-col items-start gap-0">
+                            <span class="label-text">Cost Basis</span>
+                            <span v-if="editForm.quantity > 1" class="text-[9px] text-primary">(${{ (parseFloat(editForm.cost || 0) / editForm.quantity).toFixed(2) }} ea)</span>
+                        </label>
                         <label class="input input-bordered flex items-center gap-2">
                             <span class="opacity-50">$</span>
                             <input type="number" step="0.01" v-model="editForm.cost" class="grow" placeholder="0.00" />
                         </label>
                     </div>
                      <div class="form-control w-full">
-                        <label class="label"><span class="label-text">List Price</span></label>
+                        <label class="label flex flex-col items-start gap-0">
+                            <span class="label-text">List Price</span>
+                            <span v-if="editForm.quantity > 1" class="text-[9px] text-primary">(${{ (parseFloat(editForm.resalePrice || 0) / editForm.quantity).toFixed(2) }} ea)</span>
+                        </label>
                          <label class="input input-bordered flex items-center gap-2">
                             <span class="opacity-50">$</span>
                             <input type="number" step="0.01" v-model="editForm.resalePrice" class="grow" placeholder="0.00" />
                         </label>
                     </div>
                      <div class="form-control w-full">
-                        <label class="label"><span class="label-text text-success font-bold">Sold Price</span></label>
+                        <label class="label flex flex-col items-start gap-0">
+                            <span class="label-text text-success font-bold">Sold Price</span>
+                            <span v-if="editForm.quantity > 1" class="text-[9px] text-primary">(${{ (parseFloat(editForm.soldPrice || 0) / editForm.quantity).toFixed(2) }} ea)</span>
+                        </label>
                          <label class="input input-bordered flex items-center gap-2" :class="{'input-success': editForm.status === 'sold'}">
                             <span class="opacity-50">$</span>
                             <input type="number" step="0.01" v-model="editForm.soldPrice" class="grow font-bold" placeholder="0.00" />
@@ -187,12 +210,12 @@
                     </div>
                     
                     <!-- New Multi-Item Layout -->
-                    <div v-if="Array.isArray(scoutResult)" class="space-y-4">
+                    <div v-if="scoutItemsArray.length > 1" class="space-y-4">
                         <div class="alert alert-info py-2 px-3 text-xs shadow-sm">
-                            <span><Icon icon="solar:box-linear" class="w-4 h-4 inline mr-1" /> AI Identified {{ scoutResult.length }} Items in this Lot</span>
+                            <span><Icon icon="solar:box-linear" class="w-4 h-4 inline mr-1" /> AI Identified {{ scoutItemsArray.length }} Items in this Lot</span>
                         </div>
                         
-                        <div v-for="(resultItem, idx) in scoutResult" :key="idx" class="collapse collapse-arrow bg-base-100 border border-base-200 rounded-box">
+                        <div v-for="(resultItem, idx) in scoutItemsArray" :key="idx" class="collapse collapse-arrow bg-base-100 border border-base-200 rounded-box">
                             <input type="checkbox" /> 
                             <div class="collapse-title text-sm font-medium pr-8 flex justify-between items-center py-2 min-h-0">
                                 <span class="truncate">{{ idx + 1 }}. {{ resultItem.title || resultItem.identity }}</span>
@@ -203,9 +226,10 @@
                             <div class="collapse-content text-xs space-y-2">
                                  <div v-if="resultItem.red_flags?.length" class="text-warning"><Icon icon="solar:flag-linear" class="w-4 h-4 inline mr-1" /> {{ resultItem.red_flags.join(', ') }}</div>
                                  <div v-if="resultItem.condition_notes"><Icon icon="solar:document-add-linear" class="w-4 h-4 inline mr-1" /> {{ resultItem.condition_notes }}</div>
-                                 <div class="grid grid-cols-2 gap-2 mt-1 opacity-70">
+                                 <div class="grid grid-cols-3 gap-2 mt-1 opacity-70">
                                      <div>Mint: {{ formatPriceRange(resultItem.price_breakdown?.mint) }}</div>
                                      <div>Poor: {{ formatPriceRange(resultItem.price_breakdown?.poor) }}</div>
+                                     <div class="text-secondary font-bold" v-if="resultItem.price_breakdown?.boutique_premium">Boutique: {{ formatPriceRange(resultItem.price_breakdown.boutique_premium) }}</div>
                                  </div>
                             </div>
                         </div>
@@ -216,15 +240,21 @@
                                  {{ scoutTotalRange.formatted }}
                             </span>
                         </div>
+                        <div class="flex justify-between items-center pt-1 font-bold text-secondary text-sm" v-if="scoutTotalRange && scoutTotalRange.boutiqueLow > 0">
+                            <span>Total Boutique Estimate:</span>
+                            <span>
+                                 {{ scoutTotalRange.boutiqueFormatted }}
+                            </span>
+                        </div>
                         
                         <!-- Extract Items Button -->
                         <div class="pt-4 border-t border-base-300">
                              <button class="btn btn-primary w-full gap-2 shadow-md" @click="extractLotItems" :disabled="extractingLot">
                                  <span v-if="extractingLot" class="loading loading-spinner"></span>
-                                 <span><Icon icon="solar:scissors-linear" class="w-4 h-4 inline mr-1" /> Extract {{ scoutResult.length }} Items to Inventory</span>
+                                 <span><Icon icon="solar:scissors-linear" class="w-4 h-4 inline mr-1" /> Extract {{ scoutItemsArray.length }} Items to Inventory</span>
                              </button>
                              <p class="text-xs text-center text-gray-400 mt-2">
-                                 This will create {{ scoutResult.length }} new separate items using the data above.
+                                 This will create {{ scoutItemsArray.length }} new separate items using the data above.
                              </p>
                         </div>
                     </div>
@@ -434,6 +464,49 @@
                 </div>
             </div>
 
+            <!-- Lot Dashboard Tab -->
+            <div class="flex-1 overflow-y-auto p-6 space-y-6" v-show="mainTab === 'lot'">
+                <div class="alert alert-secondary py-2 shadow-sm text-sm border-secondary/30 mb-4">
+                     <span class="text-xl"><Icon icon="solar:box-linear" class="w-6 h-6 inline mr-2" /></span> Lot Dashboard: Track extracted items and total box ROI.
+                </div>
+                
+                <div v-if="loadingLot" class="flex justify-center py-12">
+                    <span class="loading loading-spinner text-secondary w-10 h-10"></span>
+                </div>
+                
+                <div v-else>
+                    <div class="stats stats-vertical lg:stats-horizontal shadow w-full bg-base-200 border border-base-300 mb-6 text-sm">
+                        <div class="stat px-4 py-2">
+                            <div class="stat-title text-xs font-bold text-base-content/70">Original Box Cost</div>
+                            <div class="stat-value text-lg text-base-content">${{ Number(item?.cost || 0).toFixed(2) }}</div>
+                            <div class="stat-desc font-bold mt-1" :class="lotROI >= 0 ? 'text-success' : 'text-error'">
+                                Total ROI: {{ lotROI >= 0 ? '+' : '' }}${{ lotROI.toFixed(2) }}
+                            </div>
+                        </div>
+                        <div class="stat px-4 py-2">
+                            <div class="stat-title text-xs">Realized Revenue</div>
+                            <div class="stat-value text-lg text-success">${{ lotRealizedRevenue.toFixed(2) }}</div>
+                            <div class="stat-desc">From {{ lotSoldChildren.length }} sold items</div>
+                        </div>
+                    </div>
+                    
+                    <h4 class="font-bold border-b border-base-200 pb-2 mb-4">Extracted Items ({{ lotChildren.length }})</h4>
+                    <div v-if="lotChildren.length === 0" class="text-center opacity-50 py-8 border-2 border-dashed rounded-xl border-base-300">
+                         No items have been extracted from this lot yet.
+                    </div>
+                    <div v-else class="space-y-2">
+                         <div v-for="child in lotChildren" :key="child.$id" class="flex justify-between items-center bg-base-100 p-2 rounded-lg border border-base-300 shadow-sm text-xs">
+                             <div class="font-bold truncate max-w-[200px]">{{ child.title }}</div>
+                             <div class="flex gap-2 items-center">
+                                 <span class="badge badge-sm" :class="child.status === 'sold' ? 'badge-success' : 'badge-ghost'">{{ child.status }}</span>
+                                 <span v-if="child.status === 'sold'" class="font-bold text-success text-right w-12">${{ Number(child.soldPrice || 0).toFixed(2) }}</span>
+                                 <span v-else class="font-bold text-right w-12 text-base-content/50">${{ Number(child.resalePrice || 0).toFixed(2) }}</span>
+                             </div>
+                         </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Footer -->
             <div class="p-4 border-t border-base-200 flex justify-between items-center bg-base-100 z-10 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] gap-4 shrink-0">
                 <!-- Static AI Scout Button -->
@@ -463,7 +536,7 @@ import { ref, reactive, watch, computed, onMounted, onUnmounted } from 'vue';
 import { marked } from 'marked';
 import ScannerWidget from './ScannerWidget.vue';
 import TagInput from './TagInput.vue';
-import { saveItemToInventory } from '../../lib/inventory';
+import { saveItemToInventory, getCollectionId } from '../../lib/inventory';
 import { account, databases, Query } from '../../lib/appwrite';
 import { useAuth } from '../../composables/useAuth';
 import { addToast } from '../../stores/toast';
@@ -603,6 +676,7 @@ async function copyToClipboard(text) {
 
 const editForm = reactive({
     title: '',
+    quantity: 1,
     cost: '',
     resalePrice: '',
     soldPrice: '',
@@ -659,13 +733,36 @@ const setMainPhoto = (type, val) => {
 };
 const scoutResult = ref(null);
 
+const scoutItemsArray = computed(() => {
+    if (!scoutResult.value) return [];
+    if (scoutResult.value.items && Array.isArray(scoutResult.value.items)) return scoutResult.value.items;
+    if (Array.isArray(scoutResult.value)) return scoutResult.value;
+    return [scoutResult.value];
+});
+
 const suggestedTitleStr = computed(() => {
     if (!scoutResult.value) return null;
-    if (Array.isArray(scoutResult.value) && scoutResult.value.length === 1) {
+    
+    // Check if it's the standard API response format { items: [...] }
+    if (scoutResult.value.items && Array.isArray(scoutResult.value.items) && scoutResult.value.items.length > 0) {
+        // If it's a bulk lot (multiple items), combine the titles
+        if (scoutResult.value.items.length > 1) {
+            const names = scoutResult.value.items.map(i => i.title || i.identity).filter(Boolean);
+            if (names.length > 0) {
+                return `Lot of ${scoutResult.value.items.length}: ` + names.join(', ');
+            }
+            return `Lot of ${scoutResult.value.items.length} Items`;
+        }
+        return scoutResult.value.items[0].title || scoutResult.value.items[0].identity || null;
+    }
+    
+    // Fallback for legacy single object or array formats
+    if (Array.isArray(scoutResult.value) && scoutResult.value.length > 0) {
         return scoutResult.value[0].title || scoutResult.value[0].identity || null;
-    } else if (!Array.isArray(scoutResult.value) && scoutResult.value) {
+    } else if (!Array.isArray(scoutResult.value) && typeof scoutResult.value === 'object') {
         return scoutResult.value.title || scoutResult.value.identity || null;
     }
+    
     return null;
 });
 const scoutMdText = ref(null);
@@ -801,9 +898,11 @@ function formatPriceOnly(val) {
 }
 
 const scoutTotalRange = computed(() => {
-    if (!scoutResult.value || !Array.isArray(scoutResult.value)) return null;
+    if (!scoutItemsArray.value || scoutItemsArray.value.length === 0) return null;
     let totalLow = 0, totalHigh = 0;
-    scoutResult.value.forEach(resItem => {
+    let boutiqueLow = 0, boutiqueHigh = 0;
+    
+    scoutItemsArray.value.forEach(resItem => {
         let raw = resItem.price_breakdown?.fair || resItem.price_breakdown?.mint;
         let low = 0, high = 0;
         if (Array.isArray(raw)) {
@@ -828,10 +927,42 @@ const scoutTotalRange = computed(() => {
         if (high < low) high = low;
         totalLow += low;
         totalHigh += high;
+        
+        // Boutique calculation
+        if (resItem.price_breakdown?.boutique_premium) {
+            let bRaw = resItem.price_breakdown.boutique_premium;
+            let bLow = 0, bHigh = 0;
+            if (Array.isArray(bRaw)) {
+                bLow = parseFloat(String(bRaw[0])) || 0;
+                bHigh = parseFloat(String(bRaw[1])) || bLow;
+            } else if (typeof bRaw === 'object' && bRaw !== null) {
+                bLow = parseFloat((bRaw.low || bRaw.min || bRaw.mint || 0).toString().replace(/,/g, ''));
+                bHigh = parseFloat((bRaw.high || bRaw.max || bRaw.fair || bLow).toString().replace(/,/g, ''));
+            } else {
+                const s = String(bRaw || '0').replace(/[$,]/g, '').trim(); 
+                const range = s.match(/(\d+(?:\.\d+)?)\s*(?:[-–—−]|to)\s*(\d+(?:\.\d+)?)/i);
+                if (range) {
+                    bLow = parseFloat(range[1]) || 0;
+                    bHigh = parseFloat(range[2]) || 0;
+                } else {
+                    const single = s.match(/(\d+(?:\.\d+)?)/);
+                    if(single) { bLow = parseFloat(single[1]) || 0; bHigh = bLow; }
+                }
+            }
+            if (bHigh < bLow) bHigh = bLow;
+            boutiqueLow += bLow;
+            boutiqueHigh += bHigh;
+        } else {
+            // fallback to fair price if no boutique specified
+            boutiqueLow += low;
+            boutiqueHigh += high;
+        }
     });
     return { 
         low: totalLow, high: totalHigh, 
-        formatted: totalLow === totalHigh ? `$${totalLow.toFixed(2)}` : `$${totalLow.toFixed(2)} - $${totalHigh.toFixed(2)}`
+        formatted: totalLow === totalHigh ? `$${totalLow.toFixed(2)}` : `$${totalLow.toFixed(2)} - $${totalHigh.toFixed(2)}`,
+        boutiqueLow, boutiqueHigh,
+        boutiqueFormatted: boutiqueLow === boutiqueHigh ? `$${boutiqueLow.toFixed(2)}` : `$${boutiqueLow.toFixed(2)} - $${boutiqueHigh.toFixed(2)}`
     };
 });
 
@@ -863,12 +994,19 @@ const getImageUrl = (itemData) => {
 const initForm = () => {
     if (props.item) {
         const i = props.item;
+        const formatMoney = (val) => {
+            if (val === undefined || val === null || val === '') return '';
+            const num = parseFloat(val);
+            return isNaN(num) ? '' : num.toFixed(2);
+        };
+
         editForm.title = i.title || '';
-        editForm.cost = i.cost || i.purchasePrice || getNoteValue(i.conditionNotes, 'Paid', true) || '';
-        editForm.resalePrice = i.resalePrice || i.priceFair || i.listPrice || getNoteValue(i.conditionNotes, 'Resale', true) || '';
-        editForm.soldPrice = i.soldPrice || '';
-        editForm.estLow = i.estLow || getNoteValue(i.conditionNotes, 'Est. Low', true) || '';
-        editForm.estHigh = i.estHigh || getNoteValue(i.conditionNotes, 'Est. High', true) || '';
+        editForm.quantity = i.quantity || 1;
+        editForm.cost = formatMoney(i.cost || i.purchasePrice || getNoteValue(i.conditionNotes, 'Paid', true));
+        editForm.resalePrice = formatMoney(i.resalePrice || i.priceFair || i.listPrice || getNoteValue(i.conditionNotes, 'Resale', true));
+        editForm.soldPrice = formatMoney(i.soldPrice);
+        editForm.estLow = formatMoney(i.estLow || getNoteValue(i.conditionNotes, 'Est. Low', true));
+        editForm.estHigh = formatMoney(i.estHigh || getNoteValue(i.conditionNotes, 'Est. High', true));
         editForm.storageLocation = i.storageLocation || getNoteValue(i.conditionNotes, 'Bin') || '';
         editForm.sourcingLocation = i.sourcingLocation || getNoteValue(i.conditionNotes, 'Location') || '';
         editForm.orderId = i.orderId || getNoteValue(i.conditionNotes, 'Order #') || getNoteValue(i.conditionNotes, 'Imported from Order #') || '';
@@ -1335,7 +1473,7 @@ const extractLotItems = async () => {
             // Try to assign a portion of the total cost to each item (e.g. Total / Count)
             let apportionedCost = 0;
             if (editForm.cost && parseFloat(editForm.cost) > 0) {
-                 apportionedCost = parseFloat(editForm.cost) / scoutResult.value.length;
+                 apportionedCost = parseFloat((parseFloat(editForm.cost) / scoutResult.value.length).toFixed(2));
             }
 
             // Estimate Resale Price from AI
@@ -1385,6 +1523,108 @@ const extractLotItems = async () => {
         console.error(e);
     } finally {
          extractingLot.value = false;
+    }
+};
+
+const lotChildren = ref([]);
+const loadingLot = ref(false);
+
+const lotSoldChildren = computed(() => lotChildren.value.filter(c => c.status === 'sold'));
+const lotAllocatedCost = computed(() => lotChildren.value.reduce((sum, c) => sum + (Number(c.cost) || 0), 0));
+const lotRealizedRevenue = computed(() => lotSoldChildren.value.reduce((sum, c) => sum + (Number(c.soldPrice) || 0), 0));
+const lotROI = computed(() => lotRealizedRevenue.value - Number(props.item?.cost || 0));
+
+const fetchLotChildren = async () => {
+    if (!props.item || !props.item.$id) return;
+    loadingLot.value = true;
+    try {
+        const res = await databases.listDocuments(DB_ID, getCollectionId(), [
+            Query.equal('parentLotId', props.item.$id),
+            Query.limit(100)
+        ]);
+        lotChildren.value = res.documents;
+    } catch (e) {
+        addToast({ type: 'error', message: "Failed to load lot items: " + e.message });
+    } finally {
+        loadingLot.value = false;
+    }
+};
+
+watch(mainTab, (newVal) => {
+    if (newVal === 'lot') {
+        fetchLotChildren();
+    }
+});
+
+const sellOneQuantity = async () => {
+    if (!props.item || editForm.quantity <= 1) return;
+    
+    const unitSoldPriceRaw = window.prompt("How much did this 1 item sell for? (Enter a number)", 
+        (parseFloat(editForm.resalePrice || 0) / editForm.quantity).toFixed(2));
+    
+    if (unitSoldPriceRaw === null) return;
+    
+    const unitSoldPrice = parseFloat(unitSoldPriceRaw);
+    if (isNaN(unitSoldPrice)) {
+        addToast({ type: 'error', message: 'Invalid sold price.' });
+        return;
+    }
+    
+    extractingLot.value = true;
+    try {
+        const user = await account.get();
+        const teamId = localStorage.getItem('activeTeamId') || user.prefs?.teamId || null;
+        
+        const unitCost = parseFloat((parseFloat(editForm.cost || 0) / editForm.quantity).toFixed(2));
+        const unitResale = parseFloat((parseFloat(editForm.resalePrice || 0) / editForm.quantity).toFixed(2));
+        
+        // 1. Figure out image inheritance
+        let inheritedGallery = [];
+        let mainImageId = null;
+        if (editForm.existingGalleryIds && editForm.existingGalleryIds.length > 0) {
+             inheritedGallery = [...editForm.existingGalleryIds];
+             mainImageId = inheritedGallery[0];
+        } else if (actualMainPhoto.value.id) {
+             inheritedGallery = [actualMainPhoto.value.id];
+             mainImageId = actualMainPhoto.value.id;
+        }
+
+        // 2. Create the Child "Sold" Item
+        const childTitle = `${editForm.title} (Extracted 1/${editForm.quantity})`;
+        const extraData = {
+            cost: unitCost,
+            resalePrice: unitResale,
+            soldPrice: unitSoldPrice,
+            status: 'sold',
+            sourcingLocation: editForm.sourcingLocation,
+            orderId: editForm.orderId,
+            storageLocation: editForm.storageLocation,
+            imageId: mainImageId, // Parent image ID
+            existingGalleryIds: inheritedGallery, // Use existingGalleryIds so it's caught by inventory.ts
+            quantity: 1,
+            parentLotId: props.item.$id
+        };
+        
+        await saveItemToInventory(
+            { title: childTitle, identity: Math.random().toString(36).substring(2, 10), condition_notes: `Extracted 1 from Lot: ${props.item.$id}` },
+            null,
+            extraData,
+            teamId
+        );
+        
+        // 3. Update the Parent Item Form
+        editForm.quantity -= 1;
+        editForm.cost = Math.max(0, parseFloat(editForm.cost || 0) - unitCost).toFixed(2);
+        editForm.resalePrice = Math.max(0, parseFloat(editForm.resalePrice || 0) - unitResale).toFixed(2);
+        
+        // 4. Emit Save to persist the parent changes
+        saveEdit(); 
+        
+        addToast({ type: 'success', message: 'Successfully extracted 1 sold item!' });
+    } catch (e) {
+        addToast({ type: 'error', message: 'Failed to extract item: ' + e.message });
+    } finally {
+        extractingLot.value = false;
     }
 };
 </script>

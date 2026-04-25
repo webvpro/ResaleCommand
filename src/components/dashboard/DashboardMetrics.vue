@@ -78,7 +78,9 @@ const getCollectionId = () => isAlphaMode.get()
 const items = ref<any[]>([]);
 
 // --- Global Inventory Metrics ---
-const totalItems = computed(() => items.value.length);
+const totalItems = computed(() => {
+    return items.value.reduce((sum, item) => sum + (item.quantity || 1), 0);
+});
 
 const parseValue = (item: any, key: string, noteKey: string) => {
     let val = 0;
@@ -94,9 +96,10 @@ const parseValue = (item: any, key: string, noteKey: string) => {
 
 const globalProfit = computed(() => {
     return items.value.filter(i => i.status === 'sold').reduce((sum, item) => {
+        const qty = item.quantity || 1;
         const sold = parseValue(item, 'soldPrice', 'Sold') || parseValue(item, 'price', 'Sold') || 0;
         const cost = parseValue(item, 'cost', 'Paid') || parseValue(item, 'purchasePrice', 'Paid') || 0;
-        return sum + (sold - cost);
+        return sum + ((sold - cost) * qty);
     }, 0);
 });
 
@@ -104,15 +107,17 @@ const isActiveInventory = (i: any) => !['sold', 'tracked', 'scouted'].includes(i
 
 const globalProjectedRevenue = computed(() => {
     return items.value.filter(isActiveInventory).reduce((sum, item) => {
+        const qty = item.quantity || 1;
         const est = parseValue(item, 'estValue', 'Est') || parseValue(item, 'listPrice', 'Est') || 0;
-        return sum + est;
+        return sum + (est * qty);
     }, 0);
 });
 
 const globalSunkCost = computed(() => {
     return items.value.filter(isActiveInventory).reduce((sum, item) => {
+        const qty = item.quantity || 1;
         const cost = parseValue(item, 'cost', 'Paid') || parseValue(item, 'purchasePrice', 'Paid') || 0;
-        return sum + cost;
+        return sum + (cost * qty);
     }, 0);
 });
 
