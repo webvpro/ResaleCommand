@@ -153,6 +153,33 @@ const insights = computed(() => {
         });
     }
 
+    // 4. Missing Descriptions (Critical for selling)
+    const activeNoDesc = items.value.filter(i => isActiveInventory(i) && (!i.marketDescription || i.marketDescription.length < 10));
+    if (activeNoDesc.length > 0) {
+        alerts.push({
+            type: 'warning',
+            filter: 'missing_description',
+            title: `${activeNoDesc.length} Items Missing Descriptions`,
+            description: `You can't sell without a good pitch! These items are missing a description. We should use AI to bulk-generate them.`
+        });
+    }
+
+    // 5. Missing Photos
+    const activeNoPhotos = items.value.filter(i => {
+        if (!isActiveInventory(i)) return false;
+        if (i.imageId || (i.galleryImageIds && i.galleryImageIds.length > 0)) return false;
+        if (i.conditionNotes && (i.conditionNotes.includes('[MAIN IMAGE ID:') || i.conditionNotes.includes('[IMAGE_ID:'))) return false;
+        return true;
+    });
+    if (activeNoPhotos.length > 0) {
+        alerts.push({
+            type: 'error',
+            filter: 'missing_photos',
+            title: `${activeNoPhotos.length} Items Missing Photos`,
+            description: `An item without photos is invisible. Get snapping or grab some stock images for these items!`
+        });
+    }
+
     return alerts;
 });
 
