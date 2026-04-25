@@ -34,7 +34,7 @@
             <div class="absolute bottom-0 left-0 right-0 h-6 bg-black/50 backdrop-blur-sm overflow-hidden flex items-center">
                 <div :class="[profitColor, profitWidth]" class="h-full transition-all duration-500 opacity-90"></div>
                 <div class="absolute inset-0 flex justify-between items-center px-2 font-bold z-10 text-[9px] text-white pointer-events-none drop-shadow-md">
-                    <span class="opacity-90 tracking-wider text-shadow">Paid: {{ formatCurrency(paidValue) }}</span>
+                    <span class="opacity-90 tracking-wider text-shadow">Cost: {{ formatCurrency(paidValue) }}</span>
                     <span>
                         <span class="opacity-90 text-shadow">Est: {{ formatCurrency(estValue) }}</span>
                         <span v-if="roi !== null" class="ml-1 opacity-100 border-l border-white/30 pl-1 text-shadow">ROI: {{ roi }}%</span>

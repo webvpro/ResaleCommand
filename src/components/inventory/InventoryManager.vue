@@ -47,10 +47,10 @@
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-fade-in relative z-20 pointer-events-auto">
                         <div class="flex flex-col">
                             <h1 class="text-3xl font-bold text-base-content tracking-tight">Inventory</h1>
-                            <p v-if="insightFilter" class="text-sm text-warning flex items-center gap-1 mt-1">
+                            <p v-if="insightFilter" class="text-sm text-warning flex flex-wrap items-center gap-2 mt-1">
                                 <Icon icon="solar:lightbulb-bolt-bold-duotone" />
                                 AI Filter Active: Fix {{ insightFilter.replace(/_/g, ' ') }}
-                                <button class="btn btn-xs btn-ghost text-error ml-2" @click="insightFilter = ''; filterStatus = 'all'">Clear Filter</button>
+                                <button class="btn btn-xs btn-ghost text-error" @click="insightFilter = ''; filterStatus = 'all'">Clear</button>
                             </p>
                         </div>
                         <div class="flex items-center gap-2">
@@ -90,6 +90,7 @@
                                         <select v-model="bulkStatusTarget" class="select select-sm select-bordered join-item bg-base-100 text-base-content flex-1">
                                             <option value="" disabled selected>Change Status...</option>
                                             <option value="acquired">Acquired</option>
+                                            <option value="received">Received</option>
                                             <option value="placed">Placed</option>
                                             <option value="sold">Sold</option>
                                         </select>
@@ -107,6 +108,42 @@
                                             <span v-if="processingBulkLoc" class="loading loading-spinner loading-xs"></span>
                                             Apply
                                         </button>
+                                    </div>
+                                    <div class="join w-full col-span-1 sm:col-span-2 mt-2 pt-2 border-t border-base-300/50 flex flex-col" v-if="insightFilter">
+                                        <label class="label pt-0 -mb-1 pb-1"><span class="label-text font-bold text-[10px] uppercase opacity-70 text-warning"><Icon icon="solar:shield-warning-bold-duotone" class="inline" /> Admin Auto-Heal: {{ insightFilter.replace(/_/g, ' ') }}</span></label>
+                                        
+                                        <!-- Missing Estimated Value -->
+                                        <button v-if="insightFilter === 'missing_est_value'" class="btn btn-sm btn-warning w-full shadow-sm" 
+                                                @click="runAutoEstimatorAdmin" 
+                                                :disabled="isEstimating || selectedItems.length === 0">
+                                           <span v-if="isEstimating" class="loading loading-spinner loading-xs"></span>
+                                           <Icon v-else icon="solar:magic-stick-3-bold-duotone" class="w-4 h-4" />
+                                           Auto-Estimate {{ selectedItems.length }} Selected Items
+                                        </button>
+
+                                        <!-- Missing Sold Price -->
+                                        <button v-if="insightFilter === 'missing_sold_price'" class="btn btn-sm btn-warning w-full shadow-sm" 
+                                                @click="runAutoCalcSoldPrice" 
+                                                :disabled="isEstimating || selectedItems.length === 0">
+                                           <span v-if="isEstimating" class="loading loading-spinner loading-xs"></span>
+                                           <Icon v-else icon="solar:magic-stick-3-bold-duotone" class="w-4 h-4" />
+                                           Auto-Calc Sold Price (-20%) for {{ selectedItems.length }} Items
+                                        </button>
+
+                                        <!-- Missing Cost Basis -->
+                                        <div v-if="insightFilter === 'missing_cost'" class="flex gap-2">
+                                            <label class="input input-bordered input-sm flex items-center gap-2 w-32 bg-base-100 shadow-sm">
+                                                <span class="opacity-50">$</span>
+                                                <input type="number" step="0.01" v-model="bulkCostValue" class="grow" placeholder="0.00" />
+                                            </label>
+                                            <button class="btn btn-sm btn-warning flex-1 shadow-sm" 
+                                                    @click="runAutoCalcCost" 
+                                                    :disabled="isEstimating || selectedItems.length === 0 || bulkCostValue === ''">
+                                               <span v-if="isEstimating" class="loading loading-spinner loading-xs"></span>
+                                               <Icon v-else icon="solar:bill-check-bold-duotone" class="w-4 h-4" />
+                                               Set Cost for {{ selectedItems.length }} Items
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="flex justify-end w-full">
@@ -186,6 +223,7 @@
                             <select v-model="filterStatus" class="select select-bordered select-sm w-full text-xs shadow-sm bg-base-100">
                                 <option value="all">All Items</option>
                                 <option value="acquired">Acquired</option>
+                                <option value="received">Received</option>
                                 <option value="placed">Placed</option>
                                 <option value="sold">Sold</option>
                             </select>
@@ -222,7 +260,7 @@
                     <p>Purchasing: <span class="font-bold">{{ activeItem?.title }}</span></p>
                     
                     <div class="form-control w-full mt-4">
-                        <label class="label"><span class="label-text">Verify Price Paid</span></label>
+                        <label class="label"><span class="label-text">Verify Cost Basis</span></label>
                         <input type="number" step="0.01" v-model="checkoutPrice" class="input input-bordered" placeholder="0.00" />
                     </div>
 
@@ -310,6 +348,7 @@ import ItemPreviewModal from './ItemPreviewModal.vue';
 import TagInput from '../common/TagInput.vue';
 import { addToast } from '../../stores/toast';
 import { confirmDialog } from '../../stores/confirm';
+import { isAlphaMode } from '../../stores/env';
 
 // Environment Variables
 const ENDPOINT = import.meta.env.PUBLIC_APPWRITE_ENDPOINT;
@@ -326,12 +365,107 @@ const currentTeamId = computed(() => currentTeam.value?.$id);
 const searchQuery = ref('');
 const filterStatus = ref('all');
 const insightFilter = ref('');
+const isEstimating = ref(false);
+const bulkCostValue = ref('');
+
+const runAutoEstimatorAdmin = async () => {
+    if (isEstimating.value || selectedItems.value.length === 0) return;
+    isEstimating.value = true;
+    let successCount = 0;
+    let skippedCount = 0;
+
+    const itemsToProcess = inventoryItems.value.filter(i => selectedItems.value.includes(i.$id));
+
+    for (const item of itemsToProcess) {
+        const title = item.title || item.itemName || '';
+        const desc = item.description || (item.keywords || []).join(', ') || '';
+
+        if (title.length < 5 && desc.length < 5) {
+            skippedCount++;
+            continue;
+        }
+
+        try {
+            const res = await fetch('/api/estimate-price', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, description: desc })
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                if (data.fair) {
+                    await updateInventoryItem(item.$id, { estValue: data.fair });
+                    item.estValue = data.fair;
+                    successCount++;
+                }
+            }
+        } catch (e) {
+            console.error("Auto-Estimate failed for", item.$id, e);
+        }
+        await new Promise(r => setTimeout(r, 500));
+    }
+
+    isEstimating.value = false;
+    selectedItems.value = [];
+    let msg = `Auto-Estimated ${successCount} items.`;
+    if (skippedCount > 0) msg += ` Skipped ${skippedCount} due to missing info.`;
+    addToast({ type: 'success', message: msg });
+};
+
+const runAutoCalcSoldPrice = async () => {
+    if (isEstimating.value || selectedItems.value.length === 0) return;
+    isEstimating.value = true;
+    let successCount = 0;
+    const itemsToProcess = inventoryItems.value.filter(i => selectedItems.value.includes(i.$id));
+
+    for (const item of itemsToProcess) {
+        const rp = parseFloat(item.resalePrice || item.listPrice || 0);
+        if (rp > 0) {
+            const calcPrice = parseFloat((rp * 0.8).toFixed(2));
+            try {
+                await updateInventoryItem(item.$id, { soldPrice: calcPrice });
+                item.soldPrice = calcPrice;
+                successCount++;
+            } catch (e) { console.error("Failed to update", item.$id, e); }
+        }
+    }
+
+    isEstimating.value = false;
+    selectedItems.value = [];
+    addToast({ type: 'success', message: `Auto-calculated Sold Price for ${successCount} items.` });
+};
+
+const runAutoCalcCost = async () => {
+    if (isEstimating.value || selectedItems.value.length === 0 || bulkCostValue.value === '') return;
+    isEstimating.value = true;
+    let successCount = 0;
+    const targetCost = parseFloat(bulkCostValue.value) || 0;
+    const itemsToProcess = inventoryItems.value.filter(i => selectedItems.value.includes(i.$id));
+
+    for (const item of itemsToProcess) {
+        try {
+            await updateInventoryItem(item.$id, { cost: targetCost });
+            item.cost = targetCost;
+            item.purchasePrice = targetCost;
+            successCount++;
+        } catch (e) { console.error("Failed to update", item.$id, e); }
+    }
+
+    isEstimating.value = false;
+    selectedItems.value = [];
+    bulkCostValue.value = '';
+    addToast({ type: 'success', message: `Marked ${successCount} items as $${targetCost.toFixed(2)} Cost.` });
+};
 
 onMounted(() => {
     // Check URL for AI Insight filters
     const params = new URLSearchParams(window.location.search);
     if (params.has('insightFilter')) {
         insightFilter.value = params.get('insightFilter') || '';
+        if (insightFilter.value) {
+            bulkOpen.value = true;
+        }
     }
 });
 
@@ -366,8 +500,8 @@ watch(currentTeam, (n) => { if(n) fetchLocations(); }, { immediate: true });
 const cartItems = computed(() => inventoryItems.value.filter(i => i.status === 'scouted'));
 const filteredInventory = computed(() => {
     return inventoryItems.value.filter(item => {
-        // Exclude cart items
-        if (item.status === 'scouted') return false;
+        // Exclude cart items and tracked items
+        if (item.status === 'scouted' || item.status === 'tracked') return false;
 
         // --- AI Insight Filters ---
         if (insightFilter.value) {
@@ -479,20 +613,46 @@ const applyBulkStatus = async () => {
     
     try {
         // Run updates in parallel
-        const promises = idsToUpdate.map(id => updateInventoryItem(id, { status: targetStatus }));
+        let autoCalcCount = 0;
+        const promises = idsToUpdate.map(id => {
+             const item = inventoryItems.value.find(i => i.$id === id);
+             let updates = { status: targetStatus };
+             
+             if (targetStatus === 'sold' && item) {
+                 const currentSoldPrice = item.soldPrice || '';
+                 const rp = parseFloat(item.resalePrice || item.listPrice || 0);
+                 if (!currentSoldPrice && rp > 0) {
+                     updates.soldPrice = parseFloat((rp * 0.8).toFixed(2));
+                     autoCalcCount++;
+                 }
+             }
+             return updateInventoryItem(id, updates);
+        });
+        
         await Promise.all(promises);
         
         // Optimistically update local state so we don't need a full refetch immediately
         inventoryItems.value.forEach(item => {
             if (idsToUpdate.includes(item.$id)) {
                 item.status = targetStatus;
+                
+                if (targetStatus === 'sold') {
+                    const currentSoldPrice = item.soldPrice || '';
+                    const rp = parseFloat(item.resalePrice || item.listPrice || 0);
+                    if (!currentSoldPrice && rp > 0) {
+                         item.soldPrice = parseFloat((rp * 0.8).toFixed(2));
+                    }
+                }
             }
         });
         
         // Reset selection
         selectedItems.value = [];
         bulkStatusTarget.value = '';
-        addToast({ type: 'success', message: 'Bulk update applied.' });
+        
+        let msg = 'Bulk update applied.';
+        if (autoCalcCount > 0) msg += ` Auto-filled Sold Price for ${autoCalcCount} item(s).`;
+        addToast({ type: 'success', message: msg });
     } catch (e) {
         addToast({ type: 'error', message: "Failed to apply bulk update: " + e.message });
     } finally {
@@ -721,7 +881,7 @@ const submitCheckout = async () => {
     processing.value = true;
     try {
         await updateInventoryItem(activeItem.value.$id, {
-            status: 'received',
+            status: 'acquired',
             cost: checkoutPrice.value,
             receiptFile: checkoutReceiptFile.value
         });

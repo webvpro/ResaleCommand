@@ -70,7 +70,7 @@
 
                 <div class="grid grid-cols-2 gap-4">
                     <div class="form-control">
-                        <label class="label"><span class="label-text">Paid Price</span></label>
+                        <label class="label"><span class="label-text">Cost Basis</span></label>
                         <div class="relative">
                             <span class="absolute left-3 top-1/2 -translate-y-1/2 opacity-50">$</span>
                             <input v-model="form.cost" type="number" step="0.01" placeholder="0.00" class="input input-bordered w-full pl-7" />

@@ -240,6 +240,7 @@ export async function saveItemToInventory(itemData: any, imageFile: File | null,
             receiptImageId: receiptImageId || undefined,
             cost: extraData.cost !== undefined ? parseFloat(extraData.cost.toString()) || 0 : undefined,
             resalePrice: extraData.resalePrice !== undefined ? parseFloat(extraData.resalePrice.toString()) || 0 : undefined,
+            soldPrice: extraData.soldPrice !== undefined && extraData.soldPrice !== '' ? parseFloat(extraData.soldPrice.toString()) || 0 : undefined,
             maxBuyPrice: extraData.maxBuyPrice !== undefined ? parseFloat(extraData.maxBuyPrice.toString()) || 0 : undefined,
             sourcingLocation: extraData.sourcingLocation || undefined,
             storageLocation: extraData.storageLocation || undefined,
@@ -515,6 +516,16 @@ export async function updateInventoryItem(documentId: string, updates: Partial<E
              } else {
                  data.resalePrice = parseFloat(updates.resalePrice.toString());
                  updateNoteValue('Resale', `$${data.resalePrice.toFixed(2)}`);
+             }
+        }
+        
+        if (updates.soldPrice !== undefined) {
+             if (updates.soldPrice === '') {
+                 data.soldPrice = null;
+                 updateNoteValue('Sold', '');
+             } else {
+                 data.soldPrice = parseFloat(updates.soldPrice.toString());
+                 updateNoteValue('Sold', `$${data.soldPrice.toFixed(2)}`);
              }
         }
 

@@ -107,7 +107,7 @@
 
                 
                 <div class="form-control w-full">
-                    <label class="label"><span class="label-text opacity-70">Paid Price ($)</span></label>
+                    <label class="label"><span class="label-text opacity-70">Cost Basis ($)</span></label>
                     <input v-model="cost" type="number" step="0.01" class="input input-bordered w-full" placeholder="0.00" />
                 </div>
 

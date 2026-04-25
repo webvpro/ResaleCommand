@@ -76,7 +76,7 @@
                                 <span class="text-2xl font-black text-success tracking-tight">{{ formatCurrency(estValue) }}</span>
                              </div>
                              <div class="flex justify-between items-end pb-3 border-b border-base-200 mb-3">
-                                <span class="text-xs uppercase font-bold opacity-60">Cost / Paid</span>
+                                <span class="text-xs uppercase font-bold opacity-60">Cost Basis</span>
                                 <span class="text-lg font-bold opacity-80 font-mono">{{ formatCurrency(paidValue) }}</span>
                              </div>
                              <div class="flex justify-between items-center text-xs opacity-60 font-mono">

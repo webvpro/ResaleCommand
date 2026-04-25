@@ -112,9 +112,9 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
                      <div class="form-control w-full">
-                        <label class="label"><span class="label-text">Paid Price</span></label>
+                        <label class="label"><span class="label-text">Cost Basis</span></label>
                         <label class="input input-bordered flex items-center gap-2">
                             <span class="opacity-50">$</span>
                             <input type="number" step="0.01" v-model="editForm.cost" class="grow" placeholder="0.00" />
@@ -125,6 +125,13 @@
                          <label class="input input-bordered flex items-center gap-2">
                             <span class="opacity-50">$</span>
                             <input type="number" step="0.01" v-model="editForm.resalePrice" class="grow" placeholder="0.00" />
+                        </label>
+                    </div>
+                     <div class="form-control w-full">
+                        <label class="label"><span class="label-text text-success font-bold">Sold Price</span></label>
+                         <label class="input input-bordered flex items-center gap-2" :class="{'input-success': editForm.status === 'sold'}">
+                            <span class="opacity-50">$</span>
+                            <input type="number" step="0.01" v-model="editForm.soldPrice" class="grow font-bold" placeholder="0.00" />
                         </label>
                     </div>
                 </div>
@@ -289,14 +296,14 @@
                     <label class="label"><span class="label-text font-bold text-sm">Item Lifecycle Status</span></label>
                     <ul class="steps w-full text-xs">
                         <li class="step cursor-pointer" 
-                            :class="{'step-primary font-bold': ['tracked', 'acquired', 'placed', 'sold'].includes(editForm.status)}" 
-                            @click="editForm.status = 'tracked'">
-                            Tracked
-                        </li>
-                        <li class="step cursor-pointer" 
-                            :class="{'step-primary font-bold': ['acquired', 'placed', 'sold'].includes(editForm.status)}" 
+                            :class="{'step-primary font-bold': ['acquired', 'received', 'placed', 'sold'].includes(editForm.status)}" 
                             @click="editForm.status = 'acquired'">
                             Acquired
+                        </li>
+                        <li class="step cursor-pointer" 
+                            :class="{'step-primary font-bold': ['received', 'placed', 'sold'].includes(editForm.status)}" 
+                            @click="editForm.status = 'received'">
+                            Received
                         </li>
                         <li class="step cursor-pointer" 
                             :class="{'step-primary font-bold': ['placed', 'sold'].includes(editForm.status)}" 
@@ -598,6 +605,7 @@ const editForm = reactive({
     title: '',
     cost: '',
     resalePrice: '',
+    soldPrice: '',
     estLow: '',
     estHigh: '',
     storageLocation: '',
@@ -609,6 +617,16 @@ const editForm = reactive({
     existingGalleryIds: [],
     sellingLocations: [],
     keywords: []
+});
+
+watch(() => editForm.status, (newStatus) => {
+    if (newStatus === 'sold' && (!editForm.soldPrice || editForm.soldPrice === '') && editForm.resalePrice) {
+        const rp = parseFloat(editForm.resalePrice);
+        if (!isNaN(rp) && rp > 0) {
+            editForm.soldPrice = (rp * 0.8).toFixed(2);
+            addToast({ type: 'info', message: 'Auto-filled Sold Price based on -20% of List Price.' });
+        }
+    }
 });
 
 const editGalleryBuffer = ref([]);
@@ -847,7 +865,8 @@ const initForm = () => {
         const i = props.item;
         editForm.title = i.title || '';
         editForm.cost = i.cost || i.purchasePrice || getNoteValue(i.conditionNotes, 'Paid', true) || '';
-        editForm.resalePrice = i.resalePrice || i.priceFair || getNoteValue(i.conditionNotes, 'Resale', true) || '';
+        editForm.resalePrice = i.resalePrice || i.priceFair || i.listPrice || getNoteValue(i.conditionNotes, 'Resale', true) || '';
+        editForm.soldPrice = i.soldPrice || '';
         editForm.estLow = i.estLow || getNoteValue(i.conditionNotes, 'Est. Low', true) || '';
         editForm.estHigh = i.estHigh || getNoteValue(i.conditionNotes, 'Est. High', true) || '';
         editForm.storageLocation = i.storageLocation || getNoteValue(i.conditionNotes, 'Bin') || '';
@@ -928,6 +947,7 @@ const initForm = () => {
         editForm.title = '';
         editForm.cost = '';
         editForm.resalePrice = '';
+        editForm.soldPrice = '';
         editForm.estLow = '';
         editForm.estHigh = '';
         editForm.storageLocation = '';

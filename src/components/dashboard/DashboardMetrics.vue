@@ -100,15 +100,17 @@ const globalProfit = computed(() => {
     }, 0);
 });
 
+const isActiveInventory = (i: any) => !['sold', 'tracked', 'scouted'].includes(i.status);
+
 const globalProjectedRevenue = computed(() => {
-    return items.value.filter(i => i.status !== 'sold').reduce((sum, item) => {
+    return items.value.filter(isActiveInventory).reduce((sum, item) => {
         const est = parseValue(item, 'estValue', 'Est') || parseValue(item, 'listPrice', 'Est') || 0;
         return sum + est;
     }, 0);
 });
 
 const globalSunkCost = computed(() => {
-    return items.value.filter(i => i.status !== 'sold').reduce((sum, item) => {
+    return items.value.filter(isActiveInventory).reduce((sum, item) => {
         const cost = parseValue(item, 'cost', 'Paid') || parseValue(item, 'purchasePrice', 'Paid') || 0;
         return sum + cost;
     }, 0);
@@ -130,7 +132,7 @@ const insights = computed(() => {
     }
 
     // 2. Active inventory missing an estimated value (Causes low projected revenue)
-    const activeNoEst = items.value.filter(i => i.status !== 'sold' && !(parseValue(i, 'estValue', 'Est') || parseValue(i, 'listPrice', 'Est')));
+    const activeNoEst = items.value.filter(i => isActiveInventory(i) && !(parseValue(i, 'estValue', 'Est') || parseValue(i, 'listPrice', 'Est')));
     if (activeNoEst.length > 0) {
         alerts.push({
             type: 'warning',
@@ -141,7 +143,7 @@ const insights = computed(() => {
     }
 
     // 3. Active inventory missing a cost basis
-    const activeNoCost = items.value.filter(i => i.status !== 'sold' && !(parseValue(i, 'cost', 'Paid') || parseValue(i, 'purchasePrice', 'Paid')));
+    const activeNoCost = items.value.filter(i => isActiveInventory(i) && !(parseValue(i, 'cost', 'Paid') || parseValue(i, 'purchasePrice', 'Paid')));
     if (activeNoCost.length > 0) {
         alerts.push({
             type: 'warning',
