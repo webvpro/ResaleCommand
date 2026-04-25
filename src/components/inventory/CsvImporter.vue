@@ -692,7 +692,7 @@ async function importSelected() {
                     const extraData: any = {
                          cost: item.totalCost,
                          resalePrice: item.estimatedResale ? item.estimatedResale.toString() : undefined,
-                         status: 'received' as const,
+                         status: 'acquired' as const,
                          sourcingLocation: item.sourceLink ? item.sourceLink : 'ShopGoodwill'
                     };
                     if (finalImageId) {
