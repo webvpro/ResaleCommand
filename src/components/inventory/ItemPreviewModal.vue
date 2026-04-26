@@ -181,7 +181,11 @@
                         <div class="divider text-xs uppercase opacity-50 font-bold tracking-widest mt-0">Full Details</div>
                         <div v-html="renderedDescription" class="whitespace-pre-wrap"></div>
                     </div>
-                    <div v-else class="text-center py-12 opacity-40">
+                    <div v-if="scoutMarkdownText" class="prose prose-sm max-w-none prose-headings:font-bold prose-headings:mt-4 prose-a:text-primary pb-8">
+                        <div class="divider text-xs uppercase opacity-50 font-bold tracking-widest mt-0">AI Scout Report</div>
+                        <div v-html="scoutMarkdownText" class="whitespace-pre-wrap"></div>
+                    </div>
+                    <div v-if="!item.description && !scoutMarkdownText" class="text-center py-12 opacity-40">
                         <p class="italic text-lg">No additional description available.</p>
                     </div>
 
@@ -324,9 +328,14 @@ const cleanConditionNotes = computed(() => {
     // Strip out all the bracket metadata lines
     text = text.replace(/\[GALLERY IDS:.*?\n/g, '');
     text = text.replace(/\[SCOUT_REPORT_ID:.*?\]/g, '');
+    text = text.replace(/\[SCOUT_REPORT_MD:.*?\]/g, '');
+    text = text.replace(/\[MAIN IMAGE ID:.*?\]/g, '');
     text = text.replace(/\[SCOUT_DATA_LITE:.*?\]/g, '');
     text = text.replace(/\[SCOUT_DATA:.*?\]/g, '');
     
+    // Strip out boilerplate import details block entirely
+    text = text.replace(/--- IMPORT DETAILS ---[\s\S]*/, '');
+
     // Also optionally strip out the pricing block if it's identical to the scraper block
     const scraperBlock = /Paid:[\s\S]*?Est\. High:.*?\n/i;
     text = text.replace(scraperBlock, '');
@@ -335,9 +344,11 @@ const cleanConditionNotes = computed(() => {
 });
 
 const parsedScoutData = ref(null);
+const scoutMarkdownText = ref(null);
 
 const loadScoutData = async (item) => {
     parsedScoutData.value = null;
+    scoutMarkdownText.value = null;
     if (!item) return;
 
     // 1. Check if raw JSON object exists natively on the item
@@ -356,10 +367,23 @@ const loadScoutData = async (item) => {
 
     // 2. Check if there's a file ID reference in the condition notes
     if (item.conditionNotes) {
+        const mdMatch = item.conditionNotes.match(/\[SCOUT_REPORT_MD:\s*([^\]]+)\]/);
+        if (mdMatch) {
+            const id = mdMatch[1].trim();
+            const downloadUrl = `${ENDPOINT}/storage/buckets/reports/files/${id}/download?project=${PROJECT}`;
+            try {
+                const res = await fetch(downloadUrl);
+                if (res.ok) {
+                    const txt = await res.text();
+                    scoutMarkdownText.value = marked.parse(txt);
+                }
+            } catch (e) { console.warn("Failed to fetch scout md report", e); }
+        }
+
         const fileMatch = item.conditionNotes.match(/\[SCOUT_REPORT_ID:\s*([^\]]+)\]/);
         if (fileMatch) {
             const fileId = fileMatch[1].trim();
-            const downloadUrl = `${ENDPOINT}/storage/buckets/${BUCKET}/files/${fileId}/download?project=${PROJECT}`;
+            const downloadUrl = `${ENDPOINT}/storage/buckets/reports/files/${fileId}/download?project=${PROJECT}`;
             try {
                 const res = await fetch(downloadUrl);
                 if (res.ok) {
@@ -421,22 +445,35 @@ const parsePriceObj = (p) => {
 
 const estValue = computed(() => {
     if (!props.item) return 0;
-    if (props.item.resalePrice) return props.item.resalePrice;
-    if (props.item.estHigh) return parsePriceObj(props.item.estHigh);
+    if (props.item.resalePrice && parseFloat(props.item.resalePrice) > 0) return props.item.resalePrice;
+    
+    if (parsedScoutData.value && parsedScoutData.value.price_breakdown) {
+         let p = parsedScoutData.value.price_breakdown;
+         let fair = parsePriceObj(p.fair);
+         if (fair > 0) return fair;
+         let mint = parsePriceObj(p.mint);
+         if (mint > 0) return mint;
+    }
+
+    if (props.item.estHigh && parseFloat(parsePriceObj(props.item.estHigh)) > 0) return parsePriceObj(props.item.estHigh);
     return getNoteValue(props.item.conditionNotes, 'Est. High', true) || 0;
 });
 
 const paidValue = computed(() => {
     if (!props.item) return 0;
-    return props.item.cost || props.item.purchasePrice || getNoteValue(props.item.conditionNotes, 'Paid', true) || 0;
+    if (props.item.cost && parseFloat(props.item.cost) > 0) return props.item.cost;
+    if (props.item.purchasePrice && parseFloat(props.item.purchasePrice) > 0) return props.item.purchasePrice;
+    return getNoteValue(props.item.conditionNotes, 'Paid', true) || 0;
 });
 
 const formatCurrency = (val) => {
-    if(!val || parseFloat(val) === 0) return '-';
-    // Strip everything except numbers and decimal to fix erroneous textual scraper data
-    const cleanStr = String(val).replace(/[^\d.]/g, ''); 
+    if(!val) return '-';
+    // Prevent dates from being parsed as millions of dollars
+    if (String(val).match(/\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/)) return '-';
+    
+    const cleanStr = String(val).replace(/[^\d.-]/g, ''); 
     const num = parseFloat(cleanStr);
-    return isNaN(num) ? val : '$' + num.toFixed(2);
+    return (isNaN(num) || num === 0) ? '-' : '$' + num.toFixed(2);
 };
 
 // --- IMAGES ---

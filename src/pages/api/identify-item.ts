@@ -203,6 +203,12 @@ export const ALL: APIRoute = async ({ request }) => {
                 if (json.imageUrl && imageParts.length === 0) {
                     await fetchAndAddImage(json.imageUrl);
                 }
+                
+                // NEW: Allow passing an array of remote URLs (e.g. from Appwrite)
+                if (Array.isArray(json.remoteImageUrls)) {
+                    const promises = json.remoteImageUrls.slice(0, 5 - imageParts.length).map((imgUrl: string) => fetchAndAddImage(imgUrl));
+                    await Promise.all(promises);
+                }
 
             } catch (e) {
                 console.error("JSON parse failed", e);
@@ -239,20 +245,23 @@ export const ALL: APIRoute = async ({ request }) => {
                                   // Prepend to user notes
                                   userNotes = contextText + userNotes;
                                   
-                                  // Fetch Multiple Images (Max 5 for Gemini context)
-                                  const imgUrls: string[] = [];
-                                  
-                                  const fixUrl = (u: string) => u ? (u.startsWith('//') ? 'https:' + u : u) : '';
-                                  
-                                  if (itemData.imageURL) imgUrls.push(fixUrl(itemData.imageURL));
-                                  if (itemData.additionalImages) {
-                                      itemData.additionalImages.forEach((img: any) => imgUrls.push(fixUrl(img.imageURL)));
-                                  }
-                                  
-                                  if (imgUrls.length > 0) successfulImageUrl = imgUrls[0];
-                                  
-                                  for (let i = 0; i < Math.min(imgUrls.length, 5); i++) {
-                                      await fetchAndAddImage(imgUrls[i]);
+                                  // ONLY fetch external images if the client didn't provide any
+                                  if (imageParts.length === 0) {
+                                      const imgUrls: string[] = [];
+                                      const fixUrl = (u: string) => u ? (u.startsWith('//') ? 'https:' + u : u) : '';
+                                      
+                                      if (itemData.imageURL) imgUrls.push(fixUrl(itemData.imageURL));
+                                      if (itemData.additionalImages) {
+                                          itemData.additionalImages.forEach((img: any) => imgUrls.push(fixUrl(img.imageURL)));
+                                      }
+                                      
+                                      if (imgUrls.length > 0) successfulImageUrl = imgUrls[0];
+                                      
+                                      const promises = [];
+                                      for (let i = 0; i < Math.min(imgUrls.length, 3); i++) {
+                                          promises.push(fetchAndAddImage(imgUrls[i]));
+                                      }
+                                      await Promise.all(promises);
                                   }
                              }
                          }
@@ -327,12 +336,13 @@ export const ALL: APIRoute = async ({ request }) => {
                                 count++;
                             }
 
-                            // Fetch up to available slots
-                            const availableSlots = 5 - imageParts.length;
-                            const topImages = Array.from(imageUrls).slice(0, availableSlots);
-                            if (topImages.length > 0 && !successfulImageUrl) successfulImageUrl = topImages[0];
-                            for (const imgUrl of topImages) {
-                                await fetchAndAddImage(imgUrl);
+                            // ONLY fetch external images if the client didn't provide any
+                            if (imageParts.length === 0) {
+                                const topImages = Array.from(imageUrls).slice(0, 3);
+                                if (topImages.length > 0 && !successfulImageUrl) successfulImageUrl = topImages[0];
+                                
+                                const promises = topImages.map(imgUrl => fetchAndAddImage(imgUrl));
+                                await Promise.all(promises);
                             }
                         }
                      } catch(e) { console.warn("Deep Scrape failed", e); }
@@ -358,6 +368,7 @@ export const ALL: APIRoute = async ({ request }) => {
           1. Detect if there are MULTIPLE distinct items in the image (e.g. a bundle, a lot, or several different products).
           2. If multiple items are found, create a SEPARATE item entry for EACH one in the 'items' array.
           3. Identify each item specifically.
+          4. IF DETECTING A LOT (>1 item), YOU MUST OMIT 'comparables', 'red_flags', and 'purchase_strategy' from EVERY item object to save time. Keep output extremely brief!
 
           CRITICAL PRICING & IDENTIFICATION RULES:
           - ACTIVELY READ TEXT & COVERS: Extract the EXACT title directly from the item. If it is a book, game, or media, read the cover text precisely (e.g., "Monster Manual", "Spell Compendium"). Pay close attention to small sub-text like "v.3.5".
@@ -377,22 +388,22 @@ export const ALL: APIRoute = async ({ request }) => {
           - 'identity': A single string describing the item.
           - 'title': A short SEO-friendly title string.
           - 'keywords': An array of strings.
-          - 'condition_notes': A thorough visual condition assessment based on scanning all provided images. Detail any visible wear, scuffs, damage, or verify if it looks 'Mint/NWT'. If no images are provided or visual assessment is impossible, explicitly state: "Could not assess condition from images."
+          - 'condition_notes': A VERY BRIEF (1-2 sentences max) condition assessment.
           - 'red_flags': An array of strings highlighting potential issues. Return empty if none.
           - 'price_breakdown': An object with estimated values:
               - 'mint': Price range if New/Mint.
               - 'fair': Price range if Used/Good.
               - 'poor': Price range if Poor/Damaged.
-              - 'boutique_premium': Price range if sold in a curated physical boutique or antique shop (usually higher than eBay 'fair').
-              - 'confidence': (Low/Medium/High) - How sure are you about this ID?
-          - 'comparables': An array of 3-5 similar items sold on eBay/etc.
+              - 'boutique_premium': Price range if sold in a curated physical boutique or antique shop.
+              - 'confidence': (Low/Medium/High)
+          - 'comparables': (OMIT IF LOT) An array of EXACTLY 1 similar item sold on eBay/etc (BE BRIEF).
                - 'name': Specific item name/title.
                - 'price': approx sold price.
-               - 'status': "Sold" or "Listed" or "scouted" or "acquired" or "at_location"
-          - 'purchase_strategy': An object containing strategic advice for sourcing this item:
-               - 'verdict': ONE of these strict enums: "PASS", "WATCH", "BUY_NOW", "NEGOTIATE", "CHASE_AUCTION". (Choose PASS if unprofitable/risky, BUY_NOW if heavily underpriced, CHASE_AUCTION if worth bidding up to the fair value, etc. You can return other words if those don't fit perfectly).
-               - 'current_asking_price': State the current bid or asking price extracted from context, if any (e.g. "$45.00" or "No Asking Price Found").
-               - 'advice': A brief paragraph detailing the sourcing strategy (e.g., maximum bid amount, negotiation tactics for FB Marketplace, shipping cost considerations, or why it's a hard pass). IF YOU DETECT THIS IS AN AUCTION (e.g. context mentions "Current Bid" or "Ends:"), explicitly prioritize formulating a MAX BID STRATEGY and remind the user to evaluate SHIPPING COSTS before bidding!
+               - 'status': "Sold" or "Listed"
+          - 'purchase_strategy': (OMIT IF LOT) An object containing strategic advice for sourcing this item:
+               - 'verdict': ONE of these strict enums: "PASS", "WATCH", "BUY_NOW", "NEGOTIATE", "CHASE_AUCTION".
+               - 'current_asking_price': State the current bid or asking price if found.
+               - 'advice': ONE VERY BRIEF SENTENCE detailing the sourcing strategy.
         `;
 
         const contentParts: any[] = [{ text: prompt }];

@@ -185,6 +185,13 @@
                         <div class="divider text-xs uppercase opacity-50 font-bold tracking-widest mt-0">Full Details</div>
                         <div v-html="renderedDescription" class="whitespace-pre-wrap"></div>
                     </div>
+                    <div v-if="scoutMarkdownText" class="prose prose-sm max-w-none prose-headings:font-bold prose-headings:mt-4 prose-a:text-primary pb-8">
+                        <div class="divider text-xs uppercase opacity-50 font-bold tracking-widest mt-0">AI Scout Report</div>
+                        <div v-html="scoutMarkdownText" class="whitespace-pre-wrap"></div>
+                    </div>
+                    <div v-if="!item.description && !scoutMarkdownText" class="text-center py-12 opacity-40">
+                        <p class="italic text-lg">No additional description available.</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -307,17 +314,22 @@ const cleanConditionNotes = computed(() => {
     let text = item.value.conditionNotes;
     text = text.replace(/\[GALLERY IDS:.*?\n/g, '');
     text = text.replace(/\[SCOUT_REPORT_ID:.*?\]/g, '');
+    text = text.replace(/\[SCOUT_REPORT_MD:.*?\]/g, '');
+    text = text.replace(/\[MAIN IMAGE ID:.*?\]/g, '');
     text = text.replace(/\[SCOUT_DATA_LITE:.*?\]/g, '');
     text = text.replace(/\[SCOUT_DATA:.*?\]/g, '');
+    text = text.replace(/--- IMPORT DETAILS ---[\s\S]*/, '');
     const scraperBlock = /Paid:[\s\S]*?Est\. High:.*?\n/i;
     text = text.replace(scraperBlock, '');
     return text.trim();
 });
 
 const parsedScoutData = ref(null);
+const scoutMarkdownText = ref(null);
 
 const loadScoutData = async (currentItem) => {
     parsedScoutData.value = null;
+    scoutMarkdownText.value = null;
     if (!currentItem) return;
 
     if (currentItem.scoutData) {
@@ -334,10 +346,23 @@ const loadScoutData = async (currentItem) => {
     }
 
     if (currentItem.conditionNotes) {
+        const mdMatch = currentItem.conditionNotes.match(/\[SCOUT_REPORT_MD:\s*([^\]]+)\]/);
+        if (mdMatch) {
+            const id = mdMatch[1].trim();
+            const downloadUrl = `${ENDPOINT}/storage/buckets/reports/files/${id}/download?project=${PROJECT}`;
+            try {
+                const res = await fetch(downloadUrl);
+                if (res.ok) {
+                    const txt = await res.text();
+                    scoutMarkdownText.value = marked.parse(txt);
+                }
+            } catch (e) { console.warn("Failed to fetch scout md report", e); }
+        }
+
         const fileMatch = currentItem.conditionNotes.match(/\[SCOUT_REPORT_ID:\s*([^\]]+)\]/);
         if (fileMatch) {
             const fileId = fileMatch[1].trim();
-            const downloadUrl = `${ENDPOINT}/storage/buckets/${BUCKET}/files/${fileId}/download?project=${PROJECT}`;
+            const downloadUrl = `${ENDPOINT}/storage/buckets/reports/files/${fileId}/download?project=${PROJECT}`;
             try {
                 const res = await fetch(downloadUrl);
                 if (res.ok) {
@@ -397,21 +422,36 @@ const parsePriceObj = (p) => {
 
 const estValue = computed(() => {
     if (!item.value) return 0;
-    if (item.value.resalePrice) return item.value.resalePrice;
-    if (item.value.estHigh) return parsePriceObj(item.value.estHigh);
+    if (item.value.resalePrice && parseFloat(item.value.resalePrice) > 0) return item.value.resalePrice;
+    
+    // Prefer AI data if available
+    if (parsedScoutData.value && parsedScoutData.value.price_breakdown) {
+         let p = parsedScoutData.value.price_breakdown;
+         let fair = parsePriceObj(p.fair);
+         if (fair > 0) return fair;
+         let mint = parsePriceObj(p.mint);
+         if (mint > 0) return mint;
+    }
+
+    if (item.value.estHigh && parseFloat(parsePriceObj(item.value.estHigh)) > 0) return parsePriceObj(item.value.estHigh);
     return getNoteValue(item.value.conditionNotes, 'Est. High', true) || 0;
 });
 
 const paidValue = computed(() => {
     if (!item.value) return 0;
-    return item.value.cost || item.value.purchasePrice || getNoteValue(item.value.conditionNotes, 'Paid', true) || 0;
+    if (item.value.cost && parseFloat(item.value.cost) > 0) return item.value.cost;
+    if (item.value.purchasePrice && parseFloat(item.value.purchasePrice) > 0) return item.value.purchasePrice;
+    return getNoteValue(item.value.conditionNotes, 'Paid', true) || 0;
 });
 
 const formatCurrency = (val) => {
-    if(!val || parseFloat(val) === 0) return '-';
-    const cleanStr = String(val).replace(/[^\d.]/g, ''); 
+    if(!val) return '-';
+    // Prevent dates from being parsed as millions of dollars
+    if (String(val).match(/\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/)) return '-';
+    
+    const cleanStr = String(val).replace(/[^\d.-]/g, ''); 
     const num = parseFloat(cleanStr);
-    return isNaN(num) ? val : '$' + num.toFixed(2);
+    return (isNaN(num) || num === 0) ? '-' : '$' + num.toFixed(2);
 };
 
 // --- IMAGES ---

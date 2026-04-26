@@ -9,115 +9,136 @@
                 <button class="btn btn-sm btn-circle btn-ghost" @click="closeDrawer">✕</button>
             </div>
 
+            <!-- Docked Title -->
+            <div class="px-4 py-2 bg-base-100 flex-none z-20">
+                <div class="form-control w-full">
+                    <label class="label flex flex-col items-start gap-1 px-0 pt-0 pb-1 w-full">
+                        <!-- Unmatched -->
+                        <button v-if="suggestedTitleStr && suggestedTitleStr !== editForm.title" class="btn btn-xs btn-soft btn-primary rounded-xl font-normal w-full text-left h-auto py-1.5 px-3 justify-start items-start" @click="editForm.title = suggestedTitleStr" title="Apply AI Suggestion">
+                            <Icon icon="solar:magic-stick-linear" class="w-3.5 h-3.5 shrink-0 mt-0.5" /> 
+                            <span class="whitespace-normal break-words leading-tight">Use: {{ suggestedTitleStr }}</span>
+                        </button>
+
+                        <div class="flex items-center justify-start gap-1.5 w-full">
+                            <span class="label-text font-bold shrink-0">Item Title</span>
+                            <!-- Matched -->
+                            <div v-if="suggestedTitleStr && suggestedTitleStr === editForm.title" class="text-success shrink-0" title="AI Suggestion Applied">
+                                <div class="relative w-4 h-4 flex items-center justify-center">
+                                    <Icon icon="solar:magic-stick-bold" class="w-4 h-4" />
+                                    <div class="absolute -bottom-0.5 -right-0.5 bg-base-100 rounded-full p-[1px]">
+                                        <Icon icon="solar:check-circle-bold" class="w-2.5 h-2.5" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </label>
+                    <div class="join w-full flex items-stretch">
+                        <textarea v-model="editForm.title" class="textarea textarea-bordered font-bold join-item grow leading-tight min-h-[3rem] py-2 resize-none" rows="2" placeholder="Item Title..."></textarea>
+                        <button class="btn join-item border border-base-300 h-auto w-12 flex items-center justify-center p-0" @click="copyToClipboard(editForm.title)" title="Copy Title">
+                            <Icon icon="solar:copy-linear" class="w-5 h-5" />
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Main Tabs -->
-            <div class="px-4 pt-2 bg-base-100 border-b border-base-200 flex-none">
-                <div role="tablist" class="tabs tabs-bordered font-bold">
-                    <a role="tab" class="tab" :class="{'tab-active': mainTab === 'details'}" @click="mainTab = 'details'">Item Details</a>
-                    <a role="tab" class="tab" :class="{'tab-active text-primary': mainTab === 'verify'}" @click="mainTab = 'verify'">Verify Contents</a>
-                    <a v-if="item" role="tab" class="tab" :class="{'tab-active text-secondary': mainTab === 'lot'}" @click="mainTab = 'lot'">Lot Dashboard</a>
+            <div class="px-4 pt-0 pb-2 bg-base-100 border-b border-base-200 flex-none z-20 shadow-sm">
+                <div role="tablist" class="tabs tabs-bordered font-bold w-full">
+                    <a role="tab" class="tab flex-1" :class="{'tab-active': mainTab === 'details'}" @click="mainTab = 'details'">Details</a>
+                    <a role="tab" class="tab flex-1" :class="{'tab-active text-primary': mainTab === 'verify'}" @click="mainTab = 'verify'">Verify</a>
+                    <a v-if="item" role="tab" class="tab flex-1" :class="{'tab-active text-secondary': mainTab === 'lot'}" @click="mainTab = 'lot'">Lot</a>
                 </div>
             </div>
 
             <!-- Content -->
-            <div class="flex-1 overflow-y-auto p-6 space-y-6" v-show="mainTab === 'details'">
-                <!-- SCOUT CONTEXT (Universal) -->
-                <div class="bg-base-200 border border-secondary/30 rounded-xl p-4 shadow-sm mb-6 relative overflow-hidden">
-                    <div class="absolute top-0 right-0 bg-secondary text-secondary-content text-[10px] font-bold px-2 py-1 rounded-bl-lg uppercase tracking-wider">
-                        AI Scout Mode
-                    </div>
-                    
-                    <div class="space-y-4">
+            <div class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 sm:space-y-6" v-show="mainTab === 'details'">
+                <!-- 1. Text Query (Item Description/Scout Input) -->
+                <div class="space-y-4">
                         <!-- 1. Text Query -->
                         <div class="form-control w-full">
-                            <label class="label pt-0 pb-1"><span class="label-text font-bold text-sm">Describe Item</span></label>
-                            <textarea v-model="scoutQuery" class="textarea textarea-bordered h-20 text-sm" placeholder="e.g. Vintage Sony Walkman in good condition..."></textarea>
+                            <label class="label pt-0 pb-1 flex justify-between w-full">
+                                <span class="label-text font-bold text-sm flex items-center gap-1">
+                                    <Icon icon="solar:magic-stick-bold" class="w-4 h-4 text-primary" />
+                                    AI Scout Prompt
+                                </span>
+                                <span class="text-[10px] opacity-50 uppercase font-bold tracking-wider">Not Saved</span>
+                            </label>
+                            <textarea v-model="scoutQuery" class="textarea textarea-bordered h-20 text-sm w-full" placeholder="e.g. Vintage Sony Walkman in good condition..."></textarea>
+                        </div>
+                        
+                        <!-- Source Link / Fetcher -->
+                        <div class="form-control w-full">
+                            <label class="label pb-1 pt-0 flex justify-between w-full">
+                                <span class="label-text">Source Link</span>
+                            </label>
+                             <div class="join w-full flex shadow-sm">
+                                <input type="text" v-model="editForm.sourcingLocation" class="input input-bordered join-item grow font-mono text-xs" placeholder="Paste URL to fetch data & photos..." />
+                                <a v-if="editForm.sourcingLocation && editForm.sourcingLocation.startsWith('http')" :href="editForm.sourcingLocation" target="_blank" class="btn btn-neutral join-item shrink-0 px-3" title="Open Link"><Icon icon="solar:link-linear" class="w-4 h-4" /></a>
+                                <button class="btn btn-primary join-item shrink-0 px-3" @click="fetchSourceData" :disabled="!editForm.sourcingLocation || fetchingImages" title="Fetch Data from URL">
+                                    <span v-if="fetchingImages" class="loading loading-spinner loading-xs"></span>
+                                    <span v-else class="flex items-center gap-1"><Icon icon="solar:cloud-download-linear" class="w-4 h-4" /> Fetch</span>
+                                </button>
+                             </div>
                         </div>
                         
                         <!-- 2. Photos -->
                         <div class="form-control w-full">
                             <label class="label py-1">
                                 <span class="label-text font-bold text-sm">Photos (Click to set Main ⭐)</span>
-                                <span v-if="dragOver" class="badge badge-primary badge-sm animate-pulse">Drop images here!</span>
                             </label>
-                            
                             <!-- Dropzone & Gallery Area -->
-                            <div class="border-2 border-dashed rounded-lg p-3 transition-colors relative min-h-24 flex flex-col justify-center cursor-pointer"
-                                 :class="dragOver ? 'border-primary bg-primary/10' : 'border-base-300 hover:border-primary/50'"
+                            <div class="border-2 border-dashed rounded-xl p-3 transition-colors relative min-h-[100px] flex flex-col justify-center"
                                  @dragenter.prevent="dragOver = true"
                                  @dragover.prevent="dragOver = true"
                                  @dragleave.prevent="onDragLeave"
                                  @drop.prevent="handleDrop"
-                                 @click.self="$refs.fileInput.click()">
-                                
-                                <input type="file" ref="fileInput" multiple accept="image/*" class="hidden" @change="handleFileSelect" />
-
-                                <!-- Empty State -->
-                                <div v-if="editGalleryBuffer.length === 0 && (!editForm.existingGalleryIds || editForm.existingGalleryIds.length === 0)" 
-                                     class="flex flex-col items-center justify-center opacity-50 pointer-events-none text-center">
-                                    <div class="text-3xl mb-1"><Icon icon="solar:camera-linear" class="mx-auto" /></div>
-                                    <div class="text-xs font-bold font-mono">Drag & Drop images here<br/>or Click to Browse</div>
+                                 :class="{'border-primary bg-primary/5': dragOver, 'border-base-300': !dragOver}">
+                                 
+                                <div v-if="!editForm.existingGalleryIds?.length && !editGalleryBuffer.length" class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-50">
+                                    <div class="flex flex-col items-center">
+                                        <Icon icon="solar:upload-minimalistic-linear" class="w-8 h-8 mb-1" />
+                                        <span class="text-xs">Drag & drop photos here</span>
+                                    </div>
                                 </div>
-
-                                <!-- Gallery Previews -->
-                                <div v-else class="flex gap-3 overflow-x-auto pb-2 w-full items-center pointer-events-auto">
-                                    <!-- Existing -->
-                                    <div v-for="id in editForm.existingGalleryIds" :key="id" class="relative w-16 h-16 shrink-0 group cursor-pointer" @click="setMainPhoto('existing', id)">
-                                        <img :src="getAssetUrl(id)" class="w-full h-full object-cover rounded shadow-sm border border-base-300" :class="{'ring-4 ring-primary ring-inset z-10': actualMainPhoto.id === id}"/>
+                                
+                                <div class="flex gap-2 items-center overflow-x-auto w-full pointer-events-auto z-10">
+                                    <!-- Existing Previews -->
+                                    <div v-for="id in editForm.existingGalleryIds" :key="id" class="relative w-20 h-20 shrink-0 group cursor-pointer" @click="setMainPhoto('existing', id)">
+                                        <img :src="getAssetUrl(id)" class="w-full h-full object-cover rounded-lg shadow-sm border border-base-300" :class="{'ring-4 ring-primary ring-inset z-10': actualMainPhoto.id === id}"/>
                                         <div v-if="actualMainPhoto.id === id" class="absolute -top-3 -left-3 text-2xl drop-shadow-md z-20 text-warning"><Icon icon="solar:star-bold" /></div>
                                         <button @click.stop="removeGalleryItem(id, true)" class="btn btn-xs btn-circle btn-error absolute -top-2 -right-2 w-5 h-5 min-h-0 text-[10px] flex items-center justify-center z-30 shadow hover:scale-110">✕</button>
                                     </div>
-                                    <!-- New -->
-                                    <div v-for="(file, idx) in editGalleryBuffer" :key="idx" class="relative w-16 h-16 shrink-0 group cursor-pointer" @click="setMainPhoto('new', idx)">
-                                        <img :src="getObjectUrl(file)" class="w-full h-full object-cover rounded shadow-sm border border-base-300" :class="{'ring-4 ring-primary ring-inset z-10': actualMainPhoto.file === file}"/>
+                                    <!-- New Previews -->
+                                    <div v-for="(file, idx) in editGalleryBuffer" :key="idx" class="relative w-20 h-20 shrink-0 group cursor-pointer" @click="setMainPhoto('new', idx)">
+                                        <img :src="getObjectUrl(file)" class="w-full h-full object-cover rounded-lg shadow-sm border border-base-300" :class="{'ring-4 ring-primary ring-inset z-10': actualMainPhoto.file === file}"/>
                                         <div v-if="actualMainPhoto.file === file" class="absolute -top-3 -left-3 text-2xl drop-shadow-md z-20 text-warning"><Icon icon="solar:star-bold" /></div>
                                         <button @click.stop="removeGalleryItem(idx, false)" class="btn btn-xs btn-circle btn-error absolute -top-2 -right-2 w-5 h-5 min-h-0 text-[10px] flex items-center justify-center z-30 shadow hover:scale-110">✕</button>
                                     </div>
-                                    
-                                    <!-- Add More Button -->
-                                    <div class="relative w-16 h-16 shrink-0 border-2 border-dashed border-base-300 rounded flex items-center justify-center cursor-pointer hover:border-primary/50 hover:bg-base-200 transition-colors"
-                                         @click="$refs.fileInput.click()">
-                                        <div class="text-3xl opacity-50 font-light leading-none mb-1">+</div>
-                                    </div>
                                 </div>
                             </div>
-                            
-                            <!-- Scanner Widget (Camera Only) -->
-                            <div class="mt-2">
-                                <ScannerWidget :photos="editGalleryBuffer" @photos-captured="handleCapturedPhotos" :hide-upload="true" />
-                            </div>
-                        </div>
-                        
-                        <!-- 3. Link -->
-                        <div class="form-control w-full">
-                            <label class="label py-1"><span class="label-text font-bold text-sm">Or Paste Link</span></label>
-                            <div class="join w-full flex">
-                                <input type="text" v-model="editForm.sourcingLocation" class="input input-bordered input-sm join-item grow font-mono" placeholder="URL or Item ID..." />
-                                <button class="btn btn-sm btn-primary join-item shrink-0" @click="fetchImagesFromUrl" :disabled="!editForm.sourcingLocation || fetchingImages">
-                                    <span v-if="fetchingImages" class="loading loading-spinner loading-xs"></span>
-                                    <span v-else>Fetch</span>
+
+                            <!-- Action Buttons Docked Below -->
+                            <div class="flex gap-2 mt-2 w-full">
+                                <button @click="$refs.fileInput.click()" class="btn btn-sm btn-outline flex-1 text-xs">
+                                    <Icon icon="solar:gallery-add-linear" class="w-4 h-4 mr-1" /> Upload Photos
+                                </button>
+                                <button @click="$refs.scannerWidget.startCamera()" class="btn btn-sm btn-outline flex-1 text-xs">
+                                    <Icon icon="solar:camera-linear" class="w-4 h-4 mr-1" /> Open Camera
                                 </button>
                             </div>
+
+                            <!-- Hidden Inputs & Widgets -->
+                            <ScannerWidget ref="scannerWidget" :photos="editGalleryBuffer" @photos-captured="handleCapturedPhotos" class="hidden" />
+                            <input type="file" ref="fileInput" multiple accept="image/*" class="hidden" @change="handleFileSelect" />
+                            
+
                         </div>
                         
-                    </div>
                 </div>
 
-                <div class="form-control w-full">
-                    <label class="label flex-col items-start sm:flex-row sm:items-start gap-1 sm:gap-2">
-                        <span class="label-text font-bold shrink-0 mt-1">Item Title</span>
-                        <div v-if="suggestedTitleStr" class="text-xs text-left sm:text-right text-primary cursor-pointer hover:opacity-70 whitespace-normal break-words w-full" @click="editForm.title = suggestedTitleStr">
-                            <Icon icon="solar:magic-stick-linear" class="w-4 h-4 inline shrink-0 align-text-bottom" /> Use: <span class="italic">{{ suggestedTitleStr }}</span>
-                        </div>
-                    </label>
-                    <div class="join w-full flex items-stretch">
-                        <textarea v-model="editForm.title" class="textarea textarea-bordered font-bold join-item grow leading-tight min-h-[3rem] py-2 resize-none" rows="2"></textarea>
-                        <button class="btn join-item border border-base-300 h-auto w-12 flex items-center justify-center p-0" @click="copyToClipboard(editForm.title)" title="Copy Title">
-                            <Icon icon="solar:copy-linear" class="w-5 h-5" />
-                        </button>
-                    </div>
-                </div>
 
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 items-end">
                      <div class="form-control w-full">
                         <label class="label"><span class="label-text">Quantity</span></label>
                         <div class="flex flex-col gap-1">
@@ -138,9 +159,21 @@
                         </label>
                     </div>
                      <div class="form-control w-full">
-                        <label class="label flex flex-col items-start gap-0">
-                            <span class="label-text">List Price</span>
-                            <span v-if="editForm.quantity > 1" class="text-[9px] text-primary">(${{ (parseFloat(editForm.resalePrice || 0) / editForm.quantity).toFixed(2) }} ea)</span>
+                        <label class="label flex flex-col items-start gap-1 pb-1 w-full">
+                            <button v-if="suggestedListPriceStr && suggestedListPriceStr !== String(editForm.resalePrice)" class="btn btn-xs btn-soft btn-primary rounded-xl font-normal w-full text-left h-auto py-1 px-2 justify-start items-start" @click="editForm.resalePrice = suggestedListPriceStr" title="Apply AI Suggestion">
+                                <Icon icon="solar:magic-stick-linear" class="w-3.5 h-3.5 shrink-0 mt-0.5" /> 
+                                <span class="whitespace-normal break-words leading-tight">Use: ${{ suggestedListPriceStr }}</span>
+                            </button>
+                            <div class="flex items-center justify-start gap-1.5 w-full">
+                                <span class="label-text">List Price</span>
+                                <div v-if="suggestedListPriceStr && suggestedListPriceStr === String(editForm.resalePrice)" class="text-success shrink-0" title="AI Suggestion Applied">
+                                    <div class="relative w-4 h-4 flex items-center justify-center">
+                                        <Icon icon="solar:magic-stick-bold" class="w-4 h-4" />
+                                        <div class="absolute -bottom-0.5 -right-0.5 bg-base-100 rounded-full p-[1px]"><Icon icon="solar:check-circle-bold" class="w-2.5 h-2.5" /></div>
+                                    </div>
+                                </div>
+                                <span v-if="editForm.quantity > 1" class="text-[9px] text-primary ml-1">(${{ (parseFloat(editForm.resalePrice || 0) / editForm.quantity).toFixed(2) }} ea)</span>
+                            </div>
                         </label>
                          <label class="input input-bordered flex items-center gap-2">
                             <span class="opacity-50">$</span>
@@ -160,24 +193,52 @@
                 </div>
 
                 <!-- AI Estimates Row -->
-                <div class="grid grid-cols-2 gap-2">
+                <div class="grid grid-cols-2 gap-3 items-end">
                      <div class="form-control w-full">
-                        <label class="label"><span class="label-text text-xs uppercase font-bold text-success truncate">Est. Low</span></label>
-                        <label class="input input-bordered input-sm flex items-center gap-1 px-2">
+                        <label class="label flex flex-col items-start gap-1 pb-1 w-full">
+                            <button v-if="suggestedEstLowStr && suggestedEstLowStr !== String(editForm.estLow)" class="btn btn-xs btn-soft btn-primary rounded-xl font-normal w-full text-left h-auto py-1 px-2 justify-start items-start" @click="editForm.estLow = suggestedEstLowStr" title="Apply AI Suggestion">
+                                <Icon icon="solar:magic-stick-linear" class="w-3.5 h-3.5 shrink-0 mt-0.5" /> 
+                                <span class="whitespace-normal break-words leading-tight">Use: ${{ suggestedEstLowStr }}</span>
+                            </button>
+                            <div class="flex items-center justify-start gap-1.5 w-full">
+                                <span class="label-text text-xs uppercase font-bold text-success truncate">Est. Low</span>
+                                <div v-if="suggestedEstLowStr && suggestedEstLowStr === String(editForm.estLow)" class="text-success shrink-0" title="AI Suggestion Applied">
+                                    <div class="relative w-4 h-4 flex items-center justify-center">
+                                        <Icon icon="solar:magic-stick-bold" class="w-4 h-4" />
+                                        <div class="absolute -bottom-0.5 -right-0.5 bg-base-100 rounded-full p-[1px]"><Icon icon="solar:check-circle-bold" class="w-2.5 h-2.5" /></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </label>
+                        <label class="input input-bordered flex items-center gap-2">
                             <span class="opacity-50">$</span>
-                            <input type="number" step="0.01" v-model="editForm.estLow" class="grow font-mono min-w-0" placeholder="0.00" />
+                            <input type="number" step="0.01" v-model="editForm.estLow" class="grow min-w-0" placeholder="0.00" />
                         </label>
                     </div>
                      <div class="form-control w-full">
-                        <label class="label"><span class="label-text text-xs uppercase font-bold text-success truncate">Est. High</span></label>
-                         <label class="input input-bordered input-sm flex items-center gap-1 px-2">
+                        <label class="label flex flex-col items-start gap-1 pb-1 w-full">
+                            <button v-if="suggestedEstHighStr && suggestedEstHighStr !== String(editForm.estHigh)" class="btn btn-xs btn-soft btn-primary rounded-xl font-normal w-full text-left h-auto py-1 px-2 justify-start items-start" @click="editForm.estHigh = suggestedEstHighStr" title="Apply AI Suggestion">
+                                <Icon icon="solar:magic-stick-linear" class="w-3.5 h-3.5 shrink-0 mt-0.5" /> 
+                                <span class="whitespace-normal break-words leading-tight">Use: ${{ suggestedEstHighStr }}</span>
+                            </button>
+                            <div class="flex items-center justify-start gap-1.5 w-full">
+                                <span class="label-text text-xs uppercase font-bold text-success truncate">Est. High</span>
+                                <div v-if="suggestedEstHighStr && suggestedEstHighStr === String(editForm.estHigh)" class="text-success shrink-0" title="AI Suggestion Applied">
+                                    <div class="relative w-4 h-4 flex items-center justify-center">
+                                        <Icon icon="solar:magic-stick-bold" class="w-4 h-4" />
+                                        <div class="absolute -bottom-0.5 -right-0.5 bg-base-100 rounded-full p-[1px]"><Icon icon="solar:check-circle-bold" class="w-2.5 h-2.5" /></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </label>
+                         <label class="input input-bordered flex items-center gap-2">
                             <span class="opacity-50">$</span>
-                            <input type="number" step="0.01" v-model="editForm.estHigh" class="grow font-mono min-w-0" placeholder="0.00" />
+                            <input type="number" step="0.01" v-model="editForm.estHigh" class="grow min-w-0" placeholder="0.00" />
                         </label>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
                      <div class="form-control w-full">
                         <label class="label"><span class="label-text">Bin Location</span></label>
                         <input type="text" list="org-bin-locations" v-model="editForm.storageLocation" class="input input-bordered w-full" placeholder="Type or select..." />
@@ -186,16 +247,11 @@
                         </datalist>
                     </div>
                     
-                    <!-- Order ID / URL (Editable) -->
-                    <div class="form-control w-full">
-                        <label class="label"><span class="label-text">Source Link / Order #</span></label>
-                         <div class="join w-full flex">
-                            <input type="text" v-model="editForm.orderId" class="input input-bordered join-item grow" placeholder="URL or Order ID" />
-                            <a v-if="editForm.orderId && editForm.orderId.startsWith('http')" :href="editForm.orderId" target="_blank" class="btn btn-neutral join-item shrink-0"><Icon icon="solar:link-linear" class="w-5 h-5" /></a>
-                         </div>
-                    </div>
+                     <div class="form-control w-full">
+                        <label class="label"><span class="label-text">Source Order #</span></label>
+                        <input type="text" v-model="editForm.orderId" class="input input-bordered w-full font-mono text-xs" placeholder="e.g. ORD-12345" />
+                     </div>
                 </div>
-
 
                 <!-- Scout Result Display (Scout View Mirror) -->
                  <div v-if="scoutResult" class="bg-base-200 rounded-xl p-4 border border-base-300 shadow-inner mt-4">
@@ -383,8 +439,22 @@
                 </div>
 
                 <!-- Description -->
-                <div class="flex justify-between items-center mb-2">
-                    <label class="label pt-0"><span class="label-text font-bold">Product Description</span></label>
+                <div class="flex justify-between items-center mb-0">
+                    <label class="label flex flex-col items-start gap-1 pt-0 w-full">
+                        <button v-if="suggestedDescriptionStr && suggestedDescriptionStr !== editForm.description" class="btn btn-xs btn-soft btn-primary rounded-xl font-normal w-full text-left h-auto py-1 px-2 justify-start items-start" @click="editForm.description = suggestedDescriptionStr" title="Apply AI Suggestion">
+                            <Icon icon="solar:magic-stick-linear" class="w-3.5 h-3.5 shrink-0 mt-0.5" /> 
+                            <span class="whitespace-normal break-words leading-tight">Use AI Description</span>
+                        </button>
+                        <div class="flex items-center justify-start gap-1.5 w-full">
+                            <span class="label-text font-bold">Product Description</span>
+                            <div v-if="suggestedDescriptionStr && suggestedDescriptionStr === editForm.description" class="text-success shrink-0" title="AI Suggestion Applied">
+                                <div class="relative w-4 h-4 flex items-center justify-center">
+                                    <Icon icon="solar:magic-stick-bold" class="w-4 h-4" />
+                                    <div class="absolute -bottom-0.5 -right-0.5 bg-base-100 rounded-full p-[1px]"><Icon icon="solar:check-circle-bold" class="w-2.5 h-2.5" /></div>
+                                </div>
+                            </div>
+                        </div>
+                    </label>
                     <div role="tablist" class="tabs tabs-boxed">
                         <a role="tab" class="tab" :class="{ 'tab-active': descTab === 'edit' }" @click="descTab = 'edit'">Edit</a>
                         <a role="tab" class="tab" :class="{ 'tab-active': descTab === 'preview' }" @click="descTab = 'preview'">Preview</a>
@@ -404,7 +474,7 @@
             </div>
 
             <!-- Verify Content Tab -->
-            <div class="flex-1 overflow-y-auto p-6 space-y-6" v-show="mainTab === 'verify'">
+            <div class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 sm:space-y-6" v-show="mainTab === 'verify'">
                 <div class="alert alert-info py-2 shadow-sm text-sm border-info/30">
                      <span class="text-xl"><Icon icon="solar:smart-speaker-minimalistic-linear" class="w-6 h-6 inline mr-2" /></span> Take a photo of the "Contents List" on the back of the box and the AI will build a checklist for you!
                 </div>
@@ -465,7 +535,7 @@
             </div>
 
             <!-- Lot Dashboard Tab -->
-            <div class="flex-1 overflow-y-auto p-6 space-y-6" v-show="mainTab === 'lot'">
+            <div class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 sm:space-y-6" v-show="mainTab === 'lot'">
                 <div class="alert alert-secondary py-2 shadow-sm text-sm border-secondary/30 mb-4">
                      <span class="text-xl"><Icon icon="solar:box-linear" class="w-6 h-6 inline mr-2" /></span> Lot Dashboard: Track extracted items and total box ROI.
                 </div>
@@ -508,17 +578,19 @@
             </div>
 
             <!-- Footer -->
-            <div class="p-4 border-t border-base-200 flex justify-between items-center bg-base-100 z-10 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] gap-4 shrink-0">
-                <!-- Static AI Scout Button -->
-                <button class="btn btn-secondary shadow-md shrink-0" @click="analyzeExistingItem" :disabled="analyzing || (!scoutQuery && !actualMainPhoto.url && !editForm.sourcingLocation)">
-                    <span v-if="analyzing" class="loading loading-spinner"></span>
-                    <template v-else>
-                        <span class="hidden sm:inline"><Icon icon="solar:magic-stick-linear" class="w-4 h-4 mr-1 inline" /> AI Scout</span>
-                        <span class="sm:hidden"><Icon icon="solar:magic-stick-linear" class="w-4 h-4 mr-1 inline" /> AI</span>
-                    </template>
-                </button>
+            <div class="p-3 pb-safe border-t border-base-200 flex flex-col sm:flex-row justify-between items-stretch sm:items-center bg-base-100 z-10 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] gap-3 shrink-0">
+                <div class="flex items-center gap-2 flex-1 w-full sm:max-w-md">
+                    <button class="btn btn-secondary shadow-md shrink-0" @click="analyzeExistingItem" :disabled="analyzing || (!scoutQuery && !actualMainPhoto.url && !editForm.sourcingLocation && !editForm.title)">
+                        <span v-if="analyzing" class="loading loading-spinner"></span>
+                        <span v-if="analyzing" class="ml-2 text-xs font-normal max-w-[120px] sm:max-w-none truncate">{{ analysisStatus }}</span>
+                        <template v-else>
+                            <span class="hidden sm:inline"><Icon icon="solar:magic-stick-linear" class="w-4 h-4 mr-1 inline" /> AI Scout</span>
+                            <span class="sm:hidden"><Icon icon="solar:magic-stick-linear" class="w-4 h-4 mr-1 inline" /> AI</span>
+                        </template>
+                    </button>
+                </div>
                 
-                <div class="flex gap-2 w-full justify-end">
+                <div class="flex gap-2 w-full sm:w-auto justify-end shrink-0">
                     <button class="btn btn-ghost" @click="closeDrawer">Cancel</button>
                     <button class="btn btn-primary shadow-md" @click="saveEdit" :disabled="processing">
                         <span v-if="processing" class="loading loading-spinner"></span>
@@ -758,6 +830,14 @@ const suggestedTitleStr = computed(() => {
     
     // Fallback for legacy single object or array formats
     if (Array.isArray(scoutResult.value) && scoutResult.value.length > 0) {
+        // If it's a bulk lot (multiple items), combine the titles
+        if (scoutResult.value.length > 1) {
+            const names = scoutResult.value.map(i => i.title || i.identity).filter(Boolean);
+            if (names.length > 0) {
+                return `Lot of ${scoutResult.value.length}: ` + names.join(', ');
+            }
+            return `Lot of ${scoutResult.value.length} Items`;
+        }
         return scoutResult.value[0].title || scoutResult.value[0].identity || null;
     } else if (!Array.isArray(scoutResult.value) && typeof scoutResult.value === 'object') {
         return scoutResult.value.title || scoutResult.value.identity || null;
@@ -765,11 +845,54 @@ const suggestedTitleStr = computed(() => {
     
     return null;
 });
+
+const suggestedListPriceStr = computed(() => {
+    if (!scoutResult.value) return null;
+    if (scoutItemsArray.value.length > 1 && scoutTotalRange.value) {
+        return ((scoutTotalRange.value.low + scoutTotalRange.value.high) / 2).toFixed(2);
+    }
+    let itemData = scoutItemsArray.value[0];
+    if (!itemData) return null;
+    let fair = parsePrice(itemData.price_breakdown?.fair);
+    if (!fair && itemData.price_breakdown?.mint) fair = parsePrice(itemData.price_breakdown?.mint);
+    return fair > 0 ? fair.toFixed(2) : null;
+});
+
+const suggestedEstLowStr = computed(() => {
+    if (!scoutResult.value) return null;
+    if (scoutItemsArray.value.length > 1 && scoutTotalRange.value) {
+        return scoutTotalRange.value.low.toFixed(2);
+    }
+    let itemData = scoutItemsArray.value[0];
+    if (!itemData) return null;
+    let poor = parsePrice(itemData.price_breakdown?.poor);
+    return poor > 0 ? poor.toFixed(2) : null;
+});
+
+const suggestedEstHighStr = computed(() => {
+    if (!scoutResult.value) return null;
+    if (scoutItemsArray.value.length > 1 && scoutTotalRange.value) {
+        return scoutTotalRange.value.high.toFixed(2);
+    }
+    let itemData = scoutItemsArray.value[0];
+    if (!itemData) return null;
+    let mint = parsePrice(itemData.price_breakdown?.mint);
+    return mint > 0 ? mint.toFixed(2) : null;
+});
+
+const suggestedDescriptionStr = computed(() => {
+    if (!scoutResult.value) return null;
+    let itemData = scoutItemsArray.value[0];
+    if (!itemData) return null;
+    return itemData.description || null;
+});
+
 const scoutMdText = ref(null);
 const scoutQuery = ref('');
 const fetchedImages = ref([]);
 const fetchingImages = ref(false);
 const analyzing = ref(false);
+const analysisStatus = ref('');
 const extractingLot = ref(false); // New state for bulk extraction
 const generatingDescription = ref(false);
 
@@ -1248,11 +1371,18 @@ const handleCapturedPhotos = (files) => {
 
 
 
-const fetchImagesFromUrl = async () => {
-    const url = editForm.sourcingLocation;
+const fetchSourceData = async () => {
+    let url = editForm.sourcingLocation;
     const isId = url && url.match(/^\d+$/);
-    if (!url || (!url.startsWith('http') && !isId)) {
-        addToast({ type: 'warning', message: "Please enter a valid URL or Item ID." });
+    
+    // Auto-convert bare SGW IDs to URLs
+    if (isId) {
+        url = `https://shopgoodwill.com/item/${url}`;
+        editForm.sourcingLocation = url;
+    }
+
+    if (!url || !url.startsWith('http')) {
+        addToast({ type: 'warning', message: "Please enter a valid URL." });
         return;
     }
     fetchingImages.value = true;
@@ -1277,7 +1407,7 @@ const fetchImagesFromUrl = async () => {
             if (data.title && (!editForm.title || editForm.title.trim().length < 4)) editForm.title = data.title;
         }
     } catch (e) {
-        addToast({ type: 'error', message: "Failed to fetch images: " + e.message });
+        addToast({ type: 'error', message: "Failed to fetch source data: " + e.message });
     } finally {
         fetchingImages.value = false;
     }
@@ -1321,11 +1451,12 @@ const selectFetchedImage = async (url) => {
 };
 
 const analyzeExistingItem = async () => {
-    if (!actualMainPhoto.value.url && !editForm.sourcingLocation && !scoutQuery.value) {
-        addToast({ type: 'warning', message: "Please provide text, a photo, or a link to analyze." });
+    if (!actualMainPhoto.value.url && !editForm.sourcingLocation && !scoutQuery.value && !editForm.title) {
+        addToast({ type: 'warning', message: "Please provide a title, text, a photo, or a link to analyze." });
         return;
     }
     analyzing.value = true;
+    analysisStatus.value = 'Preparing Images...';
     try {
         let base64Images = [];
         const resize = (blob) => new Promise((resolve) => {
@@ -1343,37 +1474,46 @@ const analyzeExistingItem = async () => {
         });
 
         // 1. Process local/new camera buffer files
-        for (const file of editGalleryBuffer.value.slice(0, 3)) {
-            try { base64Images.push(await resize(file)); } catch (e) {}
-        }
+        const resizePromises = editGalleryBuffer.value.slice(0, 3).map(async (file) => {
+            try { return await resize(file); } catch (e) { return null; }
+        });
+        const resizedLocal = (await Promise.all(resizePromises)).filter(img => img !== null);
+        base64Images.push(...resizedLocal);
         
-        // 2. Process existing Appwrite URLs
+        // 2. Process existing Appwrite URLs (Pass URLs to backend instead of downloading!)
+        const remoteUrls = [];
         if (editForm.existingGalleryIds) {
             for (const id of editForm.existingGalleryIds.slice(0, 3 - base64Images.length)) {
                 let url = getAssetUrl(id);
-                if (url.includes('/storage/buckets/') || !url.includes('/api/proxy-image')) url = `/api/proxy-image?url=${encodeURIComponent(url)}`;
-                try { const res = await fetch(url); if (res.ok) base64Images.push(await resize(await res.blob())); } catch (e) {}
+                // Instead of proxying and downloading, pass the direct URL to the backend
+                if (url) remoteUrls.push(url);
             }
         }
         
         // 3. Fallback to just main photo URL if somehow nothing was caught
-        if (base64Images.length === 0 && actualMainPhoto.value.url) {
+        if (base64Images.length === 0 && remoteUrls.length === 0 && actualMainPhoto.value.url) {
             let url = actualMainPhoto.value.url;
             if (url.startsWith('data:')) {
                 try { const res = await fetch(url); base64Images.push(await resize(await res.blob())); } catch (e) {}
             } else {
-                if (url.includes('/storage/buckets/') || !url.includes('/api/proxy-image')) url = `/api/proxy-image?url=${encodeURIComponent(url)}`;
-                try { const res = await fetch(url); if (res.ok) base64Images.push(await resize(await res.blob())); } catch (e) { }
+                remoteUrls.push(url);
             }
         }
 
         let contextNotes = editForm.description || '';
         if (scoutQuery.value) contextNotes = `User Query/Description: ${scoutQuery.value}\n\n` + contextNotes;
+        if (editForm.title) contextNotes = `Current Title: ${editForm.title}\n\n` + contextNotes;
         if (editForm.sourcingLocation) contextNotes += `\n\nItem URL: ${editForm.sourcingLocation}`;
+
+        analysisStatus.value = 'Analyzing with AI...';
 
         const response = await fetch(`/api/identify-item`, {
             method: 'PUT', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ images: base64Images, imageUrl: actualMainPhoto.value.url, notes: contextNotes })
+            body: JSON.stringify({ 
+                images: base64Images, 
+                remoteImageUrls: remoteUrls,
+                notes: contextNotes 
+            })
         });
         if (!response.ok) {
             const errData = await response.json().catch(() => ({}));
@@ -1404,23 +1544,12 @@ const analyzeExistingItem = async () => {
                     desc += `\n**${idx+1}. ${item.title || item.identity}** - Est: ${low === high ? `$${low.toFixed(2)}` : `$${low.toFixed(2)} - $${high.toFixed(2)}`}\n`;
                     if(item.condition_notes) desc += `- Condition: ${item.condition_notes}\n`;
                 });
-                if (totalLow > 0) editForm.estLow = totalLow.toFixed(2);
-                if (totalHigh > 0) editForm.estHigh = totalHigh.toFixed(2);
-                if(!(editForm.itemCondition || '').includes("LOT BREAKDOWN")) editForm.itemCondition = ((editForm.itemCondition || '') + "\n\n" + desc).trim();
+                scoutMdText.value = desc.trim();
             } else {
                 scoutResult.value = data.items[0];
                 const item = scoutResult.value;
-                if (!editForm.title || editForm.title === 'Untitled' || editForm.title === 'Untitled Item') editForm.title = item.title || item.identity;
                 
-                if (data.items[0].price_breakdown) {
-                     const fairPrice = data.items[0].price_breakdown.fair;
-                     const parsedFair = parsePriceRange(fairPrice);
-                     editForm.resalePrice = parseFloat(parsedFair.mid).toFixed(2);
-                     editForm.estLow = parseFloat(parsedFair.low).toFixed(2);
-                     editForm.estHigh = parseFloat(parsedFair.high).toFixed(2);
-                }
-                
-                let report = `\n\n--- 🕵️ SCOUT REPORT ---\n`;
+                let report = `--- 🕵️ SCOUT REPORT ---\n`;
                 if(item.condition_notes) report += `**Condition:** ${item.condition_notes}\n`;
                 if(item.red_flags && item.red_flags.length > 0) report += `**🚩 Red Flags:** ${item.red_flags.join(', ')}\n`;
                 if(item.price_breakdown) {
@@ -1429,22 +1558,14 @@ const analyzeExistingItem = async () => {
                 }
                 if(item.comparables && item.comparables.length > 0) { report += `**Comparables:**\n`; item.comparables.forEach(c => report += `- ${c.name} (${c.price}) [${c.status}]\n`); }
                 if(item.keywords && item.keywords.length > 0) report += `**Keywords:** ${item.keywords.join(', ')}\n`;
-                let oldCond = editForm.itemCondition || '';
-                if(oldCond.includes("--- 🕵️ SCOUT REPORT ---")) {
-                    oldCond = oldCond.substring(0, oldCond.indexOf("--- 🕵️ SCOUT REPORT ---")).trim();
-                }
-                editForm.itemCondition = (oldCond + report).trim();
-                if (item.fetched_image && actualMainPhoto.value.type === 'none') {
-                     const file = await urlToFile(item.fetched_image, `scout_auto_${Date.now()}.jpg`);
-                     if (file) {
-                         editGalleryBuffer.value.push(file);
-                         mainPhotoSelection.value = { type: 'new', val: editGalleryBuffer.value.length - 1 };
-                     }
-                }
+                scoutMdText.value = report.trim();
+                
+                // Note: We deliberately do NOT mutate editForm here.
+                // The UI will detect scoutResult and display suggestion buttons.
             }
             descTab.value = 'edit';
         }
-    } catch (e) { addToast({ type: 'error', message: "Analysis Error: " + e.message }); } finally { analyzing.value = false; }
+    } catch (e) { addToast({ type: 'error', message: "Analysis Error: " + e.message }); } finally { analyzing.value = false; analysisStatus.value = ''; }
 };
 
 const extractLotItems = async () => {

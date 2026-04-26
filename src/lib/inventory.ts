@@ -381,7 +381,7 @@ export async function updateInventoryItem(documentId: string, updates: Partial<E
             const regex = new RegExp(`^${escapedKey}:[ \\t]*(.*)$`, 'mi');
             
             if (regex.test(notes)) {
-                notes = notes.replace(regex, `${key}: ${value}`);
+                notes = notes.replace(regex, () => `${key}: ${value}`);
             } else {
                 notes = notes + `\n${key}: ${value}`;
             }
@@ -391,7 +391,7 @@ export async function updateInventoryItem(documentId: string, updates: Partial<E
         const updateTagValue = (tag: string, value: string) => {
             const regex = new RegExp(`\\[${tag}:[ \\t]*([^\\]]+)\\]`, 'i');
             if (regex.test(notes)) {
-                notes = notes.replace(regex, `[${tag}: ${value}]`);
+                notes = notes.replace(regex, () => `[${tag}: ${value}]`);
             } else {
                 notes = notes + `\n\n[${tag}: ${value}]`;
             }
