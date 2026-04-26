@@ -45,17 +45,21 @@ export function reconcileBoothInventory(csvText: string, appwriteItems: any[]): 
                 let unmatchedAppwrite = [...appwriteItems];
 
                 csvItems.forEach(csvRow => {
-                    const csvName = csvRow['Name']?.trim();
-                    const csvStatus = csvRow['Inventory']?.trim() || '';
-                    const qtyStr = csvRow['Quantity'];
-                    const qty = parseInt(qtyStr, 10) || 1;
+                    const csvName = (csvRow['Name'] || csvRow['Item Name'] || csvRow['Item'] || csvRow['Title'] || '').trim();
+                    const csvStatusRaw = (csvRow['Status'] || csvRow['Inventory'] || csvRow['State'] || '').trim().toLowerCase();
+                    const qtyStr = csvRow['Quantity'] || csvRow['Qty'] || csvRow['In Stock'] || '1';
+                    const parsedQty = parseInt(qtyStr, 10);
+                    const qty = isNaN(parsedQty) ? 1 : parsedQty;
                     
                     if (!csvName) return; // skip empty rows
 
                     const matchedForThisRow = [];
 
-                    // Attempt to find up to 'qty' matches for this single CSV row
-                    for (let q = 0; q < qty; q++) {
+                    // Attempt to find up to 'matchCount' matches for this single CSV row
+                    // Even if qty is 0 (e.g. out of stock), we still need to match the item at least once to update its status!
+                    const matchCount = Math.max(1, qty);
+
+                    for (let q = 0; q < matchCount; q++) {
                         // 1. Primary Match: Exact Title (Case Insensitive)
                         let matchIndex = unmatchedAppwrite.findIndex(item => 
                             item.title?.toLowerCase().trim() === csvName.toLowerCase()
@@ -96,16 +100,29 @@ export function reconcileBoothInventory(csvText: string, appwriteItems: any[]): 
                             result.matchedItems.push({ csv: csvRow, appwrite: matchedItem });
                             
                             // Status reconciliation
-                            const isSoldInCsv = csvStatus.toLowerCase() === 'sold';
+                            // Consider it sold if status says 'sold', 'out of stock', quantity is 0, or if it's explicitly a Sales Report (Sale# or Sold Date exists)
+                            const isSalesReportRow = csvRow['Sale#'] !== undefined || csvRow['Sold Date'] !== undefined;
+                            const isSoldInCsv = isSalesReportRow || csvStatusRaw.includes('sold') || csvStatusRaw.includes('out of stock') || qty === 0;
+                            
                             if (isSoldInCsv && matchedItem.status !== 'sold') {
                                 
                                 // Financial Math
-                                const rawAgreedPrice = csvRow['Agreed Price'] || '0';
+                                const rawAmount = csvRow['Amount'] || csvRow['Agreed Price'] || csvRow['Agreed'] || '0';
+                                const rawCostSplit = csvRow['Cost/Split'] || '0';
                                 const rawConsignorPct = csvRow['Consignor %'] || '100'; // Default to 100% consignor split
                                 
-                                const soldPrice = parseFloat(rawAgreedPrice.replace(/[^0-9.]/g, '')) || 0;
-                                const consignorPct = parseFloat(rawConsignorPct.replace(/[^0-9.]/g, '')) || 100;
-                                const commissionPaid = soldPrice * ((100 - consignorPct) / 100);
+                                const soldPrice = parseFloat(rawAmount.replace(/[^0-9.]/g, '')) || 0;
+                                let commissionPaid = 0;
+
+                                // If they use "Cost/Split", it's usually the payout the consignor receives
+                                if (csvRow['Cost/Split'] !== undefined) {
+                                    const payout = parseFloat(rawCostSplit.replace(/[^0-9.-]/g, '')) || 0;
+                                    commissionPaid = Math.max(0, soldPrice - payout);
+                                } else {
+                                    // Fallback to percentage
+                                    const consignorPct = parseFloat(rawConsignorPct.replace(/[^0-9.]/g, '')) || 100;
+                                    commissionPaid = soldPrice * ((100 - consignorPct) / 100);
+                                }
 
                                 result.soldItemsToUpdate.push({
                                     id: matchedItem.$id,

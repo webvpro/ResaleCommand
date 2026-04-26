@@ -9,7 +9,7 @@
           <Icon icon="solar:wallet-money-linear" class="w-8 h-8" />
         </div>
         <div class="stat-title">Total Profit</div>
-        <div class="stat-value text-success">\${{ globalProfit.toFixed(2) }}</div>
+        <div class="stat-value text-success">${{ globalProfit.toFixed(2) }}</div>
         <div class="stat-desc">From sold inventory</div>
       </div>
       
@@ -18,7 +18,7 @@
           <Icon icon="solar:chart-square-linear" class="w-8 h-8" />
         </div>
         <div class="stat-title">Est. Inventory Value</div>
-        <div class="stat-value text-info">\${{ globalProjectedRevenue.toFixed(2) }}</div>
+        <div class="stat-value text-info">${{ globalProjectedRevenue.toFixed(2) }}</div>
         <div class="stat-desc">Unsold items in stock</div>
       </div>
       
@@ -28,7 +28,7 @@
         </div>
         <div class="stat-value text-warning">{{ totalItems }}</div>
         <div class="stat-title">Items in Inventory</div>
-        <div class="stat-desc text-warning">\${{ globalSunkCost.toFixed(2) }} total sunk cost</div>
+        <div class="stat-desc text-warning">${{ globalSunkCost.toFixed(2) }} total sunk cost</div>
       </div>
       
     </div>
@@ -108,7 +108,7 @@ const isActiveInventory = (i: any) => !['sold', 'tracked', 'scouted'].includes(i
 const globalProjectedRevenue = computed(() => {
     return items.value.filter(isActiveInventory).reduce((sum, item) => {
         const qty = item.quantity || 1;
-        const est = parseValue(item, 'estValue', 'Est') || parseValue(item, 'listPrice', 'Est') || 0;
+        const est = parseValue(item, 'resalePrice', 'Resale') || parseValue(item, 'estValue', 'Est. Low') || parseValue(item, 'listPrice', 'Est') || 0;
         return sum + (est * qty);
     }, 0);
 });
@@ -137,7 +137,7 @@ const insights = computed(() => {
     }
 
     // 2. Active inventory missing an estimated value (Causes low projected revenue)
-    const activeNoEst = items.value.filter(i => isActiveInventory(i) && !(parseValue(i, 'estValue', 'Est') || parseValue(i, 'listPrice', 'Est')));
+    const activeNoEst = items.value.filter(i => isActiveInventory(i) && !(parseValue(i, 'resalePrice', 'Resale') || parseValue(i, 'estValue', 'Est. Low') || parseValue(i, 'listPrice', 'Est')));
     if (activeNoEst.length > 0) {
         alerts.push({
             type: 'warning',

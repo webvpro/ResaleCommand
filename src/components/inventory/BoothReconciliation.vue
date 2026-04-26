@@ -245,6 +245,8 @@ import { ref, computed, onMounted } from 'vue';
 import { reconcileBoothInventory } from '../../lib/reconciliation';
 import { useInventory } from '../../composables/useInventory';
 import { updateInventoryItem, getCollectionId } from '../../lib/inventory';
+import { databases, Query, ID } from '../../lib/appwrite';
+import { Permission, Role } from 'appwrite';
 import { useAuth } from '../../composables/useAuth';
 import { addToast } from '../../stores/toast';
 import { Icon } from '@iconify/vue';
@@ -262,7 +264,7 @@ const { currentTeam } = useAuth();
 const processing = ref(false);
 const processingUpdates = ref(false);
 const error = ref(null);
-const targetDb = computed(() => getCollectionId());
+const targetDb = ref(getCollectionId());
 const results = ref(null);
 const activeTab = ref('sold');
 const manualLinkSelections = ref({});
@@ -324,14 +326,8 @@ const handleFileUpload = async (e) => {
         // but for dev testing we'll fetch explicitly using Appwrite SDK.
         
         // Let's fetch directly to guarantee we get the right DB
-        const { Client, Databases, Query } = await import('appwrite');
-        const ENDPOINT = import.meta.env.PUBLIC_APPWRITE_ENDPOINT || import.meta.env.VITE_PUBLIC_APPWRITE_ENDPOINT;
-        const PROJECT_ID = import.meta.env.PUBLIC_APPWRITE_PROJECT_ID || import.meta.env.VITE_PUBLIC_APPWRITE_PROJECT_ID;
         const DB_ID = import.meta.env.PUBLIC_APPWRITE_DB_ID || import.meta.env.VITE_PUBLIC_APPWRITE_DB_ID || "resale_db";
         
-        const client = new Client().setEndpoint(ENDPOINT).setProject(PROJECT_ID);
-        const db = new Databases(client);
-
         let cursor = null;
         let hasMore = true;
         const allItems = [];
@@ -339,7 +335,7 @@ const handleFileUpload = async (e) => {
         while (hasMore) {
              const queries = [Query.limit(100)];
              if (cursor) queries.push(Query.cursorAfter(cursor));
-             const res = await db.listDocuments(DB_ID, targetDb.value, queries);
+             const res = await databases.listDocuments(DB_ID, targetDb.value, queries);
              allItems.push(...res.documents);
              if (res.documents.length < 100) hasMore = false;
              else cursor = res.documents[res.documents.length - 1].$id;
@@ -358,21 +354,15 @@ const handleFileUpload = async (e) => {
 
 const markSingleStatus = async (id, status, payloadData = null) => {
     try {
-        const { Client, Databases } = await import('appwrite');
-        const ENDPOINT = import.meta.env.PUBLIC_APPWRITE_ENDPOINT || import.meta.env.VITE_PUBLIC_APPWRITE_ENDPOINT;
-        const PROJECT_ID = import.meta.env.PUBLIC_APPWRITE_PROJECT_ID || import.meta.env.VITE_PUBLIC_APPWRITE_PROJECT_ID;
         const DB_ID = import.meta.env.PUBLIC_APPWRITE_DB_ID || import.meta.env.VITE_PUBLIC_APPWRITE_DB_ID || "resale_db";
         
-        const client = new Client().setEndpoint(ENDPOINT).setProject(PROJECT_ID);
-        const db = new Databases(client);
-
         const updatePayload = { status };
         if (status === 'sold' && payloadData) {
             updatePayload.soldPrice = payloadData.soldPrice;
             updatePayload.commissionPaid = payloadData.commissionPaid;
         }
 
-        await db.updateDocument(DB_ID, targetDb.value, id, updatePayload);
+        await databases.updateDocument(DB_ID, targetDb.value, id, updatePayload);
         
         if (status === 'sold') {
             results.value.soldItemsToUpdate = results.value.soldItemsToUpdate.filter(i => i.id !== id);
@@ -393,29 +383,39 @@ const manualLinkSync = async (csvRow, idx) => {
 
     processingUpdates.value = true;
     try {
-        const { Client, Databases } = await import('appwrite');
-        const ENDPOINT = import.meta.env.PUBLIC_APPWRITE_ENDPOINT || import.meta.env.VITE_PUBLIC_APPWRITE_ENDPOINT;
-        const PROJECT_ID = import.meta.env.PUBLIC_APPWRITE_PROJECT_ID || import.meta.env.VITE_PUBLIC_APPWRITE_PROJECT_ID;
         const DB_ID = import.meta.env.PUBLIC_APPWRITE_DB_ID || import.meta.env.VITE_PUBLIC_APPWRITE_DB_ID || "resale_db";
         
-        const client = new Client().setEndpoint(ENDPOINT).setProject(PROJECT_ID);
-        const db = new Databases(client);
-
-        const csvStatus = csvRow['Inventory'] || '';
-        const isSoldInCsv = csvStatus.toLowerCase() === 'sold';
+        const csvStatusRaw = (csvRow['Status'] || csvRow['Inventory'] || csvRow['State'] || '').trim().toLowerCase();
+        const qtyStr = csvRow['Quantity'] || csvRow['Qty'] || csvRow['In Stock'] || '1';
+        const parsedQty = parseInt(qtyStr, 10);
+        const qty = isNaN(parsedQty) ? 1 : parsedQty;
+        
+        const isSalesReportRow = csvRow['Sale#'] !== undefined || csvRow['Sold Date'] !== undefined;
+        const isSoldInCsv = isSalesReportRow || csvStatusRaw.includes('sold') || csvStatusRaw.includes('out of stock') || qty === 0;
         
         const updatePayload = { status: isSoldInCsv ? 'sold' : 'placed' };
         
         if (isSoldInCsv) {
-            const rawAgreedPrice = csvRow['Agreed Price'] || '0';
+            const rawAmount = csvRow['Amount'] || csvRow['Agreed Price'] || csvRow['Agreed'] || '0';
+            const rawCostSplit = csvRow['Cost/Split'] || '0';
             const rawConsignorPct = csvRow['Consignor %'] || '100'; 
-            const soldPrice = parseFloat(rawAgreedPrice.replace(/[^0-9.]/g, '')) || 0;
-            const consignorPct = parseFloat(rawConsignorPct.replace(/[^0-9.]/g, '')) || 100;
+            
+            const soldPrice = parseFloat(rawAmount.replace(/[^0-9.]/g, '')) || 0;
+            let commissionPaid = 0;
+
+            if (csvRow['Cost/Split'] !== undefined) {
+                const payout = parseFloat(rawCostSplit.replace(/[^0-9.-]/g, '')) || 0;
+                commissionPaid = Math.max(0, soldPrice - payout);
+            } else {
+                const consignorPct = parseFloat(rawConsignorPct.replace(/[^0-9.]/g, '')) || 100;
+                commissionPaid = soldPrice * ((100 - consignorPct) / 100);
+            }
+            
             updatePayload.soldPrice = soldPrice;
-            updatePayload.commissionPaid = soldPrice * ((100 - consignorPct) / 100);
+            updatePayload.commissionPaid = commissionPaid;
         }
 
-        await db.updateDocument(DB_ID, targetDb.value, selectedId, updatePayload);
+        await databases.updateDocument(DB_ID, targetDb.value, selectedId, updatePayload);
         
         // Remove from both Missing arrays
         results.value.missingAppwriteItems = results.value.missingAppwriteItems.filter(i => i.$id !== selectedId);
@@ -436,32 +436,42 @@ const manualLinkSync = async (csvRow, idx) => {
 const createNewFromCsv = async (csvRow, idx) => {
     processingUpdates.value = true;
     try {
-        const { Client, Databases, ID, Permission, Role } = await import('appwrite');
-        const ENDPOINT = import.meta.env.PUBLIC_APPWRITE_ENDPOINT || import.meta.env.VITE_PUBLIC_APPWRITE_ENDPOINT;
-        const PROJECT_ID = import.meta.env.PUBLIC_APPWRITE_PROJECT_ID || import.meta.env.VITE_PUBLIC_APPWRITE_PROJECT_ID;
         const DB_ID = import.meta.env.PUBLIC_APPWRITE_DB_ID || import.meta.env.VITE_PUBLIC_APPWRITE_DB_ID || "resale_db";
         
-        const client = new Client().setEndpoint(ENDPOINT).setProject(PROJECT_ID);
-        const db = new Databases(client);
-
-        const csvStatus = csvRow['Inventory'] || '';
-        const isSoldInCsv = csvStatus.toLowerCase() === 'sold';
+        const csvStatusRaw = (csvRow['Status'] || csvRow['Inventory'] || csvRow['State'] || '').trim().toLowerCase();
+        const qtyStr = csvRow['Quantity'] || csvRow['Qty'] || csvRow['In Stock'] || '1';
+        const parsedQty = parseInt(qtyStr, 10);
+        const qty = isNaN(parsedQty) ? 1 : parsedQty;
+        
+        const isSalesReportRow = csvRow['Sale#'] !== undefined || csvRow['Sold Date'] !== undefined;
+        const isSoldInCsv = isSalesReportRow || csvStatusRaw.includes('sold') || csvStatusRaw.includes('out of stock') || qty === 0;
         
         const docPayload = {
-            title: csvRow['Name'] || 'Untitled Item from CSV',
-            identity: csvRow['Name'] || 'Untitled Item',
+            title: csvRow['Name'] || csvRow['Item Name'] || csvRow['Title'] || 'Untitled Item from CSV',
+            identity: csvRow['Name'] || csvRow['Item Name'] || csvRow['Title'] || 'Untitled Item',
             conditionNotes: 'Created via Booth Sync',
             status: isSoldInCsv ? 'sold' : 'placed',
             tenantId: currentTeam.value?.$id || 'unassigned'
         };
         
         if (isSoldInCsv) {
-            const rawAgreedPrice = csvRow['Agreed Price'] || '0';
+            const rawAmount = csvRow['Amount'] || csvRow['Agreed Price'] || csvRow['Agreed'] || '0';
+            const rawCostSplit = csvRow['Cost/Split'] || '0';
             const rawConsignorPct = csvRow['Consignor %'] || '100'; 
-            const soldPrice = parseFloat(rawAgreedPrice.replace(/[^0-9.]/g, '')) || 0;
-            const consignorPct = parseFloat(rawConsignorPct.replace(/[^0-9.]/g, '')) || 100;
+            
+            const soldPrice = parseFloat(rawAmount.replace(/[^0-9.]/g, '')) || 0;
+            let commissionPaid = 0;
+
+            if (csvRow['Cost/Split'] !== undefined) {
+                const payout = parseFloat(rawCostSplit.replace(/[^0-9.-]/g, '')) || 0;
+                commissionPaid = Math.max(0, soldPrice - payout);
+            } else {
+                const consignorPct = parseFloat(rawConsignorPct.replace(/[^0-9.]/g, '')) || 100;
+                commissionPaid = soldPrice * ((100 - consignorPct) / 100);
+            }
+            
             docPayload.soldPrice = soldPrice;
-            docPayload.commissionPaid = soldPrice * ((100 - consignorPct) / 100);
+            docPayload.commissionPaid = commissionPaid;
         }
 
         let permissions = undefined;
@@ -473,7 +483,7 @@ const createNewFromCsv = async (csvRow, idx) => {
             ];
         }
 
-        await db.createDocument(DB_ID, targetDb.value, ID.unique(), docPayload, permissions);
+        await databases.createDocument(DB_ID, targetDb.value, ID.unique(), docPayload, permissions);
         
         // Remove from UI
         results.value.unmatchedCsvItems.splice(idx, 1);
@@ -494,21 +504,15 @@ const markAllStatus = async (status) => {
     processingUpdates.value = true;
     
     try {
-        const { Client, Databases } = await import('appwrite');
-        const ENDPOINT = import.meta.env.PUBLIC_APPWRITE_ENDPOINT || import.meta.env.VITE_PUBLIC_APPWRITE_ENDPOINT;
-        const PROJECT_ID = import.meta.env.PUBLIC_APPWRITE_PROJECT_ID || import.meta.env.VITE_PUBLIC_APPWRITE_PROJECT_ID;
         const DB_ID = import.meta.env.PUBLIC_APPWRITE_DB_ID || import.meta.env.VITE_PUBLIC_APPWRITE_DB_ID || "resale_db";
         
-        const client = new Client().setEndpoint(ENDPOINT).setProject(PROJECT_ID);
-        const db = new Databases(client);
-
         const promises = listToUpdate.map(item => {
             const updatePayload = { status };
             if (status === 'sold') {
                 updatePayload.soldPrice = item.soldPrice;
                 updatePayload.commissionPaid = item.commissionPaid;
             }
-            return db.updateDocument(DB_ID, targetDb.value, item.id, updatePayload);
+            return databases.updateDocument(DB_ID, targetDb.value, item.id, updatePayload);
         });
         
         await Promise.all(promises);
