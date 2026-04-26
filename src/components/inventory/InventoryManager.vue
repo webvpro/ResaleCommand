@@ -670,7 +670,7 @@ const filteredInventory = computed(() => {
             if (insightFilter.value === 'missing_sold_price') {
                 if (item.status !== 'sold' || (parseVal(item, 'soldPrice', 'Sold') || parseVal(item, 'price', 'Sold'))) return false;
             } else if (insightFilter.value === 'missing_est_value') {
-                if (item.status === 'sold' || (parseVal(item, 'estValue', 'Est') || parseVal(item, 'listPrice', 'Est'))) return false;
+                if (item.status === 'sold' || (parseVal(item, 'resalePrice', 'Resale') || parseVal(item, 'estValue', 'Est. Low') || parseVal(item, 'listPrice', 'Est'))) return false;
             } else if (insightFilter.value === 'missing_cost') {
                 if (item.status === 'sold' || (parseVal(item, 'cost', 'Paid') || parseVal(item, 'purchasePrice', 'Paid'))) return false;
             } else if (insightFilter.value === 'missing_description') {
