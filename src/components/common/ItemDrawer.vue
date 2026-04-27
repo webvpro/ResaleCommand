@@ -33,7 +33,7 @@
                         </div>
                     </label>
                     <div class="join w-full flex items-stretch">
-                        <textarea v-model="editForm.title" class="textarea textarea-bordered font-bold join-item grow leading-tight min-h-[3rem] py-2 resize-none" rows="2" placeholder="Item Title..."></textarea>
+                        <textarea v-model="editForm.title" class="textarea textarea-bordered border border-base-content/20 font-bold join-item grow leading-tight min-h-[3rem] py-2 resize-none bg-base-200 focus:bg-base-100 focus:ring-1 focus:ring-primary/30 transition-colors duration-200" rows="2" placeholder="Item Title..."></textarea>
                         <button class="btn join-item border border-base-300 h-auto w-12 flex items-center justify-center p-0" @click="copyToClipboard(editForm.title)" title="Copy Title">
                             <Icon icon="solar:copy-linear" class="w-5 h-5" />
                         </button>
@@ -63,7 +63,7 @@
                                 </span>
                                 <span class="text-[10px] opacity-50 uppercase font-bold tracking-wider">Not Saved</span>
                             </label>
-                            <textarea v-model="scoutQuery" class="textarea textarea-bordered h-20 text-sm w-full" placeholder="e.g. Vintage Sony Walkman in good condition..."></textarea>
+                            <textarea v-model="scoutQuery" class="textarea textarea-bordered border border-base-content/20 h-20 text-sm w-full bg-base-200 focus:bg-base-100 focus:ring-1 focus:ring-primary/30 transition-colors duration-200" placeholder="e.g. Vintage Sony Walkman in good condition..."></textarea>
                         </div>
                         
                         <!-- Source Link / Fetcher -->
@@ -72,7 +72,7 @@
                                 <span class="label-text">Source Link</span>
                             </label>
                              <div class="join w-full flex shadow-sm">
-                                <input type="text" v-model="editForm.sourcingLocation" class="input input-bordered join-item grow font-mono text-xs" placeholder="Paste URL to fetch data & photos..." />
+                                <input type="text" v-model="editForm.sourcingLocation" class="input input-bordered join-item grow font-mono text-xs bg-base-200 focus:bg-base-100 focus:ring-1 focus:ring-primary/30 transition-colors duration-200" placeholder="Paste URL to fetch data & photos..." />
                                 <a v-if="editForm.sourcingLocation && editForm.sourcingLocation.startsWith('http')" :href="editForm.sourcingLocation" target="_blank" class="btn btn-neutral join-item shrink-0 px-3" title="Open Link"><Icon icon="solar:link-linear" class="w-4 h-4" /></a>
                                 <button class="btn btn-primary join-item shrink-0 px-3" @click="fetchSourceData" :disabled="!editForm.sourcingLocation || fetchingImages" title="Fetch Data from URL">
                                     <span v-if="fetchingImages" class="loading loading-spinner loading-xs"></span>
@@ -82,6 +82,23 @@
                         </div>
                         
                         <!-- 2. Photos -->
+                        <!-- Fetched Images Preview -->
+                        <div v-if="fetchedImages.length > 0" class="border border-base-300 rounded-lg p-4 bg-base-200 mb-4">
+                            <label class="label pt-0"><span class="label-text font-bold">Detected Images (Click to Add)</span></label>
+                            <div class="flex gap-2 overflow-x-auto pb-2 min-h-20">
+                                <div v-for="(imgItem, idx) in fetchedImages" :key="idx" 
+                                    class="relative w-20 h-20 shrink-0 group cursor-pointer hover:ring-2 ring-primary rounded-lg overflow-hidden transition-all" 
+                                    @click="selectFetchedImage(imgItem.url || imgItem)">
+                                    <img :src="proxify(imgItem.url || imgItem)" class="w-full h-full object-cover" />
+                                    <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-bold transition-opacity">
+                                        Add
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex justify-end mt-1">
+                                <button class="btn btn-xs btn-ghost text-error" @click="fetchedImages = []">Clear</button>
+                            </div>
+                        </div>
                         <div class="form-control w-full">
                             <label class="label py-1">
                                 <span class="label-text font-bold text-sm">Photos (Click to set Main ⭐)</span>
@@ -133,16 +150,13 @@
                             
 
                         </div>
-                        
                 </div>
-
-
 
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-3 items-end">
                      <div class="form-control w-full">
                         <label class="label"><span class="label-text">Quantity</span></label>
                         <div class="flex flex-col gap-1">
-                            <input type="number" step="1" min="1" v-model="editForm.quantity" class="input input-bordered w-full text-center font-bold" />
+                            <input type="number" step="1" min="1" v-model="editForm.quantity" class="input input-bordered w-full text-center font-bold bg-base-200 focus:bg-base-100 focus:ring-1 focus:ring-primary/30 transition-colors duration-200" />
                             <button v-if="item && Number(editForm.quantity) > 1" @click.prevent="sellOneQuantity" class="btn btn-xs btn-success w-full mt-1 shadow-sm opacity-80 hover:opacity-100 transition-opacity">
                                 <Icon icon="solar:cart-check-linear" class="w-4 h-4" /> Sell One
                             </button>
@@ -153,7 +167,7 @@
                             <span class="label-text">Cost Basis</span>
                             <span v-if="editForm.quantity > 1" class="text-[9px] text-primary">(${{ (parseFloat(editForm.cost || 0) / editForm.quantity).toFixed(2) }} ea)</span>
                         </label>
-                        <label class="input input-bordered flex items-center gap-2">
+                        <label class="input input-bordered flex items-center gap-2 bg-base-200 focus:bg-base-100 focus:ring-1 focus:ring-primary/30 transition-colors duration-200">
                             <span class="opacity-50">$</span>
                             <input type="number" step="0.01" v-model="editForm.cost" class="grow" placeholder="0.00" />
                         </label>
@@ -175,7 +189,7 @@
                                 <span v-if="editForm.quantity > 1" class="text-[9px] text-primary ml-1">(${{ (parseFloat(editForm.resalePrice || 0) / editForm.quantity).toFixed(2) }} ea)</span>
                             </div>
                         </label>
-                         <label class="input input-bordered flex items-center gap-2">
+                         <label class="input input-bordered flex items-center gap-2 bg-base-200 focus:bg-base-100 focus:ring-1 focus:ring-primary/30 transition-colors duration-200">
                             <span class="opacity-50">$</span>
                             <input type="number" step="0.01" v-model="editForm.resalePrice" class="grow" placeholder="0.00" />
                         </label>
@@ -185,7 +199,7 @@
                             <span class="label-text text-success font-bold">Sold Price</span>
                             <span v-if="editForm.quantity > 1" class="text-[9px] text-primary">(${{ (parseFloat(editForm.soldPrice || 0) / editForm.quantity).toFixed(2) }} ea)</span>
                         </label>
-                         <label class="input input-bordered flex items-center gap-2" :class="{'input-success': editForm.status === 'sold'}">
+                         <label class="input input-bordered flex items-center gap-2 bg-base-200 focus:bg-base-100 focus:ring-1 focus:ring-primary/30 transition-colors duration-200" :class="{'input-success': editForm.status === 'sold'}">
                             <span class="opacity-50">$</span>
                             <input type="number" step="0.01" v-model="editForm.soldPrice" class="grow font-bold" placeholder="0.00" />
                         </label>
@@ -210,7 +224,7 @@
                                 </div>
                             </div>
                         </label>
-                        <label class="input input-bordered flex items-center gap-2">
+                        <label class="input input-bordered flex items-center gap-2 bg-base-200 focus:bg-base-100 focus:ring-1 focus:ring-primary/30 transition-colors duration-200">
                             <span class="opacity-50">$</span>
                             <input type="number" step="0.01" v-model="editForm.estLow" class="grow min-w-0" placeholder="0.00" />
                         </label>
@@ -231,7 +245,7 @@
                                 </div>
                             </div>
                         </label>
-                         <label class="input input-bordered flex items-center gap-2">
+                         <label class="input input-bordered flex items-center gap-2 bg-base-200 focus:bg-base-100 focus:ring-1 focus:ring-primary/30 transition-colors duration-200">
                             <span class="opacity-50">$</span>
                             <input type="number" step="0.01" v-model="editForm.estHigh" class="grow min-w-0" placeholder="0.00" />
                         </label>
@@ -241,7 +255,7 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
                      <div class="form-control w-full">
                         <label class="label"><span class="label-text">Bin Location</span></label>
-                        <input type="text" list="org-bin-locations" v-model="editForm.storageLocation" class="input input-bordered w-full" placeholder="Type or select..." />
+                        <input type="text" list="org-bin-locations" v-model="editForm.storageLocation" class="input input-bordered w-full bg-base-200 focus:bg-base-100 focus:ring-1 focus:ring-primary/30 transition-colors duration-200" placeholder="Type or select..." />
                         <datalist id="org-bin-locations">
                             <option v-for="loc in orgPlacedLocations" :key="loc" :value="loc"></option>
                         </datalist>
@@ -249,7 +263,7 @@
                     
                      <div class="form-control w-full">
                         <label class="label"><span class="label-text">Source Order #</span></label>
-                        <input type="text" v-model="editForm.orderId" class="input input-bordered w-full font-mono text-xs" placeholder="e.g. ORD-12345" />
+                        <input type="text" v-model="editForm.orderId" class="input input-bordered w-full font-mono text-xs bg-base-200 focus:bg-base-100 focus:ring-1 focus:ring-primary/30 transition-colors duration-200" placeholder="e.g. ORD-12345" />
                      </div>
                 </div>
 
@@ -358,25 +372,6 @@
                     </div>
                 </div>
 
-
-                <!-- Fetched Images Preview -->
-                <div v-if="fetchedImages.length > 0" class="border border-base-300 rounded-lg p-4 bg-base-200">
-                    <label class="label pt-0"><span class="label-text font-bold">Detected Images (Click to Add)</span></label>
-                    <div class="flex gap-2 overflow-x-auto pb-2 min-h-20">
-                        <div v-for="(imgItem, idx) in fetchedImages" :key="idx" 
-                             class="relative w-20 h-20 shrink-0 group cursor-pointer hover:ring-2 ring-primary rounded-lg overflow-hidden transition-all" 
-                             @click="selectFetchedImage(imgItem.url || imgItem)">
-                            <img :src="proxify(imgItem.url || imgItem)" class="w-full h-full object-cover" />
-                            <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-bold transition-opacity">
-                                Add
-                            </div>
-                        </div>
-                    </div>
-                    <div class="flex justify-end mt-1">
-                         <button class="btn btn-xs btn-ghost text-error" @click="fetchedImages = []">Clear</button>
-                    </div>
-                </div>
-
                 <!-- Status Steps -->
                 <div class="w-full mb-6">
                     <label class="label"><span class="label-text font-bold text-sm">Item Lifecycle Status</span></label>
@@ -425,7 +420,7 @@
                 <div class="divider">Product Description</div>
 
                 <!-- Description -->
-                <div class="flex justify-between items-center mb-0">
+                <div class="flex justify-between items-end mb-2 gap-4">
                     <label class="label flex flex-col items-start gap-1 pt-0 w-full">
                         <button v-if="suggestedDescriptionStr && suggestedDescriptionStr !== editForm.description" class="btn btn-xs btn-soft btn-primary rounded-xl font-normal w-full text-left h-auto py-1 px-2 justify-start items-start" @click="editForm.description = suggestedDescriptionStr" title="Apply AI Suggestion">
                             <Icon icon="solar:magic-stick-linear" class="w-3.5 h-3.5 shrink-0 mt-0.5" /> 
@@ -453,7 +448,7 @@
                 </div>
 
                 <div v-if="descTab === 'edit'" class="form-control w-full transition-all">
-                    <textarea v-model="editForm.description" class="textarea textarea-bordered h-64 font-mono text-xs leading-normal transition-all" :class="{'ring-2 ring-primary bg-primary/5': suggestedDescriptionStr && suggestedDescriptionStr === editForm.description}" placeholder="Product description..."></textarea>
+                    <textarea v-model="editForm.description" class="textarea textarea-bordered border border-base-content/20 h-64 font-mono text-xs leading-normal transition-all bg-base-200 focus:bg-base-100 focus:ring-1 focus:ring-primary/30 transition-colors duration-200" :class="{'ring-2 ring-primary bg-primary/5': suggestedDescriptionStr && suggestedDescriptionStr === editForm.description}" placeholder="Product description..."></textarea>
                 </div>
                 <div v-else class="w-full h-64 overflow-y-auto border border-base-300 rounded-lg p-4 bg-base-100 prose prose-sm transition-all" :class="{'ring-2 ring-primary bg-primary/5': suggestedDescriptionStr && suggestedDescriptionStr === editForm.description}" v-html="renderMarkdown(editForm.description)"></div>
 
