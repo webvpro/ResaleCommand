@@ -422,21 +422,7 @@
 
 
                 <!-- Scout Report -->
-                <div class="divider">Scout Report &amp; Description</div>
-                
-                <div class="form-control w-full mb-4">
-                    <div class="flex justify-between items-center mb-1">
-                        <label class="label pt-0 pb-0"><span class="label-text font-bold">Scout Report</span></label>
-                        <div role="tablist" class="tabs tabs-boxed tabs-sm min-h-0 py-0 h-7">
-                            <a role="tab" class="tab tab-sm" :class="{ 'tab-active': scoutTab === 'edit' }" @click="scoutTab = 'edit'">Edit</a>
-                            <a role="tab" class="tab tab-sm" :class="{ 'tab-active': scoutTab === 'preview' }" @click="scoutTab = 'preview'">Preview</a>
-                        </div>
-                    </div>
-                    <div v-if="scoutTab === 'edit'">
-                        <textarea v-model="editForm.itemCondition" class="textarea textarea-bordered h-32 text-xs w-full block font-mono" placeholder="Any notable damage, testing results..."></textarea>
-                    </div>
-                    <div v-else class="w-full h-32 overflow-y-auto border border-base-300 rounded-lg p-3 bg-base-100 prose prose-sm" v-html="renderMarkdown(editForm.itemCondition)"></div>
-                </div>
+                <div class="divider">Product Description</div>
 
                 <!-- Description -->
                 <div class="flex justify-between items-center mb-0">
@@ -447,6 +433,10 @@
                         </button>
                         <div class="flex items-center justify-start gap-1.5 w-full">
                             <span class="label-text font-bold">Product Description</span>
+                            <button class="btn btn-xs btn-secondary btn-outline ml-2" @click="generateDescription" :disabled="generatingDescription || !item">
+                                <span v-if="generatingDescription" class="loading loading-spinner loading-xs"></span>
+                                <Icon icon="solar:magic-stick-linear" class="w-3 h-3 inline mr-1" /> AI Generate
+                            </button>
                             <div v-if="suggestedDescriptionStr && suggestedDescriptionStr === editForm.description" class="text-success shrink-0" title="AI Suggestion Applied">
                                 <div class="relative w-4 h-4 flex items-center justify-center">
                                     <Icon icon="solar:magic-stick-bold" class="w-4 h-4" />
@@ -455,20 +445,17 @@
                             </div>
                         </div>
                     </label>
-                    <div role="tablist" class="tabs tabs-boxed">
-                        <a role="tab" class="tab" :class="{ 'tab-active': descTab === 'edit' }" @click="descTab = 'edit'">Edit</a>
-                        <a role="tab" class="tab" :class="{ 'tab-active': descTab === 'preview' }" @click="descTab = 'preview'">Preview</a>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <span class="text-[10px] font-bold uppercase" :class="descTab === 'edit' ? 'text-primary' : 'opacity-50'">Edit</span>
+                        <input type="checkbox" class="toggle toggle-sm toggle-primary" :checked="descTab === 'preview'" @change="descTab = $event.target.checked ? 'preview' : 'edit'" />
+                        <span class="text-[10px] font-bold uppercase" :class="descTab === 'preview' ? 'text-primary' : 'opacity-50'">Preview</span>
                     </div>
-                    <button class="btn btn-sm btn-secondary btn-outline" @click="generateDescription" :disabled="generatingDescription || !item">
-                        <span v-if="generatingDescription" class="loading loading-spinner loading-xs"></span>
-                        <Icon icon="solar:magic-stick-linear" class="w-4 h-4 inline mr-1" /> AI Generate
-                    </button>
                 </div>
 
-                <div v-if="descTab === 'edit'" class="form-control w-full">
-                    <textarea v-model="editForm.description" class="textarea textarea-bordered h-64 font-mono text-xs leading-normal" placeholder="Product description..."></textarea>
+                <div v-if="descTab === 'edit'" class="form-control w-full transition-all">
+                    <textarea v-model="editForm.description" class="textarea textarea-bordered h-64 font-mono text-xs leading-normal transition-all" :class="{'ring-2 ring-primary bg-primary/5': suggestedDescriptionStr && suggestedDescriptionStr === editForm.description}" placeholder="Product description..."></textarea>
                 </div>
-                <div v-else class="w-full h-64 overflow-y-auto border border-base-300 rounded-lg p-4 bg-base-100 prose prose-sm" v-html="renderMarkdown(editForm.description)"></div>
+                <div v-else class="w-full h-64 overflow-y-auto border border-base-300 rounded-lg p-4 bg-base-100 prose prose-sm transition-all" :class="{'ring-2 ring-primary bg-primary/5': suggestedDescriptionStr && suggestedDescriptionStr === editForm.description}" v-html="renderMarkdown(editForm.description)"></div>
 
                 <div class="h-12"></div>
             </div>
@@ -656,7 +643,7 @@ const props = defineProps({
 const emit = defineEmits(['close', 'save']);
 
 const mainTab = ref('details');
-const descTab = ref('edit');
+const descTab = ref('preview');
 const scoutTab = ref('edit');
 const processing = ref(false);
 
@@ -1134,7 +1121,7 @@ const initForm = () => {
         editForm.sourcingLocation = i.sourcingLocation || getNoteValue(i.conditionNotes, 'Location') || '';
         editForm.orderId = i.orderId || getNoteValue(i.conditionNotes, 'Order #') || getNoteValue(i.conditionNotes, 'Imported from Order #') || '';
         editForm.status = i.status || 'acquired';
-        editForm.description = i.marketDescription || i.description || i.rawAnalysis || ''; 
+        editForm.description = i.marketDescription || i.description || ''; 
         editForm.itemCondition = getNoteValue(i.conditionNotes, 'Condition') || '';
         editForm.existingGalleryIds = i.galleryImageIds || [];
         editForm.sellingLocations = i.sellingLocations || [];
