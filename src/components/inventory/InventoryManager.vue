@@ -253,10 +253,13 @@
                         </div>
                         
                         <div class="form-control w-full">
-                            <label class="cursor-pointer label justify-start gap-3">
-                                <input type="checkbox" v-model="filterLotsOnly" class="checkbox checkbox-sm checkbox-primary" />
-                                <span class="label-text text-xs font-bold">Bulk Lots Only (Qty > 1)</span>
-                            </label>
+                            <label class="label"><span class="label-text font-bold text-[10px] uppercase opacity-70">Lot Filtering</span></label>
+                            <select v-model="filterLotType" class="select select-bordered select-sm w-full text-xs shadow-sm bg-base-100">
+                                <option value="all">All Items</option>
+                                <option value="lots_only">Parent Lots Only</option>
+                                <option value="extracted_only">Extracted Children Only</option>
+                                <option value="standalone_only">Standalone Items</option>
+                            </select>
                         </div>
 
                         <div class="form-control w-full">
@@ -628,7 +631,7 @@ const scrollToTop = () => {
 };
 const filterKeywords = ref([]);
 const filterBinLocation = ref('');
-const filterLotsOnly = ref(false);
+const filterLotType = ref('all');
 const orgPlacedLocations = ref([]);
 
 const fetchLocations = async () => {
@@ -686,9 +689,13 @@ const filteredInventory = computed(() => {
             return false;
         }
 
-        // Filter Lots Only
-        if (filterLotsOnly.value && (!item.quantity || item.quantity <= 1)) {
-            return false;
+        // Lot Filtering
+        if (filterLotType.value === 'lots_only') {
+            if (item.quantity <= 1 && !(item.title && item.title.toLowerCase().startsWith('lot of'))) return false;
+        } else if (filterLotType.value === 'extracted_only') {
+            if (!item.parentLotId) return false;
+        } else if (filterLotType.value === 'standalone_only') {
+            if (item.parentLotId || (item.quantity > 1) || (item.title && item.title.toLowerCase().startsWith('lot of'))) return false;
         }
 
         // Filter by Bin Location
