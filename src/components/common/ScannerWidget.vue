@@ -1,19 +1,21 @@
 <template>
     <div>
-        <div v-if="!hideUpload" class="grid grid-cols-2 gap-2 mt-1">
-            <button @click="$refs.fileInput.click()" class="btn btn-sm btn-outline border-dashed gap-2">
-                <Icon icon="solar:folder-with-files-linear" class="w-4 h-4 inline" /> Upload
-            </button>
-            <input type="file" ref="fileInput" multiple accept="image/*" class="hidden" @change="handleFileSelect" />
-            
-            <button @click="startCamera" class="btn btn-sm btn-outline border-dashed gap-2">
-                <Icon icon="solar:camera-linear" class="w-4 h-4 inline" /> Camera
-            </button>
-        </div>
-        <div v-else class="w-full mt-1">
-            <button @click="startCamera" class="btn btn-sm btn-outline border-dashed gap-2 w-full">
-                <Icon icon="solar:camera-linear" class="w-4 h-4 inline" /> Open Camera
-            </button>
+        <div v-if="!hideAllTriggers">
+            <div v-if="!hideUpload" class="grid grid-cols-2 gap-2 mt-1">
+                <button @click="$refs.fileInput.click()" class="btn btn-sm btn-outline border-dashed gap-2">
+                    <Icon icon="solar:folder-with-files-linear" class="w-4 h-4 inline" /> Upload
+                </button>
+                <input type="file" ref="fileInput" multiple accept="image/*" class="hidden" @change="handleFileSelect" />
+                
+                <button @click="startCamera" class="btn btn-sm btn-outline border-dashed gap-2">
+                    <Icon icon="solar:camera-linear" class="w-4 h-4 inline" /> Camera
+                </button>
+            </div>
+            <div v-else class="w-full mt-1">
+                <button @click="startCamera" class="btn btn-sm btn-outline border-dashed gap-2 w-full">
+                    <Icon icon="solar:camera-linear" class="w-4 h-4 inline" /> Open Camera
+                </button>
+            </div>
         </div>
 
         <dialog ref="cameraModal" class="modal">
@@ -56,6 +58,10 @@ const props = defineProps({
     hideUpload: {
         type: Boolean,
         default: false
+    },
+    hideAllTriggers: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -86,12 +92,25 @@ const startCamera = async () => {
     cameraModal.value.showModal();
     isCameraOpen.value = true;
     try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error("Camera API is blocked. Please ensure you are on HTTPS or localhost.");
+        }
         if (cameraStream.value) {
             cameraStream.value.getTracks().forEach(track => track.stop());
         }
-        cameraStream.value = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: cameraFacing.value }
-        });
+        
+        try {
+            cameraStream.value = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: cameraFacing.value }
+            });
+        } catch (facingError) {
+            // Fallback for laptops/desktops that don't have an 'environment' camera
+            console.warn("Requested facingMode not found, falling back to default camera");
+            cameraStream.value = await navigator.mediaDevices.getUserMedia({
+                video: true
+            });
+        }
+
         if (cameraVideoDialog.value) {
              cameraVideoDialog.value.srcObject = cameraStream.value;
         }

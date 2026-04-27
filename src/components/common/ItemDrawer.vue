@@ -145,7 +145,7 @@
                             </div>
 
                             <!-- Hidden Inputs & Widgets -->
-                            <ScannerWidget ref="scannerWidget" :photos="editGalleryBuffer" @photos-captured="handleCapturedPhotos" class="hidden" />
+                            <ScannerWidget ref="scannerWidget" :photos="editGalleryBuffer" @photos-captured="handleCapturedPhotos" :hide-all-triggers="true" />
                             <input type="file" ref="fileInput" multiple accept="image/*" class="hidden" @change="handleFileSelect" />
                             
 
@@ -1493,6 +1493,9 @@ const analyzeExistingItem = async () => {
         if (editForm.title) contextNotes = `Current Title: ${editForm.title}\n\n` + contextNotes;
         if (editForm.sourcingLocation) contextNotes += `\n\nItem URL: ${editForm.sourcingLocation}`;
 
+        // Clear previous results before starting new analysis
+        scoutResult.value = null;
+        scoutMdText.value = '';
         analysisStatus.value = 'Analyzing with AI...';
 
         const response = await fetch(`/api/identify-item`, {
