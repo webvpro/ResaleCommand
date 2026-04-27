@@ -163,14 +163,16 @@
                         </div>
                     </div>
                      <div class="form-control w-full">
-                        <label class="label flex flex-col items-start gap-0">
+                        <label class="label">
                             <span class="label-text">Cost Basis</span>
-                            <span v-if="editForm.quantity > 1" class="text-[9px] text-primary">(${{ (parseFloat(editForm.cost || 0) / editForm.quantity).toFixed(2) }} ea)</span>
                         </label>
                         <label class="input input-bordered flex items-center gap-2 bg-base-200 focus:bg-base-100 focus:ring-1 focus:ring-primary/30 transition-colors duration-200">
                             <span class="opacity-50">$</span>
                             <input type="number" step="0.01" v-model="editForm.cost" class="grow" placeholder="0.00" />
                         </label>
+                        <div v-if="editForm.quantity > 1" class="text-xs text-secondary opacity-80 mt-1 pl-1 font-mono">
+                            (${{ (parseFloat(editForm.cost || 0) / editForm.quantity).toFixed(2) }} ea)
+                        </div>
                     </div>
                      <div class="form-control w-full">
                         <label class="label flex flex-col items-start gap-1 pb-1 w-full">
@@ -186,23 +188,27 @@
                                         <div class="absolute -bottom-0.5 -right-0.5 bg-base-100 rounded-full p-[1px]"><Icon icon="solar:check-circle-bold" class="w-2.5 h-2.5" /></div>
                                     </div>
                                 </div>
-                                <span v-if="editForm.quantity > 1" class="text-[9px] text-primary ml-1">(${{ (parseFloat(editForm.resalePrice || 0) / editForm.quantity).toFixed(2) }} ea)</span>
                             </div>
                         </label>
                          <label class="input input-bordered flex items-center gap-2 bg-base-200 focus:bg-base-100 focus:ring-1 focus:ring-primary/30 transition-colors duration-200">
                             <span class="opacity-50">$</span>
                             <input type="number" step="0.01" v-model="editForm.resalePrice" class="grow" placeholder="0.00" />
                         </label>
+                        <div v-if="editForm.quantity > 1" class="text-xs text-secondary opacity-80 mt-1 pl-1 font-mono">
+                            (${{ (parseFloat(editForm.resalePrice || 0) / editForm.quantity).toFixed(2) }} ea)
+                        </div>
                     </div>
                      <div class="form-control w-full">
-                        <label class="label flex flex-col items-start gap-0">
+                        <label class="label">
                             <span class="label-text text-success font-bold">Sold Price</span>
-                            <span v-if="editForm.quantity > 1" class="text-[9px] text-primary">(${{ (parseFloat(editForm.soldPrice || 0) / editForm.quantity).toFixed(2) }} ea)</span>
                         </label>
                          <label class="input input-bordered flex items-center gap-2 bg-base-200 focus:bg-base-100 focus:ring-1 focus:ring-primary/30 transition-colors duration-200" :class="{'input-success': editForm.status === 'sold'}">
                             <span class="opacity-50">$</span>
                             <input type="number" step="0.01" v-model="editForm.soldPrice" class="grow font-bold" placeholder="0.00" />
                         </label>
+                        <div v-if="editForm.quantity > 1" class="text-xs text-secondary opacity-80 mt-1 pl-1 font-mono">
+                            (${{ (parseFloat(editForm.soldPrice || 0) / editForm.quantity).toFixed(2) }} ea)
+                        </div>
                     </div>
                 </div>
 
