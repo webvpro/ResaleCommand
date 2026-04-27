@@ -1605,7 +1605,8 @@ const extractLotItems = async () => {
                  storageLocation: editForm.storageLocation,
                  imageId: mainImageId,
                  galleryImageIds: inheritedGallery,
-                 scoutData: lotItem
+                 scoutData: lotItem,
+                 parentLotId: props.item.$id
             };
             
             // Save the item

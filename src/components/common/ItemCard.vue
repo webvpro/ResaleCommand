@@ -13,9 +13,16 @@
             <!-- Top Gradient Overlay (Title, Checkbox, Status) -->
             <div class="absolute top-0 left-0 right-0 p-2 z-10 text-white flex flex-col gap-1 min-h-[50%] pointer-events-none" :class="headerBgClass">
                 <div class="flex justify-between items-start w-full">
-                    <!-- Left: Slot for Checkbox/Menu -->
-                    <div class="pointer-events-auto shrink-0 z-20">
+                    <!-- Left: Slot for Checkbox/Menu & Badges -->
+                    <div class="pointer-events-auto shrink-0 z-20 flex items-center gap-1.5">
                         <slot name="absolute-top-left"></slot>
+                        
+                        <div v-if="item.parentLotId" class="badge badge-xs sm:badge-sm bg-base-300/80 border-base-100/50 text-white font-bold backdrop-blur-sm shadow-sm opacity-90" title="Extracted from Lot">
+                            <Icon icon="solar:link-minimalistic-bold" class="w-3 h-3 sm:mr-1" /> <span class="hidden sm:inline">Extracted</span>
+                        </div>
+                        <div v-else-if="item.quantity > 1 || (item.title && item.title.toLowerCase().startsWith('lot of'))" class="badge badge-xs sm:badge-sm bg-base-300/80 border-base-100/50 text-white font-bold backdrop-blur-sm shadow-sm opacity-90" title="Bulk Lot">
+                            <Icon icon="solar:box-minimalistic-bold" class="w-3 h-3 sm:mr-1" /> <span class="hidden sm:inline">Lot</span>
+                        </div>
                     </div>
                     
                     <!-- Right: Status Badge -->
